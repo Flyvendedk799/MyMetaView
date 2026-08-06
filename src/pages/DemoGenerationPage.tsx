@@ -7,6 +7,7 @@
  */
 
 import React, { useCallback, useRef, useState } from "react";
+import Seo from "../components/Seo";
 import {
   DemoGenerationExperience,
   type DemoItem,
@@ -247,7 +248,8 @@ export const DemoGenerationPage: React.FC<DemoGenerationPageProps> = ({
   }, [apiBase, apiKey]);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-ink">
+      <Seo title="Generating your preview" noindex />
       <DemoGenerationExperience
         onCreateJob={onCreateJob}
         onPollJob={onPollJob}

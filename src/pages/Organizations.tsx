@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BuildingOfficeIcon, PlusIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
@@ -61,7 +61,7 @@ export default function Organizations() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-secondary mb-2">Organizations</h1>
-          <p className="text-gray-600">Manage your organizations and team members.</p>
+          <p className="text-secondary-600">Manage your organizations and team members.</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
           <PlusIcon className="w-5 h-5 mr-2" />
@@ -70,8 +70,8 @@ export default function Organizations() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
@@ -79,7 +79,7 @@ export default function Organizations() {
         <Card>
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading organizations...</p>
+            <p className="text-secondary-500">Loading organizations...</p>
           </div>
         </Card>
       ) : (
@@ -87,8 +87,8 @@ export default function Organizations() {
           {organizations.length === 0 ? (
             <Card className="md:col-span-2 lg:col-span-3">
               <div className="text-center py-12">
-                <BuildingOfficeIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 mb-4">No organizations yet.</p>
+                <BuildingOfficeIcon className="w-16 h-16 text-secondary-400 mx-auto mb-4" />
+                <p className="text-secondary-500 mb-4">No organizations yet.</p>
                 <Button onClick={() => setShowCreateModal(true)}>
                   Create Your First Organization
                 </Button>
@@ -112,19 +112,19 @@ export default function Organizations() {
                         <BuildingOfficeIcon className="w-5 h-5 text-primary" />
                         <h3 className="text-lg font-semibold text-secondary">{org.name}</h3>
                       </div>
-                      <p className="text-sm text-gray-500 mb-4">
+                      <p className="text-sm text-secondary-500 mb-4">
                         Subscription: <span className="font-medium">{org.subscription_status}</span>
                       </p>
                       {org.subscription_plan && (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-secondary-500">
                           Plan: <span className="font-medium capitalize">{org.subscription_plan}</span>
                         </p>
                       )}
                     </div>
-                    <ArrowRightIcon className="w-5 h-5 text-gray-400" />
+                    <ArrowRightIcon className="w-5 h-5 text-secondary-400" />
                   </div>
                   {currentOrg?.id === org.id && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="mt-4 pt-4 border-t border-secondary-200">
                       <span className="text-xs font-medium text-primary">Current Organization</span>
                     </div>
                   )}
@@ -147,13 +147,13 @@ export default function Organizations() {
         >
           <div className="space-y-4">
             <div>
-              <label htmlFor="orgName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="orgName" className="block text-sm font-medium text-secondary-700 mb-2">
                 Organization Name
               </label>
               <input
                 type="text"
                 id="orgName"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-primary focus:border-primary"
                 value={newOrgName}
                 onChange={(e) => setNewOrgName(e.target.value)}
                 placeholder="My Organization"

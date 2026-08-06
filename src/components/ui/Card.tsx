@@ -16,12 +16,14 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
   onClick,
   ...props 
 }, ref) => {
+  // One card recipe: line border + the single card shadow.
+  // Legacy gradient/glass variants collapse into the default card.
   const variantClasses = {
     default: 'card',
     hover: 'card-hover',
     interactive: 'card-interactive',
-    gradient: 'card-gradient',
-    glass: 'card-glass',
+    gradient: 'card',
+    glass: 'card',
   }
   
   const paddingClasses = {

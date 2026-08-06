@@ -33,8 +33,8 @@ function ToolbarButton({ onClick, isActive, disabled, children, title }: Toolbar
       title={title}
       className={`p-2 rounded-lg transition-colors ${
         isActive
-          ? 'bg-primary text-white'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          ? 'bg-primary-500 text-paper'
+          : 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {children}
@@ -43,7 +43,7 @@ function ToolbarButton({ onClick, isActive, disabled, children, title }: Toolbar
 }
 
 function ToolbarDivider() {
-  return <div className="w-px h-6 bg-gray-300 mx-1" />
+  return <div className="w-px h-6 bg-line mx-1" />
 }
 
 export default function EditorToolbar({ editor, onInsertImage }: EditorToolbarProps) {
@@ -73,7 +73,7 @@ export default function EditorToolbar({ editor, onInsertImage }: EditorToolbarPr
   }
 
   return (
-    <div className="border-b border-gray-200 bg-gray-50 p-2 rounded-t-lg">
+    <div className="border-b border-line bg-secondary-50 p-2 rounded-t-lg">
       <div className="flex items-center flex-wrap gap-1">
         {/* Text Formatting */}
         <ToolbarButton
@@ -126,7 +126,7 @@ export default function EditorToolbar({ editor, onInsertImage }: EditorToolbarPr
               editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 | 4 }).run()
             }
           }}
-          className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          className="px-2 py-1.5 text-sm text-secondary-900 border border-secondary-300 rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           <option value="0">Paragraph</option>
           <option value="1">Heading 1</option>
@@ -267,13 +267,13 @@ export default function EditorToolbar({ editor, onInsertImage }: EditorToolbarPr
 
       {/* Link Input */}
       {showLinkInput && (
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-line">
           <input
             type="url"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             placeholder="Enter URL..."
-            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 px-3 py-1.5 font-mono text-[13px] text-secondary-900 placeholder-secondary-400 bg-surface border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
@@ -289,7 +289,7 @@ export default function EditorToolbar({ editor, onInsertImage }: EditorToolbarPr
           <button
             type="button"
             onClick={handleLink}
-            className="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90"
+            className="px-3 py-1.5 text-sm font-semibold bg-primary-500 text-paper rounded-lg hover:bg-primary-600 transition-colors"
           >
             Apply
           </button>
@@ -297,7 +297,7 @@ export default function EditorToolbar({ editor, onInsertImage }: EditorToolbarPr
             <button
               type="button"
               onClick={removeLink}
-              className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600"
+              className="px-3 py-1.5 text-sm font-semibold text-error-500 border border-error-200 rounded-lg hover:bg-error-50 transition-colors"
             >
               Remove
             </button>
@@ -308,7 +308,7 @@ export default function EditorToolbar({ editor, onInsertImage }: EditorToolbarPr
               setShowLinkInput(false)
               setLinkUrl('')
             }}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-100"
+            className="px-3 py-1.5 text-sm text-secondary-600 border border-secondary-300 rounded-lg hover:bg-secondary-100 transition-colors"
           >
             Cancel
           </button>

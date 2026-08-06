@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react'
+﻿import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
@@ -89,7 +89,7 @@ export default function RichTextEditor({
   // The parent can call editor.commands.setImage directly if needed
 
   return (
-    <div className={`border border-gray-300 rounded-lg overflow-hidden ${disabled ? 'opacity-60' : ''}`}>
+    <div className={`border border-secondary-300 rounded-lg overflow-hidden ${disabled ? 'opacity-60' : ''}`}>
       <EditorToolbar editor={editor} onInsertImage={handleInsertImage} />
       <EditorContent
         editor={editor}

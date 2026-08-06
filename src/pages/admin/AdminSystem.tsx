@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { ArrowPathIcon, ExclamationTriangleIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -93,8 +93,8 @@ export default function AdminSystem() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
@@ -102,7 +102,7 @@ export default function AdminSystem() {
         <Card>
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading system status...</p>
+            <p className="text-secondary-500">Loading system status...</p>
           </div>
         </Card>
       ) : (
@@ -112,13 +112,13 @@ export default function AdminSystem() {
             <Card className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Redis Queue Length</p>
+                  <p className="text-sm text-secondary-600 mb-1">Redis Queue Length</p>
                   <p className="text-2xl font-bold text-secondary">
                     {overview?.redis_queue_length.toLocaleString() || '0'}
                   </p>
                 </div>
                 <div className={`w-3 h-3 rounded-full ${
-                  (overview?.redis_queue_length || 0) > 100 ? 'bg-red-500' : 'bg-green-500'
+                  (overview?.redis_queue_length || 0) > 100 ? 'bg-error-500' : 'bg-success-500'
                 }`}></div>
               </div>
             </Card>
@@ -126,13 +126,13 @@ export default function AdminSystem() {
             <Card className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Jobs Running</p>
+                  <p className="text-sm text-secondary-600 mb-1">Jobs Running</p>
                   <p className="text-2xl font-bold text-secondary">
                     {overview?.jobs_running.toLocaleString() || '0'}
                   </p>
                 </div>
                 <div className={`w-3 h-3 rounded-full ${
-                  (overview?.jobs_running || 0) > 0 ? 'bg-yellow-500' : 'bg-gray-300'
+                  (overview?.jobs_running || 0) > 0 ? 'bg-warning-500' : 'bg-secondary-300'
                 }`}></div>
               </div>
             </Card>
@@ -140,13 +140,13 @@ export default function AdminSystem() {
             <Card className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Errors (24h)</p>
+                  <p className="text-sm text-secondary-600 mb-1">Errors (24h)</p>
                   <p className="text-2xl font-bold text-secondary">
                     {overview?.errors_past_24h.toLocaleString() || '0'}
                   </p>
                 </div>
                 <ExclamationTriangleIcon className={`w-6 h-6 ${
-                  (overview?.errors_past_24h || 0) > 0 ? 'text-red-500' : 'text-gray-300'
+                  (overview?.errors_past_24h || 0) > 0 ? 'text-error-500' : 'text-secondary-300'
                 }`} />
               </div>
             </Card>
@@ -154,7 +154,7 @@ export default function AdminSystem() {
             <Card className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Previews (24h)</p>
+                  <p className="text-sm text-secondary-600 mb-1">Previews (24h)</p>
                   <p className="text-2xl font-bold text-secondary">
                     {overview?.previews_generated_24h.toLocaleString() || '0'}
                   </p>
@@ -185,23 +185,23 @@ export default function AdminSystem() {
                 )}
               </Button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-secondary-600 mb-4">
               Merge the latest claude branch into main and push to trigger Railway deployment. This will pull changes from remote, find the latest claude branch, merge it, and push to main.
             </p>
             {deploymentResult && (
               <div className={`mt-4 p-4 rounded-lg ${
                 deploymentResult.success 
-                  ? 'bg-green-50 border border-green-200' 
-                  : 'bg-red-50 border border-red-200'
+                  ? 'bg-success-50 border border-success-200' 
+                  : 'bg-error-50 border border-error-200'
               }`}>
                 <p className={`text-sm font-medium ${
-                  deploymentResult.success ? 'text-green-800' : 'text-red-800'
+                  deploymentResult.success ? 'text-success-800' : 'text-error-800'
                 }`}>
-                  {deploymentResult.success ? '✓ ' : '✗ '}
+                  {deploymentResult.success ? 'âœ“ ' : 'âœ— '}
                   {deploymentResult.message}
                 </p>
                 {deploymentResult.branch_merged && (
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-secondary-600 mt-1">
                     Branch merged: {deploymentResult.branch_merged}
                   </p>
                 )}
@@ -231,11 +231,11 @@ export default function AdminSystem() {
                 )}
               </Button>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-secondary-600">
               Worker status monitoring and management. Restart workers if they become unresponsive.
             </p>
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">
+            <div className="mt-4 p-4 bg-secondary-50 rounded-lg">
+              <p className="text-sm text-secondary-600">
                 <strong>Note:</strong> Worker restart functionality is currently stubbed. Implement actual worker management endpoint.
               </p>
             </div>
@@ -244,11 +244,11 @@ export default function AdminSystem() {
           {/* Error Logs Placeholder */}
           <Card>
             <h2 className="text-xl font-semibold text-secondary mb-4">Recent Errors</h2>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">
+            <div className="p-4 bg-secondary-50 rounded-lg">
+              <p className="text-sm text-secondary-600">
                 Error logs will be displayed here once error logging is fully implemented in webhooks and jobs.
               </p>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-secondary-500 mt-2">
                 Latest {overview?.errors_past_24h || 0} errors in the past 24 hours.
               </p>
             </div>

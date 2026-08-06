@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+﻿import { ReactNode } from 'react'
 
 interface ProgressProps {
   value: number
@@ -29,7 +29,7 @@ export default function Progress({
   
   const variantClasses = {
     default: 'bg-primary-500',
-    gradient: 'bg-gradient-to-r from-primary-500 to-accent-500',
+    gradient: 'bg-primary-500',
     success: 'bg-success-500',
     warning: 'bg-warning-500',
     error: 'bg-error-500',

@@ -47,11 +47,11 @@ export default function SitePages() {
 
   function getStatusBadge(status: string) {
     const styles: Record<string, string> = {
-      published: 'bg-green-100 text-green-800',
-      draft: 'bg-gray-100 text-gray-800',
+      published: 'pill-success',
+      draft: 'pill bg-secondary-100 text-secondary-600',
     }
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status] || styles.draft}`}>
+      <span className={styles[status] || styles.draft}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     )
@@ -61,8 +61,8 @@ export default function SitePages() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-secondary">Pages</h1>
-          <p className="text-muted">Static pages for your site (About, Contact, etc.)</p>
+          <h1 className="font-display text-2xl font-semibold text-secondary-900 tracking-display-sm">Pages</h1>
+          <p className="text-secondary-500">Static pages for your site (About, Contact, etc.)</p>
         </div>
         <Button onClick={() => navigate(`/app/sites/${siteId}/pages/new`)}>
           <PlusIcon className="w-5 h-5 mr-2" />
@@ -73,10 +73,10 @@ export default function SitePages() {
       <Card>
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : pages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-48 text-secondary-500">
             <p className="font-medium mb-2">No pages yet</p>
             <p className="text-sm mb-4">Create static pages like About, Contact, Terms of Service</p>
             <Button onClick={() => navigate(`/app/sites/${siteId}/pages/new`)}>
@@ -84,19 +84,19 @@ export default function SitePages() {
             </Button>
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-secondary-100">
             {pages.map((page) => (
               <div
                 key={page.id}
-                className="flex items-center justify-between py-4 px-2 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between py-4 px-2 hover:bg-secondary-50 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   {page.is_homepage && (
-                    <HomeIcon className="w-5 h-5 text-primary" title="Homepage" />
+                    <HomeIcon className="w-5 h-5 text-primary-500" title="Homepage" />
                   )}
                   <div>
-                    <h3 className="font-medium text-gray-900">{page.title}</h3>
-                    <p className="text-sm text-gray-500">/page/{page.slug}</p>
+                    <h3 className="font-medium text-secondary-900">{page.title}</h3>
+                    <p className="font-mono text-[13px] text-secondary-500">/page/{page.slug}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -104,17 +104,17 @@ export default function SitePages() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => navigate(`/app/sites/${siteId}/pages/${page.id}`)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
                       title="Edit"
                     >
-                      <PencilSquareIcon className="w-4 h-4 text-gray-600" />
+                      <PencilSquareIcon className="w-4 h-4 text-secondary-600" />
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(page.id)}
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-2 hover:bg-error-50 rounded-lg transition-colors"
                       title="Delete"
                     >
-                      <TrashIcon className="w-4 h-4 text-red-600" />
+                      <TrashIcon className="w-4 h-4 text-error-500" />
                     </button>
                   </div>
                 </div>
@@ -126,22 +126,22 @@ export default function SitePages() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Page?</h3>
-            <p className="text-gray-500 text-sm mb-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50">
+          <div className="bg-surface rounded-2xl p-6 max-w-sm w-full shadow-overlay border border-line">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-2">Delete Page?</h3>
+            <p className="text-secondary-500 text-sm mb-6">
               This action cannot be undone. The page will be permanently deleted.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
+                className="btn flex-1 bg-error-500 text-paper border border-error-500 hover:bg-error-600 hover:border-error-600 focus:ring-error-500"
               >
                 Delete
               </button>

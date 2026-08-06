@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+﻿import { useState, useCallback, useRef } from 'react'
 import { CloudArrowUpIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface UploadZoneProps {
@@ -107,7 +107,7 @@ export default function UploadZone({
         onDrop={handleDrop}
         className={`
           relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
-          ${isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50'}
+          ${isDragging ? 'border-primary bg-primary/5' : 'border-secondary-300 hover:border-primary/50'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
           ${uploading ? 'pointer-events-none' : ''}
         `}
@@ -125,9 +125,9 @@ export default function UploadZone({
         {uploading ? (
           <div className="flex flex-col items-center">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-gray-600">Uploading...</p>
+            <p className="text-secondary-600">Uploading...</p>
             {uploadProgress > 0 && (
-              <div className="w-full max-w-xs mt-4 bg-gray-200 rounded-full h-2">
+              <div className="w-full max-w-xs mt-4 bg-secondary-200 rounded-full h-2">
                 <div
                   className="bg-primary h-2 rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
@@ -137,11 +137,11 @@ export default function UploadZone({
           </div>
         ) : (
           <>
-            <CloudArrowUpIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">
+            <CloudArrowUpIcon className="w-12 h-12 text-secondary-400 mx-auto mb-4" />
+            <p className="text-secondary-600 mb-2">
               <span className="text-primary font-medium">Click to upload</span> or drag and drop
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-secondary-500">
               {accept === 'image/*' ? 'PNG, JPG, GIF, WebP up to ' : 'Files up to '}
               {Math.round(maxSize / 1024 / 1024)}MB
             </p>
@@ -150,12 +150,12 @@ export default function UploadZone({
       </div>
 
       {error && (
-        <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mt-3 flex items-start gap-2 p-3 bg-error-50 border border-error-200 rounded-lg">
           <XMarkIcon 
-            className="w-5 h-5 text-red-500 flex-shrink-0 cursor-pointer" 
+            className="w-5 h-5 text-error-500 flex-shrink-0 cursor-pointer" 
             onClick={() => setError(null)} 
           />
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-error-700">{error}</p>
         </div>
       )}
     </div>

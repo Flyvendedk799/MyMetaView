@@ -60,7 +60,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-secondary-100">
+    <header className="sticky top-0 z-30 bg-surface border-b border-line">
       <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
         {/* Left side */}
         <div className="flex items-center gap-4">
@@ -78,13 +78,14 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
               <input
                 type="search"
-                placeholder="Search..."
+                placeholder="Search URLs, domains…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 lg:w-80 pl-10 pr-4 py-2 text-sm bg-secondary-50 border border-transparent rounded-xl 
-                         placeholder-secondary-400 text-secondary-900
-                         focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-100 focus:outline-none
+                className="w-64 lg:w-80 pl-10 pr-4 py-2 font-mono text-[13px] bg-secondary-50 border border-line rounded-lg
+                         placeholder-secondary-500 text-secondary-900
+                         focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none
                          transition-all duration-200"
+                aria-label="Search URLs, domains"
               />
             </form>
           </div>
@@ -103,8 +104,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Quick create button */}
           <button
             onClick={() => navigate('/app/sites/new')}
-            className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary-600 
-                     hover:bg-primary-50 rounded-xl transition-colors"
+            className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-semibold text-primary-500
+                     hover:bg-brand-50 rounded-lg transition-colors"
           >
             <PlusIcon className="w-5 h-5" />
             <span>New Site</span>
@@ -125,7 +126,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-2 p-1.5 pr-3 hover:bg-secondary-100 rounded-xl transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-accent-400 flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-primary-500 font-semibold text-sm">
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
               <span className="hidden sm:block text-sm font-medium text-secondary-700 max-w-[120px] truncate">
@@ -189,12 +190,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <input
                 ref={searchInputRef}
                 type="search"
-                placeholder="Search..."
+                placeholder="Search URLs, domains…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 text-sm bg-secondary-50 border border-secondary-200 rounded-xl 
-                         placeholder-secondary-400 text-secondary-900
-                         focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-100 focus:outline-none"
+                className="w-full pl-10 pr-4 py-2.5 font-mono text-[13px] bg-secondary-50 border border-line rounded-lg
+                         placeholder-secondary-500 text-secondary-900
+                         focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
               />
             </div>
           </form>

@@ -340,13 +340,13 @@ export const DemoGenerationExperience: React.FC<
         className="space-y-2"
         aria-label="MyMetaView 6.0 demo generation"
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-400/80">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-400/80">
           MyMetaView 6.0
         </p>
-        <h1 className="text-balance text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+        <h1 className="text-balance text-2xl font-semibold tracking-tight text-paper sm:text-3xl">
           Generate live product demos from any URL.
         </h1>
-        <p className="max-w-2xl text-sm text-slate-300/80 sm:text-[0.95rem]">
+        <p className="max-w-2xl text-sm text-paper/60 sm:text-[0.95rem]">
           Drop in your marketing or app URLs and watch MyMetaView assemble a
           polished, ready-to-share demo experience.
         </p>
@@ -359,21 +359,21 @@ export const DemoGenerationExperience: React.FC<
               <motion.form
                 key="configure-form"
                 onSubmit={handleSubmit}
-                className="mv-fade-up relative rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 shadow-[0_18px_45px_rgba(2,6,23,0.75)] backdrop-blur"
+                className="mv-fade-up relative rounded-2xl border border-paper/10 bg-ink/60 p-4 shadow-overlay"
                 {...formMotion}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-medium text-slate-50">
+                  <h2 className="text-sm font-medium text-paper">
                     New demo preview
                   </h2>
-                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-300 ring-1 ring-emerald-500/40">
+                  <span className="rounded-full bg-success-500/10 px-2.5 py-1 text-[0.65rem] font-medium text-success-300 ring-1 ring-success-500/40">
                     Live animation
                   </span>
                 </div>
 
                 {/* Quality vs speed picker (6.0 UX spec) */}
                 <div className="mt-4 space-y-2">
-                  <label className="block text-xs font-medium text-slate-200/80" id="quality-mode-label">
+                  <label className="block text-xs font-medium text-paper/70" id="quality-mode-label">
                     Quality vs speed
                   </label>
                   <div
@@ -389,8 +389,8 @@ export const DemoGenerationExperience: React.FC<
                           isLoading
                             ? "cursor-not-allowed opacity-60"
                             : qualityMode === opt.value
-                              ? "border-sky-400 bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/50"
-                              : "border-slate-600/70 bg-slate-900/50 text-slate-300 hover:border-sky-400/40 hover:text-slate-100"
+                              ? "border-accent-400 bg-accent-500/15 text-accent-100 ring-1 ring-accent-400/50"
+                              : "border-paper/20 bg-ink/50 text-paper/65 hover:border-accent-400/40 hover:text-paper/90"
                         }`}
                       >
                         <input
@@ -404,7 +404,7 @@ export const DemoGenerationExperience: React.FC<
                           aria-checked={qualityMode === opt.value}
                         />
                         <span className="font-medium">{opt.label}</span>
-                        <span className="mt-0.5 text-[0.6rem] text-slate-400">
+                        <span className="mt-0.5 text-[0.6rem] text-paper/50">
                           {opt.subtext}
                         </span>
                       </label>
@@ -413,14 +413,14 @@ export const DemoGenerationExperience: React.FC<
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  <label className="block text-xs font-medium text-slate-200/80">
+                  <label className="block text-xs font-medium text-paper/70">
                     URLs to include
-                    <span className="ml-1 text-[0.65rem] font-normal text-slate-400">
+                    <span className="ml-1 text-[0.65rem] font-normal text-paper/50">
                       (one per line)
                     </span>
                   </label>
                   <textarea
-                    className="mt-1 h-32 w-full resize-none rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs text-slate-50 outline-none ring-0 transition-colors placeholder:text-slate-500 focus:border-sky-400 focus:bg-slate-900/80"
+                    className="mt-1 h-32 w-full resize-none rounded-xl border border-paper/15 bg-ink/70 px-3 py-2 text-xs text-paper outline-none ring-0 transition-colors placeholder:text-paper/35 focus:border-accent-400 focus:bg-ink/80"
                     placeholder="https://your-product-url.com/demo&#10;https://another-page.com"
                     value={urlsInput}
                     onChange={(e) => setUrlsInput(e.target.value)}
@@ -429,13 +429,13 @@ export const DemoGenerationExperience: React.FC<
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <p className="max-w-xs text-[0.7rem] text-slate-400/90">
+                  <p className="max-w-xs text-[0.7rem] text-paper/40">
                     We&apos;ll scan each URL and assemble a cohesive demo flow
                     with scenes, highlights, and timing that feels live.
                   </p>
                   <motion.button
                     type="submit"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-sky-500 px-4 py-2 text-xs font-medium text-slate-950 shadow-lg shadow-sky-500/30 outline-none ring-0 transition-transform duration-150 hover:bg-sky-400 focus-visible:ring-2 focus-visible:ring-sky-300 active:scale-[0.97]"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-accent-500 px-4 py-2 text-xs font-semibold text-paper outline-none ring-0 transition-transform duration-150 hover:bg-accent-600 focus-visible:ring-2 focus-visible:ring-accent-300 active:scale-[0.97]"
                     whileHover={!prefersReduced ? { y: -1 } : undefined}
                     whileTap={!prefersReduced ? { scale: 0.97 } : undefined}
                     disabled={isLoading}
@@ -445,7 +445,7 @@ export const DemoGenerationExperience: React.FC<
                 </div>
 
                 {errorMessage && (
-                  <p className="mt-3 text-[0.7rem] text-amber-300">
+                  <p className="mt-3 text-[0.7rem] text-warning-300">
                     {errorMessage}
                   </p>
                 )}
@@ -455,14 +455,14 @@ export const DemoGenerationExperience: React.FC<
             {status !== "configure" && (
               <motion.div
                 key="loading-or-results"
-                className="relative space-y-4 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 shadow-[0_18px_45px_rgba(2,6,23,0.75)] backdrop-blur"
+                className="relative space-y-4 rounded-2xl border border-paper/10 bg-ink/60 p-4 shadow-overlay"
                 {...gridMotion}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="space-y-0.5">
                     <motion.p
                       key={status}
-                      className="text-xs font-medium text-slate-100"
+                      className="text-xs font-medium text-paper/90"
                       initial={
                         status === "results_success" && !prefersReduced
                           ? { opacity: 0, y: 4 }
@@ -491,7 +491,7 @@ export const DemoGenerationExperience: React.FC<
                               damping: 20,
                               delay: 0.1,
                             }}
-                            className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-[0.6rem]"
+                            className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success-500/90 text-[0.6rem]"
                             aria-hidden
                           >
                             ✓
@@ -504,7 +504,7 @@ export const DemoGenerationExperience: React.FC<
                       {status === "results_error" &&
                         "We couldn't complete this demo run"}
                     </motion.p>
-                    <p className="text-[0.7rem] text-slate-400">
+                    <p className="text-[0.7rem] text-paper/50">
                       {status === "submitting" &&
                         "We're registering your URLs with MyMetaView."}
                       {status === "generating" &&
@@ -525,7 +525,7 @@ export const DemoGenerationExperience: React.FC<
                       <button
                         type="button"
                         onClick={handleRetryFailed}
-                        className="rounded-full border border-slate-600/70 bg-slate-900/80 px-2.5 py-1 text-[0.7rem] font-medium text-slate-100 hover:border-sky-400/60 hover:text-sky-100"
+                        className="rounded-full border border-paper/20 bg-ink/80 px-2.5 py-1 text-[0.7rem] font-medium text-paper/90 hover:border-accent-400/60 hover:text-accent-100"
                       >
                         Retry {failedCount} failed
                       </button>
@@ -536,7 +536,7 @@ export const DemoGenerationExperience: React.FC<
                       <button
                         type="button"
                         onClick={handleEditUrls}
-                        className="rounded-full border border-slate-600/70 bg-slate-950/80 px-2.5 py-1 text-[0.7rem] font-medium text-slate-200 hover:border-sky-400/60 hover:text-slate-50"
+                        className="rounded-full border border-paper/20 bg-ink/80 px-2.5 py-1 text-[0.7rem] font-medium text-paper/75 hover:border-accent-400/60 hover:text-paper"
                       >
                         Edit URLs
                       </button>
@@ -552,7 +552,7 @@ export const DemoGenerationExperience: React.FC<
 
                 {firstReadyBanner && status === "generating" && (
                     <p
-                      className="text-[0.7rem] text-emerald-300/95"
+                      className="text-[0.7rem] text-success-300/95"
                       role="status"
                       aria-live="polite"
                     >
@@ -567,7 +567,7 @@ export const DemoGenerationExperience: React.FC<
                 />
 
                 {errorMessage && (
-                  <p className="mt-3 text-[0.7rem] text-amber-300">
+                  <p className="mt-3 text-[0.7rem] text-warning-300">
                     {errorMessage}
                   </p>
                 )}
@@ -614,7 +614,7 @@ const LoadingStrip: React.FC<LoadingStripProps> = ({
 
   return (
     <div className="mt-4 space-y-2">
-      <div className="flex items-center justify-between text-[0.7rem] text-slate-400">
+      <div className="flex items-center justify-between text-[0.7rem] text-paper/50">
         <span>
           {status === "submitting" && "Submitting demo job…"}
           {status === "generating" && "Assembling demo scenes…"}
@@ -622,18 +622,18 @@ const LoadingStrip: React.FC<LoadingStripProps> = ({
           {status === "results_partial" && "Completed with some issues"}
           {status === "results_error" && "Encountered an error"}
         </span>
-        <span className="tabular-nums text-slate-300/90">
+        <span className="tabular-nums text-paper/60">
           {Math.round(isComplete ? 100 : progress)}%
         </span>
       </div>
 
       <div
-        className={`relative h-1.5 overflow-hidden rounded-full bg-slate-800/80 ${
+        className={`relative h-1.5 overflow-hidden rounded-full bg-ink-800/80 ${
           isComplete && !prefersReduced ? "mv-progress-complete" : ""
         }`}
       >
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-emerald-400"
+          className="h-full rounded-full bg-accent-500"
           style={{ width: `${displayProgress}%` }}
           transition={
             prefersReduced
@@ -646,7 +646,7 @@ const LoadingStrip: React.FC<LoadingStripProps> = ({
         />
         {!prefersReduced && showStrip && (
           <motion.div
-            className="pointer-events-none absolute inset-0 h-1.5 rounded-full bg-gradient-to-r from-transparent via-sky-200/40 to-transparent mix-blend-screen"
+            className="pointer-events-none absolute inset-0 h-1.5 rounded-full bg-paper/10"
             initial={{ x: "-100%" }}
             animate={{ x: "100%" }}
             transition={{
@@ -726,9 +726,9 @@ const ResultsGrid: React.FC<ResultsGridProps> = ({
                           delay: 0.04 * index,
                         }
                   }
-                  className={`group relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-900/70 p-2 text-[0.7rem] text-slate-100 shadow-sm shadow-slate-950/50 transition-shadow hover:shadow-lg hover:shadow-sky-500/25 ${statusTransitionClass}`}
+                  className={`group relative overflow-hidden rounded-xl border border-paper/10 bg-ink/70 p-2 text-[0.7rem] text-paper/90 shadow-sm shadow-ink/50 transition-shadow hover:shadow-lg hover:shadow-accent-500/25 ${statusTransitionClass}`}
                 >
-                <div className="relative h-20 overflow-hidden rounded-lg bg-slate-900/80">
+                <div className="relative h-20 overflow-hidden rounded-lg bg-ink/80">
                   {item.thumbnailUrl ? (
                     <img
                       data-testid="demo-preview-image"
@@ -737,7 +737,7 @@ const ResultsGrid: React.FC<ResultsGridProps> = ({
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-[0.65rem] text-slate-500">
+                    <div className="flex h-full items-center justify-center text-[0.65rem] text-paper/35">
                       {item.status === "success"
                         ? "Preview pending"
                         : "Generating…"}
@@ -759,27 +759,27 @@ const ResultsGrid: React.FC<ResultsGridProps> = ({
                 </div>
 
                 <div className="mt-2 space-y-1">
-                  <p className="line-clamp-2 break-all text-[0.65rem] text-slate-200">
+                  <p className="line-clamp-2 break-all text-[0.65rem] text-paper/75">
                     {item.url}
                   </p>
                   <p className="flex items-center gap-1 text-[0.65rem]">
                     <span
                       className={
                         item.status === "success"
-                          ? "h-1.5 w-1.5 rounded-full bg-emerald-400"
+                          ? "h-1.5 w-1.5 rounded-full bg-success-400"
                           : item.status === "error"
-                            ? "h-1.5 w-1.5 rounded-full bg-amber-400"
-                            : "h-1.5 w-1.5 rounded-full bg-sky-400"
+                            ? "h-1.5 w-1.5 rounded-full bg-warning-400"
+                            : "h-1.5 w-1.5 rounded-full bg-accent-400"
                       }
                     />
-                    <span className="capitalize text-slate-300">
+                    <span className="capitalize text-paper/65">
                       {item.status}
                     </span>
                   </p>
                 </div>
 
                 {item.status === "error" && item.errorMessage && (
-                  <p className="mt-1 text-[0.65rem] text-amber-300">
+                  <p className="mt-1 text-[0.65rem] text-warning-300">
                     {item.errorMessage}
                   </p>
                 )}
@@ -803,7 +803,7 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({
 }) => {
   return (
     <motion.div
-      className="relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/80 p-2"
+      className="relative overflow-hidden rounded-xl border border-ink-800/80 bg-ink/80 p-2"
       initial={
         prefersReduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.96 }
       }
@@ -820,7 +820,7 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({
             }
       }
     >
-      <div className="h-20 w-full overflow-hidden rounded-lg bg-slate-800/80">
+      <div className="h-20 w-full overflow-hidden rounded-lg bg-ink-800/80">
         {!prefersReduced && (
           <motion.div
             className="mv-shimmer h-full w-full"
@@ -829,8 +829,8 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({
         )}
       </div>
       <div className="mt-2 space-y-1">
-        <div className="h-2 w-5/6 rounded-full bg-slate-800" />
-        <div className="h-2 w-2/3 rounded-full bg-slate-800" />
+        <div className="h-2 w-5/6 rounded-full bg-ink-800" />
+        <div className="h-2 w-2/3 rounded-full bg-ink-800" />
       </div>
     </motion.div>
   );
@@ -845,7 +845,7 @@ const ParallaxPreview: React.FC<ParallaxPreviewProps> = ({
 }) => {
   return (
     <motion.div
-      className="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950/90 p-4 shadow-[0_18px_45px_rgba(2,6,23,0.85)]"
+      className="relative overflow-hidden rounded-2xl border border-paper/10 bg-ink p-4 shadow-overlay"
       initial={prefersReduced ? undefined : { opacity: 0, y: 10 }}
       animate={prefersReduced ? undefined : { opacity: 1, y: 0 }}
       transition={
@@ -855,33 +855,33 @@ const ParallaxPreview: React.FC<ParallaxPreviewProps> = ({
       }
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-medium text-slate-100">
+        <h2 className="text-xs font-medium text-paper/90">
           Live demo storyboard
         </h2>
-        <span className="rounded-full bg-slate-900/70 px-2 py-0.5 text-[0.6rem] font-medium text-slate-300 ring-1 ring-slate-700/80">
+        <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[0.6rem] font-medium text-paper/65 ring-1 ring-paper/10">
           Preview
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-[1.15fr_minmax(0,0.9fr)] gap-2 text-[0.65rem] text-slate-200/90">
+      <div className="mt-3 grid grid-cols-[1.15fr_minmax(0,0.9fr)] gap-2 text-[0.65rem] text-paper/70">
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-1">
-            <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[0.6rem] font-medium text-sky-200">
+            <span className="rounded-full bg-accent-500/10 px-2 py-0.5 text-[0.6rem] font-medium text-accent-200">
               Narrative track
             </span>
-            <span className="text-[0.6rem] text-slate-400">Auto-timed</span>
+            <span className="text-[0.6rem] text-paper/50">Auto-timed</span>
           </div>
           <ul className="space-y-1.5">
             <li className="flex items-start gap-1.5">
-              <span className="mt-[2px] h-1 w-1 rounded-full bg-sky-400" />
+              <span className="mt-[2px] h-1 w-1 rounded-full bg-accent-400" />
               <span>Landing: high-level promise and key value prop.</span>
             </li>
             <li className="flex items-start gap-1.5">
-              <span className="mt-[2px] h-1 w-1 rounded-full bg-sky-400" />
+              <span className="mt-[2px] h-1 w-1 rounded-full bg-accent-400" />
               <span>Deep-dive: core workflow with guided highlights.</span>
             </li>
             <li className="flex items-start gap-1.5">
-              <span className="mt-[2px] h-1 w-1 rounded-full bg-sky-400" />
+              <span className="mt-[2px] h-1 w-1 rounded-full bg-accent-400" />
               <span>Closing: call-to-action and next steps.</span>
             </li>
           </ul>
@@ -889,7 +889,7 @@ const ParallaxPreview: React.FC<ParallaxPreviewProps> = ({
 
         <div className="relative flex flex-col gap-1.5">
           <motion.div
-            className="relative rounded-xl border border-sky-500/50 bg-slate-950/90 p-2 text-[0.6rem] text-sky-50 shadow-[0_0_25px_rgba(56,189,248,0.35)]"
+            className="relative rounded-xl border border-accent-500/50 bg-ink/90 p-2 text-[0.6rem] text-accent-50 shadow-overlay"
             initial={prefersReduced ? undefined : { y: 4 }}
             animate={prefersReduced ? undefined : { y: 0 }}
             transition={
@@ -904,25 +904,25 @@ const ParallaxPreview: React.FC<ParallaxPreviewProps> = ({
             }
           >
             <div className="flex items-center justify-between text-[0.6rem]">
-              <span className="font-semibold text-sky-100">
+              <span className="font-semibold text-accent-100">
                 Scene 1 · Hero
               </span>
-              <span className="text-[0.6rem] text-sky-300/80">00:06</span>
+              <span className="text-[0.6rem] text-accent-300/80">00:06</span>
             </div>
-            <p className="mt-1 text-[0.6rem] text-sky-50/90">
+            <p className="mt-1 text-[0.6rem] text-accent-50/90">
               Pan across your hero section with layered parallax and subtle
               copy emphasis.
             </p>
           </motion.div>
 
-          <div className="rounded-xl border border-slate-700/70 bg-slate-950/90 p-2 text-[0.6rem] text-slate-200">
+          <div className="rounded-xl border border-paper/10 bg-ink/90 p-2 text-[0.6rem] text-paper/75">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-slate-100">
+              <span className="font-medium text-paper/90">
                 Scene 2 · Workflow
               </span>
-              <span className="text-[0.6rem] text-slate-400">00:10</span>
+              <span className="text-[0.6rem] text-paper/50">00:10</span>
             </div>
-            <p className="mt-1 text-[0.6rem] text-slate-300/90">
+            <p className="mt-1 text-[0.6rem] text-paper/60">
               Step through your product UI with auto-cropped focus frames and
               cursor choreography.
             </p>
@@ -984,44 +984,44 @@ const StatusSummary: React.FC<StatusSummaryProps> = ({
           : null;
 
   return (
-    <div className="rounded-2xl border border-slate-700/70 bg-slate-950/80 p-4 text-[0.7rem] text-slate-200">
-      <h2 className="text-xs font-medium text-slate-100">Run summary</h2>
-      <p className="mt-1 text-[0.7rem] text-slate-400">
+    <div className="rounded-2xl border border-paper/10 bg-ink/80 p-4 text-[0.7rem] text-paper/75">
+      <h2 className="text-xs font-medium text-paper/90">Run summary</h2>
+      <p className="mt-1 text-[0.7rem] text-paper/50">
         Quick snapshot of this demo generation run.
       </p>
 
       <dl className="mt-3 grid grid-cols-2 gap-3">
         <div className="space-y-0.5">
-          <dt className="text-[0.65rem] text-slate-400">State</dt>
-          <dd className="text-xs font-medium text-slate-100">
+          <dt className="text-[0.65rem] text-paper/50">State</dt>
+          <dd className="text-xs font-medium text-paper/90">
             {status.replace("results_", "").replace("_", " ")}
           </dd>
         </div>
         <div className="space-y-0.5">
-          <dt className="text-[0.65rem] text-slate-400">Total scenes</dt>
-          <dd className="text-xs font-medium text-slate-100">
+          <dt className="text-[0.65rem] text-paper/50">Total scenes</dt>
+          <dd className="text-xs font-medium text-paper/90">
             {total || "—"}
           </dd>
         </div>
         <div className="space-y-0.5">
-          <dt className="text-[0.65rem] text-slate-400">Ready</dt>
-          <dd className="text-xs font-medium text-emerald-300">
+          <dt className="text-[0.65rem] text-paper/50">Ready</dt>
+          <dd className="text-xs font-medium text-success-300">
             {successCount || "—"}
           </dd>
         </div>
         <div className="space-y-0.5">
-          <dt className="text-[0.65rem] text-slate-400">Needs attention</dt>
-          <dd className="text-xs font-medium text-amber-300">
+          <dt className="text-[0.65rem] text-paper/50">Needs attention</dt>
+          <dd className="text-xs font-medium text-warning-300">
             {errorCount || "—"}
           </dd>
         </div>
       </dl>
 
       {fastModeLine && (
-        <p className="mt-3 text-[0.65rem] text-sky-200/90">{fastModeLine}</p>
+        <p className="mt-3 text-[0.65rem] text-accent-200/90">{fastModeLine}</p>
       )}
       {suggested && (
-        <p className="mt-2 text-[0.65rem] text-slate-400/95">{suggested}</p>
+        <p className="mt-2 text-[0.65rem] text-paper/40">{suggested}</p>
       )}
     </div>
   );

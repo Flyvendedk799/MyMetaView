@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
@@ -197,7 +197,7 @@ export default function SitePostEditor() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(`/app/sites/${siteId}/posts`)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </button>
@@ -223,10 +223,10 @@ export default function SitePostEditor() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
+        <Card className="mb-6 bg-error-50 border-error-200">
           <div className="flex items-center gap-2">
-            <XMarkIcon className="w-5 h-5 text-red-600" />
-            <p className="text-red-800">{error}</p>
+            <XMarkIcon className="w-5 h-5 text-error-600" />
+            <p className="text-error-800">{error}</p>
           </div>
         </Card>
       )}
@@ -241,7 +241,7 @@ export default function SitePostEditor() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Post title..."
-              className="w-full text-3xl font-bold border-0 focus:outline-none focus:ring-0 placeholder-gray-300"
+              className="w-full text-3xl font-bold border-0 focus:outline-none focus:ring-0 placeholder-secondary-300"
             />
           </Card>
 
@@ -258,7 +258,7 @@ export default function SitePostEditor() {
 
           {/* Excerpt */}
           <Card>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-secondary-700 mb-2">
               Excerpt
             </label>
             <textarea
@@ -266,7 +266,7 @@ export default function SitePostEditor() {
               onChange={(e) => setExcerpt(e.target.value)}
               placeholder="Brief summary of the post (used in listings and meta description)..."
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
           </Card>
 
@@ -276,44 +276,44 @@ export default function SitePostEditor() {
               onClick={() => setShowSeo(!showSeo)}
               className="w-full flex items-center justify-between text-left"
             >
-              <span className="font-semibold text-gray-900">SEO Settings</span>
+              <span className="font-semibold text-secondary-900">SEO Settings</span>
               {showSeo ? (
-                <ChevronUpIcon className="w-5 h-5 text-gray-500" />
+                <ChevronUpIcon className="w-5 h-5 text-secondary-500" />
               ) : (
-                <ChevronDownIcon className="w-5 h-5 text-gray-500" />
+                <ChevronDownIcon className="w-5 h-5 text-secondary-500" />
               )}
             </button>
             
             {showSeo && (
               <div className="mt-4 space-y-4 pt-4 border-t">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">
                     Meta Title
-                    <span className="text-gray-400 ml-2">({metaTitle.length}/70)</span>
+                    <span className="text-secondary-400 ml-2">({metaTitle.length}/70)</span>
                   </label>
                   <input
                     type="text"
                     value={metaTitle}
                     onChange={(e) => setMetaTitle(e.target.value.slice(0, 70))}
                     placeholder="SEO title (defaults to post title)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">
                     Meta Description
-                    <span className="text-gray-400 ml-2">({metaDescription.length}/160)</span>
+                    <span className="text-secondary-400 ml-2">({metaDescription.length}/160)</span>
                   </label>
                   <textarea
                     value={metaDescription}
                     onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))}
                     placeholder="SEO description (defaults to excerpt)"
                     rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">
                     Meta Keywords
                   </label>
                   <input
@@ -321,7 +321,7 @@ export default function SitePostEditor() {
                     value={metaKeywords}
                     onChange={(e) => setMetaKeywords(e.target.value)}
                     placeholder="keyword1, keyword2, keyword3"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
@@ -333,16 +333,16 @@ export default function SitePostEditor() {
         <div className="space-y-6">
           {/* Status & Scheduling */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Publish</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Publish</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
                   Status
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as 'draft' | 'published' | 'scheduled')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
@@ -352,7 +352,7 @@ export default function SitePostEditor() {
 
               {status === 'scheduled' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">
                     <CalendarIcon className="w-4 h-4 inline mr-1" />
                     Publish Date
                   </label>
@@ -360,7 +360,7 @@ export default function SitePostEditor() {
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               )}
@@ -371,18 +371,18 @@ export default function SitePostEditor() {
                     type="checkbox"
                     checked={isPinned}
                     onChange={(e) => setIsPinned(e.target.checked)}
-                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    className="w-4 h-4 text-primary border-secondary-300 rounded focus:ring-primary"
                   />
-                  <span className="text-sm text-gray-700">Pin to top</span>
+                  <span className="text-sm text-secondary-700">Pin to top</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isFeatured}
                     onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    className="w-4 h-4 text-primary border-secondary-300 rounded focus:ring-primary"
                   />
-                  <span className="text-sm text-gray-700">Featured</span>
+                  <span className="text-sm text-secondary-700">Featured</span>
                 </label>
               </div>
             </div>
@@ -390,7 +390,7 @@ export default function SitePostEditor() {
 
           {/* URL Slug */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">URL Slug</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">URL Slug</h3>
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -400,21 +400,21 @@ export default function SitePostEditor() {
                   setAutoSlug(false)
                 }}
                 placeholder="post-url-slug"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
               />
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-secondary-500 mt-2">
               /posts/{slug || 'post-url-slug'}
             </p>
           </Card>
 
           {/* Category */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Category</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Category</h3>
             <select
               value={categoryId || ''}
               onChange={(e) => setCategoryId(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">No category</option>
               {categories.map((cat) => (
@@ -427,20 +427,20 @@ export default function SitePostEditor() {
 
           {/* Tags */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Tags</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Tags</h3>
             <input
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="tag1, tag2, tag3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            <p className="text-xs text-gray-500 mt-2">Separate tags with commas</p>
+            <p className="text-xs text-secondary-500 mt-2">Separate tags with commas</p>
           </Card>
 
           {/* Featured Image */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Featured Image</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Featured Image</h3>
             {featuredImage ? (
               <div className="relative">
                 <img
@@ -453,7 +453,7 @@ export default function SitePostEditor() {
                     setFeaturedImage('')
                     setFeaturedImageAlt('')
                   }}
-                  className="absolute top-2 right-2 p-1 bg-white rounded-full shadow hover:bg-gray-100"
+                  className="absolute top-2 right-2 p-1 bg-white rounded-full shadow hover:bg-secondary-100"
                 >
                   <XMarkIcon className="w-4 h-4" />
                 </button>
@@ -461,7 +461,7 @@ export default function SitePostEditor() {
             ) : (
               <button
                 onClick={() => setShowMediaPicker(true)}
-                className="w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
+                className="w-full aspect-video border-2 border-dashed border-secondary-300 rounded-lg flex flex-col items-center justify-center text-secondary-400 hover:border-primary hover:text-primary transition-colors"
               >
                 <PhotoIcon className="w-8 h-8 mb-2" />
                 <span className="text-sm">Add Featured Image</span>
@@ -469,7 +469,7 @@ export default function SitePostEditor() {
             )}
             {featuredImage && (
               <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
                   Alt Text
                 </label>
                 <input
@@ -477,7 +477,7 @@ export default function SitePostEditor() {
                   value={featuredImageAlt}
                   onChange={(e) => setFeaturedImageAlt(e.target.value)}
                   placeholder="Describe the image..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 text-sm border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   PlusIcon,
@@ -253,13 +253,13 @@ export default function SiteMenus() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Menu List */}
         <Card className="lg:col-span-1">
-          <h3 className="font-semibold text-gray-900 mb-4">Menus</h3>
+          <h3 className="font-semibold text-secondary-900 mb-4">Menus</h3>
           {loading ? (
             <div className="flex items-center justify-center h-24">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : menus.length === 0 ? (
-            <p className="text-sm text-gray-500">No menus yet</p>
+            <p className="text-sm text-secondary-500">No menus yet</p>
           ) : (
             <div className="space-y-2">
               {menus.map((menu) => (
@@ -269,11 +269,11 @@ export default function SiteMenus() {
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
                     activeMenuId === menu.id
                       ? 'bg-primary text-white'
-                      : 'hover:bg-gray-100'
+                      : 'hover:bg-secondary-100'
                   }`}
                 >
                   <p className="font-medium">{menu.name}</p>
-                  <p className={`text-xs ${activeMenuId === menu.id ? 'text-white/70' : 'text-gray-500'}`}>
+                  <p className={`text-xs ${activeMenuId === menu.id ? 'text-white/70' : 'text-secondary-500'}`}>
                     {menu.location}
                   </p>
                 </button>
@@ -285,14 +285,14 @@ export default function SiteMenus() {
         {/* Menu Editor */}
         <Card className="lg:col-span-3">
           {!activeMenu ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-48 text-secondary-500">
               <Bars3Icon className="w-12 h-12 mb-2" />
               <p className="font-medium">Select or create a menu</p>
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold text-gray-900">{activeMenu.name}</h3>
+                <h3 className="font-semibold text-secondary-900">{activeMenu.name}</h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowAddItem(true)}
@@ -302,7 +302,7 @@ export default function SiteMenus() {
                   </button>
                   <button
                     onClick={() => setDeleteConfirm({ type: 'menu', id: activeMenu.id })}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors"
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>
@@ -310,7 +310,7 @@ export default function SiteMenus() {
               </div>
 
               {!activeMenu.items?.length ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-secondary-500">
                   <p className="mb-2">No items in this menu</p>
                   <button
                     onClick={() => setShowAddItem(true)}
@@ -326,43 +326,43 @@ export default function SiteMenus() {
                     .map((item, index) => (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center gap-3 p-3 bg-secondary-50 rounded-lg"
                     >
                       <div className="flex flex-col">
                         <button
                           onClick={() => moveItem(item.id, 'up')}
                           disabled={index === 0}
-                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                          className="p-1 hover:bg-secondary-200 rounded disabled:opacity-30"
                         >
                           <ChevronUpIcon className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => moveItem(item.id, 'down')}
                           disabled={index === (activeMenu.items?.length || 0) - 1}
-                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                          className="p-1 hover:bg-secondary-200 rounded disabled:opacity-30"
                         >
                           <ChevronDownIcon className="w-3 h-3" />
                         </button>
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900">{item.label}</p>
-                        <p className="text-sm text-gray-500">{item.url}</p>
+                        <p className="font-medium text-secondary-900">{item.label}</p>
+                        <p className="text-sm text-secondary-500">{item.url}</p>
                       </div>
                       {item.open_in_new_tab && (
-                        <span className="text-xs text-gray-400">Opens in new tab</span>
+                        <span className="text-xs text-secondary-400">Opens in new tab</span>
                       )}
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => startEditItem(item)}
-                          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                          className="p-2 hover:bg-secondary-200 rounded-lg transition-colors"
                         >
-                          <PencilSquareIcon className="w-4 h-4 text-gray-600" />
+                          <PencilSquareIcon className="w-4 h-4 text-secondary-600" />
                         </button>
                         <button
                           onClick={() => setDeleteConfirm({ type: 'item', id: item.id })}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 hover:bg-error-50 rounded-lg transition-colors"
                         >
-                          <TrashIcon className="w-4 h-4 text-red-600" />
+                          <TrashIcon className="w-4 h-4 text-error-600" />
                         </button>
                       </div>
                     </div>
@@ -379,32 +379,32 @@ export default function SiteMenus() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">New Menu</h2>
+              <h2 className="text-xl font-semibold text-secondary-900">New Menu</h2>
               <button
                 onClick={() => setShowCreateMenu(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-secondary-100 rounded-lg"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateMenu} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">Name</label>
                 <input
                   type="text"
                   value={newMenuName}
                   onChange={(e) => setNewMenuName(e.target.value)}
                   placeholder="Menu name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">Location</label>
                 <select
                   value={newMenuLocation}
                   onChange={(e) => setNewMenuLocation(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   {MENU_LOCATIONS.map((loc) => (
                     <option key={loc.id} value={loc.id}>{loc.name}</option>
@@ -415,7 +415,7 @@ export default function SiteMenus() {
                 <button
                   type="button"
                   onClick={() => setShowCreateMenu(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-medium hover:bg-secondary-50"
                 >
                   Cancel
                 </button>
@@ -437,36 +437,36 @@ export default function SiteMenus() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-secondary-900">
                 {editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
               </h2>
               <button
                 onClick={() => { setShowAddItem(false); setEditingItem(null); setItemLabel(''); setItemUrl(''); setItemNewTab(false); }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-secondary-100 rounded-lg"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={editingItem ? handleUpdateItem : handleAddItem} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">Label</label>
                 <input
                   type="text"
                   value={itemLabel}
                   onChange={(e) => setItemLabel(e.target.value)}
                   placeholder="Home"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">URL</label>
                 <input
                   type="text"
                   value={itemUrl}
                   onChange={(e) => setItemUrl(e.target.value)}
                   placeholder="/about or https://..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -474,15 +474,15 @@ export default function SiteMenus() {
                   type="checkbox"
                   checked={itemNewTab}
                   onChange={(e) => setItemNewTab(e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  className="w-4 h-4 text-primary border-secondary-300 rounded focus:ring-primary"
                 />
-                <span className="text-sm text-gray-700">Open in new tab</span>
+                <span className="text-sm text-secondary-700">Open in new tab</span>
               </label>
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => { setShowAddItem(false); setEditingItem(null); setItemLabel(''); setItemUrl(''); setItemNewTab(false); }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-medium hover:bg-secondary-50"
                 >
                   Cancel
                 </button>
@@ -503,10 +503,10 @@ export default function SiteMenus() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
+            <h3 className="text-lg font-bold text-secondary-900 mb-2">
               Delete {deleteConfirm.type === 'menu' ? 'Menu' : 'Item'}?
             </h3>
-            <p className="text-gray-500 text-sm mb-6">
+            <p className="text-secondary-500 text-sm mb-6">
               {deleteConfirm.type === 'menu'
                 ? 'This will delete the menu and all its items.'
                 : 'This item will be removed from the menu.'}
@@ -514,7 +514,7 @@ export default function SiteMenus() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-medium hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-secondary-200 rounded-lg font-medium hover:bg-secondary-50"
               >
                 Cancel
               </button>
@@ -523,7 +523,7 @@ export default function SiteMenus() {
                   if (deleteConfirm.type === 'menu') handleDeleteMenu(deleteConfirm.id)
                   else handleDeleteItem(deleteConfirm.id)
                 }}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600"
+                className="flex-1 px-4 py-2 bg-error-500 text-white rounded-lg font-medium hover:bg-error-600"
               >
                 Delete
               </button>

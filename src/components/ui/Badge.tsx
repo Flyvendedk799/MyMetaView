@@ -17,12 +17,13 @@ export default function Badge({
   icon,
   className = '',
 }: BadgeProps) {
+  // AA-safe tint pairs from the identity spec
   const variantClasses = {
-    primary: 'bg-primary-100 text-primary-700 border-primary-200',
-    secondary: 'bg-secondary-100 text-secondary-700 border-secondary-200',
-    success: 'bg-success-100 text-success-700 border-success-200',
-    warning: 'bg-warning-100 text-warning-700 border-warning-200',
-    error: 'bg-error-100 text-error-700 border-error-200',
+    primary: 'bg-brand-100 text-primary-500 border-transparent',
+    secondary: 'bg-secondary-100 text-secondary-600 border-transparent',
+    success: 'bg-success-50 text-success-500 border-transparent',
+    warning: 'bg-warning-50 text-warning-700 border-transparent',
+    error: 'bg-error-50 text-error-500 border-transparent',
     outline: 'bg-transparent border-secondary-300 text-secondary-600',
   }
   
@@ -43,7 +44,7 @@ export default function Badge({
   
   return (
     <span className={`
-      inline-flex items-center gap-1.5 font-semibold rounded-full border
+      inline-flex items-center gap-1.5 font-semibold rounded-md border
       ${variantClasses[variant]}
       ${sizeClasses[size]}
       ${className}

@@ -2,7 +2,7 @@ import { ReactNode, ButtonHTMLAttributes, forwardRef } from 'react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'outline' | 'gradient'
+  variant?: 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger' | 'success' | 'outline' | 'gradient'
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   loading?: boolean
   icon?: ReactNode
@@ -22,22 +22,25 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   disabled,
   ...props
 }, ref) => {
+  // Collapsed set: primary, accent, secondary, ghost, danger.
+  // Legacy variants map onto the nearest survivor.
   const variantClasses = {
     primary: 'btn-primary',
+    accent: 'btn-accent',
     secondary: 'btn-secondary',
     ghost: 'btn-ghost',
     danger: 'btn-danger',
-    success: 'btn-success',
-    outline: 'btn-outline',
-    gradient: 'btn-gradient',
+    success: 'btn-primary',
+    outline: 'btn-secondary',
+    gradient: 'btn-accent',
   }
-  
+
   const sizeClasses = {
-    xs: 'btn-xs',
+    xs: 'btn-sm',
     sm: 'btn-sm',
     md: 'btn-md',
     lg: 'btn-lg',
-    xl: 'btn-xl',
+    xl: 'btn-lg',
   }
 
   const LoadingSpinner = () => (

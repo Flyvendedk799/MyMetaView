@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { CheckCircleIcon, XCircleIcon, ClockIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -138,35 +138,35 @@ export default function Billing() {
     switch (status) {
       case 'active':
         return (
-          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-success-100 text-success-800">
             <CheckCircleIcon className="w-4 h-4 mr-1" />
             Active
           </span>
         )
       case 'trialing':
         return (
-          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-primary-100 text-primary-800">
             <ClockIcon className="w-4 h-4 mr-1" />
             Trial
           </span>
         )
       case 'past_due':
         return (
-          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
+          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-warning-100 text-warning-800">
             <ClockIcon className="w-4 h-4 mr-1" />
             Past Due
           </span>
         )
       case 'canceled':
         return (
-          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">
+          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-secondary-100 text-secondary-800">
             <XCircleIcon className="w-4 h-4 mr-1" />
             Canceled
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">
+          <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-secondary-100 text-secondary-800">
             Inactive
           </span>
         )
@@ -211,15 +211,15 @@ export default function Billing() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
       {loading ? (
         <Card>
           <div className="text-center py-12">
-            <p className="text-gray-500">Loading billing information...</p>
+            <p className="text-secondary-500">Loading billing information...</p>
           </div>
         </Card>
       ) : (
@@ -230,14 +230,14 @@ export default function Billing() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Subscription Status</p>
+                  <p className="text-sm text-secondary-600">Subscription Status</p>
                   <div className="mt-1">
                     {getStatusBadge(billingStatus?.subscription_status || 'inactive')}
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">Plan</p>
-                  <p className="mt-1 text-lg font-semibold text-gray-900 capitalize">
+                  <p className="text-sm text-secondary-600">Plan</p>
+                  <p className="mt-1 text-lg font-semibold text-secondary-900 capitalize">
                     {billingStatus?.subscription_status === 'active' 
                       ? (currentPlan ? PLAN_DETAILS[currentPlan]?.name || 'Active Subscription' : 'Active Subscription')
                       : (currentPlan ? PLAN_DETAILS[currentPlan]?.name || 'Free' : 'Free')}
@@ -255,17 +255,17 @@ export default function Billing() {
                       </h3>
                       <p className="text-2xl font-bold text-primary">
                         {PLAN_DETAILS[currentPlan].price}
-                        <span className="text-base text-gray-600 font-normal">
+                        <span className="text-base text-secondary-600 font-normal">
                           {PLAN_DETAILS[currentPlan].period}
                         </span>
                       </p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-3">Your plan includes:</p>
+                    <p className="text-sm font-medium text-secondary-700 mb-3">Your plan includes:</p>
                     <ul className="space-y-2">
                       {PLAN_DETAILS[currentPlan].features.map((feature, index) => (
-                        <li key={index} className="flex items-center text-sm text-gray-600">
+                        <li key={index} className="flex items-center text-sm text-secondary-600">
                           <CheckCircleIcon className="w-5 h-5 text-primary mr-2 flex-shrink-0" />
                           {feature}
                         </li>
@@ -276,12 +276,12 @@ export default function Billing() {
               )}
 
               {billingStatus?.trial_ends_at && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <div className="flex items-center space-x-2">
-                    <ClockIcon className="w-5 h-5 text-blue-600" />
+                    <ClockIcon className="w-5 h-5 text-primary-600" />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Trial Period</p>
-                      <p className="text-sm text-blue-700">
+                      <p className="text-sm font-medium text-primary-900">Trial Period</p>
+                      <p className="text-sm text-primary-700">
                         {billingStatus.trial_ends_at
                           ? (() => {
                               const trialEnd = billingStatus.trial_ends_at
@@ -299,7 +299,7 @@ export default function Billing() {
               )}
 
               {billingStatus?.subscription_status === 'active' && (
-                <div className="pt-4 border-t border-gray-200">
+                <div className="pt-4 border-t border-secondary-200">
                   <Button onClick={handleManageBilling} disabled={isProcessing} variant="secondary">
                     {isProcessing ? 'Loading...' : 'Manage Billing'}
                   </Button>
@@ -312,7 +312,7 @@ export default function Billing() {
           {billingStatus?.subscription_status === 'active' ? (
             <Card>
               <h2 className="text-xl font-semibold text-secondary mb-4">Change Your Plan</h2>
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-sm text-secondary-600 mb-6">
                 Switch to a different plan. Changes are prorated automatically.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -329,10 +329,10 @@ export default function Billing() {
                         isCurrent
                           ? 'border-primary bg-primary/5'
                           : upgrade
-                          ? 'border-green-200 hover:border-green-300'
+                          ? 'border-success-200 hover:border-success-300'
                           : downgrade
-                          ? 'border-orange-200 hover:border-orange-300'
-                          : 'border-gray-200'
+                          ? 'border-accent-200 hover:border-accent-300'
+                          : 'border-secondary-200'
                       }`}
                     >
                       {isCurrent && (
@@ -341,27 +341,27 @@ export default function Billing() {
                         </span>
                       )}
                       {upgrade && (
-                        <span className="absolute top-0 right-0 bg-green-500 text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg flex items-center">
+                        <span className="absolute top-0 right-0 bg-success-500 text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg flex items-center">
                           <ArrowUpIcon className="w-3 h-3 mr-1" />
                           Upgrade
                         </span>
                       )}
                       {downgrade && (
-                        <span className="absolute top-0 right-0 bg-orange-500 text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg flex items-center">
+                        <span className="absolute top-0 right-0 bg-accent-500 text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg flex items-center">
                           <ArrowDownIcon className="w-3 h-3 mr-1" />
                           Downgrade
                         </span>
                       )}
                       
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{plan.name}</h3>
+                      <h3 className="text-lg font-semibold text-secondary-900 mb-2">{plan.name}</h3>
                       <p className="text-3xl font-bold text-secondary mb-4">
                         {plan.price}
-                        <span className="text-lg text-gray-600">/mo</span>
+                        <span className="text-lg text-secondary-600">/mo</span>
                       </p>
-                      <ul className="space-y-2 mb-6 text-sm text-gray-600">
+                      <ul className="space-y-2 mb-6 text-sm text-secondary-600">
                         {plan.features.map((feature, idx) => (
                           <li key={idx} className="flex items-center">
-                            <CheckCircleIcon className="w-4 h-4 mr-2 text-green-500 flex-shrink-0" />
+                            <CheckCircleIcon className="w-4 h-4 mr-2 text-success-500 flex-shrink-0" />
                             <span>{feature}</span>
                           </li>
                         ))}
@@ -399,7 +399,7 @@ export default function Billing() {
                     <div
                       key={planKey}
                       className={`border-2 rounded-lg p-6 relative ${
-                        isPopular ? 'border-primary' : 'border-gray-200'
+                        isPopular ? 'border-primary' : 'border-secondary-200'
                       }`}
                     >
                       {isPopular && (
@@ -407,15 +407,15 @@ export default function Billing() {
                           Popular
                         </span>
                       )}
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{plan.name}</h3>
+                      <h3 className="text-lg font-semibold text-secondary-900 mb-2">{plan.name}</h3>
                       <p className="text-3xl font-bold text-secondary mb-4">
                         {plan.price}
-                        <span className="text-lg text-gray-600">/mo</span>
+                        <span className="text-lg text-secondary-600">/mo</span>
                       </p>
-                      <ul className="space-y-2 mb-6 text-sm text-gray-600">
+                      <ul className="space-y-2 mb-6 text-sm text-secondary-600">
                         {plan.features.map((feature, idx) => (
                           <li key={idx} className="flex items-center">
-                            <CheckCircleIcon className="w-4 h-4 mr-2 text-green-500 flex-shrink-0" />
+                            <CheckCircleIcon className="w-4 h-4 mr-2 text-success-500 flex-shrink-0" />
                             <span>{feature}</span>
                           </li>
                         ))}

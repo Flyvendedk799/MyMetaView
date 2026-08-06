@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   PlusIcon,
@@ -163,7 +163,7 @@ export default function SiteCategories() {
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : categories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-48 text-secondary-500">
             <p className="font-medium mb-2">No categories yet</p>
             <p className="text-sm mb-4">Create your first category to organize posts</p>
             <Button onClick={openCreateModal}>Create Category</Button>
@@ -173,7 +173,7 @@ export default function SiteCategories() {
             {categories.map((category) => (
               <div
                 key={category.id}
-                className="flex items-center justify-between py-4 px-2 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between py-4 px-2 hover:bg-secondary-50 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div
@@ -181,28 +181,28 @@ export default function SiteCategories() {
                     style={{ backgroundColor: category.color || '#6b7280' }}
                   />
                   <div>
-                    <h3 className="font-medium text-gray-900">{category.name}</h3>
-                    <p className="text-sm text-gray-500">/category/{category.slug}</p>
+                    <h3 className="font-medium text-secondary-900">{category.name}</h3>
+                    <p className="text-sm text-secondary-500">/category/{category.slug}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-secondary-500">
                     {(category as any).post_count || 0} posts
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => openEditModal(category)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
                       title="Edit"
                     >
-                      <PencilSquareIcon className="w-4 h-4 text-gray-600" />
+                      <PencilSquareIcon className="w-4 h-4 text-secondary-600" />
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(category.id)}
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-2 hover:bg-error-50 rounded-lg transition-colors"
                       title="Delete"
                     >
-                      <TrashIcon className="w-4 h-4 text-red-600" />
+                      <TrashIcon className="w-4 h-4 text-error-600" />
                     </button>
                   </div>
                 </div>
@@ -217,12 +217,12 @@ export default function SiteCategories() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-secondary-900">
                 {editingId ? 'Edit Category' : 'New Category'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
@@ -230,13 +230,13 @@ export default function SiteCategories() {
 
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                <div className="p-3 bg-error-50 border border-error-200 rounded-lg text-error-800 text-sm">
                   {error}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
                   Name *
                 </label>
                 <input
@@ -250,13 +250,13 @@ export default function SiteCategories() {
                     })
                   }}
                   placeholder="Category name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
                   Slug
                 </label>
                 <input
@@ -264,12 +264,12 @@ export default function SiteCategories() {
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                   placeholder="category-slug"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
                   Description
                 </label>
                 <textarea
@@ -277,12 +277,12 @@ export default function SiteCategories() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief description of this category"
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
                   Color
                 </label>
                 <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ export default function SiteCategories() {
                         onClick={() => setFormData({ ...formData, color })}
                         className={`w-8 h-8 rounded-full border-2 transition-all ${
                           formData.color === color
-                            ? 'border-gray-900 scale-110'
+                            ? 'border-secondary-900 scale-110'
                             : 'border-transparent hover:scale-105'
                         }`}
                         style={{ backgroundColor: color }}
@@ -305,7 +305,7 @@ export default function SiteCategories() {
                     type="color"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
+                    className="w-8 h-8 border border-secondary-300 rounded cursor-pointer"
                   />
                 </div>
               </div>
@@ -314,7 +314,7 @@ export default function SiteCategories() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-medium hover:bg-secondary-50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -335,20 +335,20 @@ export default function SiteCategories() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Category?</h3>
-            <p className="text-gray-500 text-sm mb-6">
+            <h3 className="text-lg font-bold text-secondary-900 mb-2">Delete Category?</h3>
+            <p className="text-secondary-500 text-sm mb-6">
               Posts in this category will become uncategorized. This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-secondary-200 rounded-lg font-medium hover:bg-secondary-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
+                className="flex-1 px-4 py-2 bg-error-500 text-white rounded-lg font-medium hover:bg-error-600 transition-colors"
               >
                 Delete
               </button>

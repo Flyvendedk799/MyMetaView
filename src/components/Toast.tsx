@@ -20,18 +20,18 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
   return (
     <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
       <div
-        className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm ${
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-overlay border ${
           type === 'success'
-            ? 'bg-green-50 border-green-200 text-green-800'
-            : 'bg-red-50 border-red-200 text-red-800'
+            ? 'bg-success-50 border-success-100 text-success-600'
+            : 'bg-error-50 border-error-100 text-error-600'
         }`}
       >
         {type === 'success' && <CheckCircleIcon className="w-5 h-5 flex-shrink-0" />}
         <span className="font-medium text-sm">{message}</span>
         <button
           onClick={onClose}
-          className={`ml-2 p-1 rounded-lg hover:bg-opacity-20 transition-colors ${
-            type === 'success' ? 'hover:bg-green-600' : 'hover:bg-red-600'
+          className={`ml-2 p-1 rounded-lg transition-colors ${
+            type === 'success' ? 'hover:bg-success-100' : 'hover:bg-error-100'
           }`}
           aria-label="Close"
         >

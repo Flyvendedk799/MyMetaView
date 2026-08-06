@@ -128,10 +128,10 @@ const StarIcon = ({ filled = false }: { filled?: boolean }) => (
 
 const DesignBadge = ({ dna }: { dna: DesignDNA }) => (
   <div className="flex items-center gap-2 text-xs">
-    <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">
+    <span className="px-2 py-0.5 rounded-full bg-brand-100 text-primary-500 font-medium">
       {dna.style}
     </span>
-    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+    <span className="px-2 py-0.5 rounded-full bg-brand-100 text-primary-500 font-medium">
       {dna.typography_personality}
     </span>
   </div>
@@ -354,7 +354,7 @@ export default function AdaptivePreview({ preview, className = '' }: AdaptivePre
         <div className="absolute top-2 right-2 opacity-50 hover:opacity-100 transition-opacity">
           <div className={`px-2 py-0.5 rounded text-[10px] font-mono ${
             preview.design_fidelity_score >= 0.8 ? 'bg-emerald-100 text-emerald-700' :
-            preview.design_fidelity_score >= 0.6 ? 'bg-blue-100 text-blue-700' :
+            preview.design_fidelity_score >= 0.6 ? 'bg-brand-100 text-primary-500' :
             'bg-amber-100 text-amber-700'
           }`}>
             DNA {Math.round(preview.design_fidelity_score * 100)}%

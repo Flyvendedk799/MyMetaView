@@ -8,7 +8,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline'
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
@@ -22,24 +22,24 @@ export default function Dashboard() {
   const { previews, loading: previewsLoading } = usePreviews()
   const { summary, loading: analyticsLoading } = useAnalyticsSummary('30d')
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
-  
+
   // Check if onboarding should be shown
   useEffect(() => {
     const dismissed = localStorage.getItem('onboarding_dismissed') === 'true'
     setOnboardingDismissed(dismissed)
   }, [])
-  
-  const shouldShowOnboarding = !onboardingDismissed && 
-    !domainsLoading && 
-    !previewsLoading && 
-    domains.length === 0 && 
+
+  const shouldShowOnboarding = !onboardingDismissed &&
+    !domainsLoading &&
+    !previewsLoading &&
+    domains.length === 0 &&
     previews.length === 0
-  
+
   const handleDismissOnboarding = () => {
     localStorage.setItem('onboarding_dismissed', 'true')
     setOnboardingDismissed(true)
   }
-  
+
   const verifiedDomains = domains.filter(d => d.status === 'verified')
   const hasVerifiedDomain = verifiedDomains.length > 0
 
@@ -56,37 +56,37 @@ export default function Dashboard() {
 
   const statsConfig = [
     {
-      name: 'Monthly Clicks',
+      name: 'Monthly clicks',
       value: summary?.total_clicks.toLocaleString() || '0',
       description: '+12.5% from last month',
+      descriptionTone: 'text-success-500',
       icon: ArrowTrendingUpIcon,
-      color: 'text-primary',
     },
     {
-      name: 'New Domains',
+      name: 'New domains',
       value: newDomainsCount.toString(),
       description: 'Added this month',
+      descriptionTone: 'text-secondary-600',
       icon: GlobeAltIcon,
-      color: 'text-accent',
     },
     {
-      name: 'Previews Generated',
+      name: 'Previews generated',
       value: summary?.total_previews.toLocaleString() || '0',
       description: 'Across all domains',
+      descriptionTone: 'text-secondary-600',
       icon: PhotoIcon,
-      color: 'text-purple-500',
     },
     {
-      name: 'Brand Score',
+      name: 'Brand score',
       value: summary?.brand_score.toString() || '0',
       description: 'Excellent consistency',
+      descriptionTone: 'text-secondary-600',
       icon: StarIcon,
-      color: 'text-yellow-500',
     },
   ]
 
   const isLoading = domainsLoading || analyticsLoading || previewsLoading
-  
+
   const onboardingSteps = [
     {
       id: 1,
@@ -117,66 +117,71 @@ export default function Dashboard() {
       action: () => navigate('/app/previews'),
     },
   ]
-  
+
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-secondary mb-2">Dashboard</h1>
-        <p className="text-muted">
-          {domains.length === 0 && previews.length === 0
-            ? "Welcome! Let's get you started with your first preview."
-            : "Welcome back! Here's what's happening with your previews."}
-        </p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-display text-secondary-900 mb-1.5">Dashboard</h1>
+          <p className="text-[15px] text-secondary-600">
+            {domains.length === 0 && previews.length === 0
+              ? "Welcome! Let's get you started with your first preview."
+              : `${domains.length} ${domains.length === 1 ? 'domain' : 'domains'} connected · ${previews.length.toLocaleString()} ${previews.length === 1 ? 'preview' : 'previews'} generated`}
+          </p>
+        </div>
+        <Button variant="accent" onClick={() => navigate('/app/previews')}>
+          New preview
+        </Button>
       </div>
 
       {/* Onboarding Panel */}
       {shouldShowOnboarding && (
-        <Card className="mb-8 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
+        <Card className="mb-8">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <SparklesIcon className="w-6 h-6 text-primary" />
+              <div className="w-10 h-10 bg-brand-100 rounded-lg flex items-center justify-center">
+                <SparklesIcon className="w-6 h-6 text-primary-500" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-secondary">Getting Started</h2>
-                <p className="text-sm text-muted">Follow these steps to set up your preview system</p>
+                <h2 className="font-display text-xl font-semibold tracking-display-sm text-secondary-900">Getting Started</h2>
+                <p className="text-sm text-secondary-600">Follow these steps to set up your preview system</p>
               </div>
             </div>
             <button
               onClick={handleDismissOnboarding}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-secondary-400 hover:text-secondary-600 transition-colors"
               aria-label="Dismiss onboarding"
             >
               <XMarkIcon className="w-5 h-5" />
             </button>
           </div>
-          
+
           <div className="space-y-4">
-            {onboardingSteps.map((step, index) => (
+            {onboardingSteps.map((step) => (
               <div
                 key={step.id}
-                className={`flex items-start space-x-4 p-4 rounded-lg border transition-colors ${
+                className={`flex items-start space-x-4 p-4 rounded-xl border transition-colors ${
                   step.completed
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-white border-gray-200 hover:border-primary/50'
+                    ? 'bg-success-50 border-success-100'
+                    : 'bg-surface border-line hover:border-primary-500'
                 }`}
               >
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  step.completed ? 'bg-green-500' : 'bg-gray-200'
+                  step.completed ? 'bg-success-500' : 'bg-secondary-100'
                 }`}>
                   {step.completed ? (
-                    <CheckCircleIcon className="w-5 h-5 text-white" />
+                    <CheckCircleIcon className="w-5 h-5 text-paper" />
                   ) : (
-                    <span className="text-sm font-semibold text-gray-600">{step.id}</span>
+                    <span className="text-sm font-semibold text-secondary-600">{step.id}</span>
                   )}
                 </div>
                 <div className="flex-1">
                   <h3 className={`font-medium mb-1 ${
-                    step.completed ? 'text-green-900' : 'text-secondary'
+                    step.completed ? 'text-success-700' : 'text-secondary-900'
                   }`}>
                     {step.title}
                   </h3>
-                  <p className="text-sm text-muted mb-3">{step.description}</p>
+                  <p className="text-sm text-secondary-600 mb-3">{step.description}</p>
                   {!step.completed && (
                     <Button size="sm" onClick={step.action}>
                       {step.id === 1 ? 'Add Domain' : step.id === 2 ? 'Verify Domain' : step.id === 3 ? 'Generate Preview' : 'View Instructions'}
@@ -210,18 +215,13 @@ export default function Dashboard() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
             {statsConfig.map((stat) => (
-              <Card key={stat.name} className="hover:shadow-lg transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.name}</p>
-                    <p className="text-3xl font-bold text-secondary mb-2">{stat.value}</p>
-                    <p className="text-xs text-gray-500">{stat.description}</p>
-                  </div>
-                  <div className={`p-3 rounded-lg bg-gray-50 ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
-                  </div>
+              <Card key={stat.name} padding="sm" className="!p-5">
+                <div className="flex flex-col gap-1.5">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">{stat.name}</span>
+                  <span className="font-display text-[32px] leading-tight font-semibold tracking-display text-secondary-900 tabular-nums">{stat.value}</span>
+                  <span className={`text-[13px] ${stat.descriptionTone}`}>{stat.description}</span>
                 </div>
               </Card>
             ))}
@@ -230,31 +230,36 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <h3 className="text-lg font-semibold text-secondary mb-4">Recent Activity</h3>
+        <Card padding="none" className="overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+            <h3 className="text-[17px] font-semibold text-secondary-900">Recent activity</h3>
+            <Link to="/app/activity" className="text-[13px] font-medium text-primary-500 hover:text-accent-500 transition-colors">
+              View all
+            </Link>
+          </div>
           {previews.length === 0 ? (
-            <EmptyState
-              icon={<PhotoIcon className="w-6 h-6" />}
-              title="No activity yet"
-              description="Once you generate previews, your recent activity will appear here."
-              action={{
-                label: 'Generate Your First Preview',
-                onClick: () => navigate('/app/previews'),
-              }}
-            />
+            <div className="p-5">
+              <EmptyState
+                icon={<PhotoIcon className="w-6 h-6" />}
+                title="No activity yet"
+                description="Once you generate previews, your recent activity will appear here."
+                action={{
+                  label: 'Generate Your First Preview',
+                  onClick: () => navigate('/app/previews'),
+                }}
+              />
+            </div>
           ) : (
-            <div className="space-y-4">
-              {previews.slice(0, 3).map((preview) => (
-                <div key={preview.id} className="flex items-center space-x-4 pb-4 border-b border-gray-100 last:border-0">
-                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <PhotoIcon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{preview.title || 'Preview generated'}</p>
-                    <p className="text-xs text-muted-light">
-                      {new Date(preview.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
+            <div>
+              {previews.slice(0, 5).map((preview) => (
+                <div key={preview.id} className="flex items-center gap-4 px-5 py-3.5 border-b border-secondary-100 last:border-0">
+                  <span className="flex-1 font-mono text-[13px] text-secondary-900 truncate">
+                    {preview.title || 'Preview generated'}
+                  </span>
+                  <span className="pill-success">Live</span>
+                  <span className="text-[13px] text-secondary-500 tabular-nums">
+                    {new Date(preview.created_at).toLocaleDateString()}
+                  </span>
                 </div>
               ))}
             </div>
@@ -262,28 +267,28 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <h3 className="text-lg font-semibold text-secondary mb-4">Quick Actions</h3>
+          <h3 className="text-[17px] font-semibold text-secondary-900 mb-4">Quick actions</h3>
           <div className="space-y-3">
-            <button 
+            <button
               onClick={() => navigate('/app/domains')}
-              className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+              className="w-full text-left px-4 py-3 rounded-lg border border-line hover:border-primary-500 transition-colors"
             >
-              <p className="font-medium text-gray-900">Add New Domain</p>
-              <p className="text-sm text-muted-light">Connect a new website</p>
+              <p className="font-medium text-secondary-900">Add New Domain</p>
+              <p className="text-sm text-secondary-500">Connect a new website</p>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/app/brand')}
-              className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+              className="w-full text-left px-4 py-3 rounded-lg border border-line hover:border-primary-500 transition-colors"
             >
-              <p className="font-medium text-gray-900">Customize Brand</p>
-              <p className="text-sm text-muted-light">Update your preview style</p>
+              <p className="font-medium text-secondary-900">Customize Brand</p>
+              <p className="text-sm text-secondary-500">Update your preview style</p>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/app/previews')}
-              className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+              className="w-full text-left px-4 py-3 rounded-lg border border-line hover:border-primary-500 transition-colors"
             >
-              <p className="font-medium text-gray-900">Generate Preview</p>
-              <p className="text-sm text-muted-light">Create a new AI preview</p>
+              <p className="font-medium text-secondary-900">Generate Preview</p>
+              <p className="text-sm text-secondary-500">Create a new AI preview</p>
             </button>
           </div>
         </Card>
@@ -291,4 +296,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

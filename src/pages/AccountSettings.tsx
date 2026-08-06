@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import { exportUserData, deleteUserAccount } from '../api/client'
@@ -69,12 +69,12 @@ export default function AccountSettings() {
     <div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-secondary mb-2">Account Settings</h1>
-        <p className="text-gray-600">Manage your account data and privacy</p>
+        <p className="text-secondary-600">Manage your account data and privacy</p>
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
@@ -83,7 +83,7 @@ export default function AccountSettings() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-secondary mb-2">Export Your Data</h2>
-            <p className="text-gray-600 text-sm">
+            <p className="text-secondary-600 text-sm">
               Download all your data in JSON format. This includes your profile, organizations, domains, previews, and activity logs.
             </p>
           </div>
@@ -108,30 +108,30 @@ export default function AccountSettings() {
       </Card>
 
       {/* Account Deletion */}
-      <Card className="mb-6 border-red-200">
+      <Card className="mb-6 border-error-200">
         <div className="flex items-start space-x-3 mb-4">
-          <ExclamationTriangleIcon className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
+          <ExclamationTriangleIcon className="w-6 h-6 text-error-500 flex-shrink-0 mt-1" />
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-red-700 mb-2">Delete Account</h2>
-            <p className="text-gray-600 text-sm mb-4">
+            <h2 className="text-xl font-semibold text-error-700 mb-2">Delete Account</h2>
+            <p className="text-secondary-600 text-sm mb-4">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Type "DELETE" to confirm:
               </label>
               <input
                 type="text"
                 value={deleteConfirm}
                 onChange={(e) => setDeleteConfirm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-error-500 focus:border-error-500"
                 placeholder="DELETE"
               />
             </div>
             <Button
               onClick={handleDeleteAccount}
               disabled={deleting || deleteConfirm !== 'DELETE'}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-error-600 hover:bg-error-700 text-white"
             >
               {deleting ? (
                 <span className="flex items-center space-x-2">
@@ -156,7 +156,7 @@ export default function AccountSettings() {
           <a href="/terms" className="text-primary hover:text-primary/80 block">
             Terms of Service
           </a>
-          <p className="text-gray-500 mt-4">
+          <p className="text-secondary-500 mt-4">
             For questions about data processing or deletion, please contact support.
           </p>
         </div>

@@ -180,7 +180,7 @@ export default function SiteDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-accent-500 p-6 md:p-8 text-white">
+      <div className="relative overflow-hidden rounded-2xl bg-primary-500 p-6 md:p-8 text-white">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent-400/20 rounded-full -ml-24 -mb-24 blur-2xl" />
         
@@ -238,7 +238,7 @@ export default function SiteDashboard() {
               onClick={stat.action}
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-primary-500/5 to-accent-500/5 rounded-full -mr-8 -mt-8" />
+              <div className="absolute top-0 right-0 w-24 h-24 bg-brand-50 rounded-full -mr-8 -mt-8" />
               
               <div className="flex items-start justify-between relative">
                 <div>
@@ -310,7 +310,7 @@ export default function SiteDashboard() {
                         className="w-14 h-14 object-cover rounded-xl flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-14 h-14 bg-gradient-to-br from-secondary-100 to-secondary-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <div className="w-14 h-14 bg-secondary-100 rounded-xl flex items-center justify-center flex-shrink-0">
                         <DocumentTextIcon className="w-6 h-6 text-secondary-400" />
                       </div>
                     )}

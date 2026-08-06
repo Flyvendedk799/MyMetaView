@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { EnvelopeIcon, LockClosedIcon, ShieldCheckIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { EnvelopeIcon, LockClosedIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import { LogoMark } from '../components/ui/Logo'
+import Seo from '../components/Seo'
 
 export default function Login() {
   const { login, error: authError, loading } = useAuth()
@@ -32,9 +34,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-mesh flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-paper flex flex-col lg:flex-row">
+      <Seo title="Sign in" description="Sign in to your MetaView account to manage domains, previews, and brand settings." path="/login" />
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 via-primary-700 to-accent-600 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-ink relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAzMHYySC0yNHYtMmgxMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
         
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl" />
@@ -42,13 +45,11 @@ export default function Login() {
         
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-white">
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center" aria-hidden="true">
-              <SparklesIcon className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-3xl font-bold tracking-tight">MetaView</span>
+            <LogoMark size={48} surface="dark" />
+            <span className="font-display text-3xl font-semibold tracking-display">MetaView</span>
           </div>
-          
-          <h1 className="text-4xl xl:text-5xl font-extrabold mb-5 leading-tight tracking-tight">
+
+          <h1 className="font-display text-4xl xl:text-5xl font-semibold mb-5 leading-tight tracking-display-lg">
             Beautiful Link Previews<br />
             <span className="text-white/90">for Your Brand</span>
           </h1>
@@ -59,7 +60,7 @@ export default function Login() {
           
           <div className="flex items-center gap-6">
             <div className="flex -space-x-3" aria-hidden="true">
-              {['#6366f1', '#14b8a6', '#f59e0b', '#10b981'].map((color, i) => (
+              {['#12523F', '#E8622C', '#1F7A5C', '#0B3B2E'].map((color, i) => (
                 <div 
                   key={i}
                   className="w-10 h-10 rounded-full border-2 border-white/20 flex items-center justify-center text-white text-sm font-medium"
@@ -81,14 +82,12 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-10">
-            <div className="w-11 h-11 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-glow" aria-hidden="true">
-              <SparklesIcon className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-secondary-900 tracking-tight">MetaView</span>
+            <LogoMark size={44} />
+            <span className="font-display text-2xl font-semibold text-secondary-900 tracking-display">MetaView</span>
           </div>
 
           <header className="text-center mb-10">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-secondary-900 mb-3 tracking-tight">
+            <h1 className="font-display text-3xl sm:text-4xl font-semibold text-secondary-900 mb-3 tracking-display">
               Welcome back
             </h1>
             <p className="text-base text-secondary-600 leading-relaxed">
@@ -155,7 +154,7 @@ export default function Login() {
                 fullWidth
                 size="lg"
                 loading={isSubmitting || loading}
-                className="btn-primary shadow-soft hover:shadow-glow transition-shadow"
+                className="btn-primary"
                 aria-busy={isSubmitting || loading}
               >
                 Sign in

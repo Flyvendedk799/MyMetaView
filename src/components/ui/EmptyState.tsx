@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+﻿import { ReactNode } from 'react'
 import Button from './Button'
 
 interface EmptyStateProps {
@@ -44,7 +44,7 @@ export default function EmptyState({
       {icon && (
         <div className={`
           ${iconSizes[size]} rounded-2xl 
-          bg-gradient-to-br from-secondary-100 to-secondary-50 
+          bg-secondary-100 
           flex items-center justify-center mb-6 
           text-secondary-400
         `}>

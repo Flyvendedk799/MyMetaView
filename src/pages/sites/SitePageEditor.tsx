@@ -120,7 +120,7 @@ export default function SitePageEditor() {
     return (
       <Card>
         <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
         </div>
       </Card>
     )
@@ -133,11 +133,11 @@ export default function SitePageEditor() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(`/app/sites/${siteId}/pages`)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </button>
-          <h1 className="text-2xl font-bold text-secondary">
+          <h1 className="font-display text-2xl font-semibold text-secondary-900 tracking-display-sm">
             {isNew ? 'New Page' : 'Edit Page'}
           </h1>
         </div>
@@ -152,10 +152,10 @@ export default function SitePageEditor() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
+        <Card className="mb-6 bg-error-50 border-error-100">
           <div className="flex items-center gap-2">
-            <XMarkIcon className="w-5 h-5 text-red-600" />
-            <p className="text-red-800">{error}</p>
+            <XMarkIcon className="w-5 h-5 text-error-500" />
+            <p className="text-error-600">{error}</p>
           </div>
         </Card>
       )}
@@ -170,7 +170,7 @@ export default function SitePageEditor() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Page title..."
-              className="w-full text-3xl font-bold border-0 focus:outline-none focus:ring-0 placeholder-gray-300"
+              className="w-full font-display text-3xl font-semibold tracking-display text-secondary-900 bg-transparent border-0 focus:outline-none focus:ring-0 placeholder-secondary-300"
             />
           </Card>
 
@@ -190,40 +190,40 @@ export default function SitePageEditor() {
               onClick={() => setShowSeo(!showSeo)}
               className="w-full flex items-center justify-between text-left"
             >
-              <span className="font-semibold text-gray-900">SEO Settings</span>
+              <span className="font-semibold text-secondary-900">SEO Settings</span>
               {showSeo ? (
-                <ChevronUpIcon className="w-5 h-5 text-gray-500" />
+                <ChevronUpIcon className="w-5 h-5 text-secondary-500" />
               ) : (
-                <ChevronDownIcon className="w-5 h-5 text-gray-500" />
+                <ChevronDownIcon className="w-5 h-5 text-secondary-500" />
               )}
             </button>
             
             {showSeo && (
-              <div className="mt-4 space-y-4 pt-4 border-t">
+              <div className="mt-4 space-y-4 pt-4 border-t border-line">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">
                     Meta Title
-                    <span className="text-gray-400 ml-2">({metaTitle.length}/70)</span>
+                    <span className="text-secondary-400 ml-2">({metaTitle.length}/70)</span>
                   </label>
                   <input
                     type="text"
                     value={metaTitle}
                     onChange={(e) => setMetaTitle(e.target.value.slice(0, 70))}
                     placeholder="SEO title (defaults to page title)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">
                     Meta Description
-                    <span className="text-gray-400 ml-2">({metaDescription.length}/160)</span>
+                    <span className="text-secondary-400 ml-2">({metaDescription.length}/160)</span>
                   </label>
                   <textarea
                     value={metaDescription}
                     onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))}
                     placeholder="SEO description"
                     rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    className="input resize-none"
                   />
                 </div>
               </div>
@@ -235,16 +235,16 @@ export default function SitePageEditor() {
         <div className="space-y-6">
           {/* Status */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Publish</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Publish</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
                   Status
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as 'draft' | 'published')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="select"
                 >
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
@@ -256,16 +256,16 @@ export default function SitePageEditor() {
                   type="checkbox"
                   checked={isHomepage}
                   onChange={(e) => setIsHomepage(e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  className="w-4 h-4 text-primary-500 border-secondary-300 rounded focus:ring-primary-500"
                 />
-                <span className="text-sm text-gray-700">Set as Homepage</span>
+                <span className="text-sm text-secondary-700">Set as Homepage</span>
               </label>
             </div>
           </Card>
 
           {/* URL Slug */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">URL Slug</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">URL Slug</h3>
             <input
               type="text"
               value={slug}
@@ -274,9 +274,9 @@ export default function SitePageEditor() {
                 setAutoSlug(false)
               }}
               placeholder="page-url-slug"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+              className="input font-mono text-[13px]"
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="font-mono text-xs text-secondary-500 mt-2">
               /page/{slug || 'page-url-slug'}
             </p>
           </Card>

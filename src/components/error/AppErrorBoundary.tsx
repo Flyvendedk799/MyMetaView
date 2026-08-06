@@ -28,23 +28,23 @@ export class AppErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
-            <p className="text-gray-600 mb-4">
+        <div className="min-h-screen flex items-center justify-center bg-paper">
+          <div className="max-w-md w-full bg-surface rounded-2xl shadow-overlay border border-line p-6">
+            <h1 className="font-display text-2xl font-semibold tracking-display-sm text-secondary-900 mb-4">Something went wrong</h1>
+            <p className="text-secondary-600 mb-4">
               We're sorry, but something unexpected happened. Please try refreshing the page.
             </p>
             {this.state.error && (
               <details className="mb-4">
-                <summary className="text-sm text-gray-500 cursor-pointer">Error details</summary>
-                <pre className="mt-2 text-xs text-gray-400 overflow-auto">
+                <summary className="text-sm text-secondary-500 cursor-pointer">Error details</summary>
+                <pre className="mt-2 font-mono text-xs text-secondary-500 overflow-auto">
                   {this.state.error.toString()}
                 </pre>
               </details>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="w-full bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              className="btn-primary w-full"
             >
               Refresh Page
             </button>

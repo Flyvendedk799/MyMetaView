@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   MagnifyingGlassIcon,
@@ -97,13 +97,13 @@ export default function SiteMedia() {
       {/* Search */}
       <form onSubmit={handleSearch} className="mb-6">
         <div className="relative max-w-md">
-          <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search media..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
       </form>
@@ -115,7 +115,7 @@ export default function SiteMedia() {
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : media.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-48 text-secondary-500">
             <PhotoIcon className="w-12 h-12 mb-2" />
             <p className="font-medium">No media found</p>
             <p className="text-sm">Upload your first image using the upload zone above</p>
@@ -125,7 +125,7 @@ export default function SiteMedia() {
             {media.map((item) => (
               <div
                 key={item.id}
-                className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 hover:border-primary transition-colors"
+                className="group relative aspect-square rounded-lg overflow-hidden bg-secondary-100 border border-secondary-200 hover:border-primary transition-colors"
               >
                 <img
                   src={item.file_path}
@@ -138,28 +138,28 @@ export default function SiteMedia() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setSelectedMedia(item)}
-                      className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors"
+                      className="p-2 bg-white rounded-lg hover:bg-secondary-100 transition-colors"
                       title="View details"
                     >
-                      <EyeIcon className="w-4 h-4 text-gray-700" />
+                      <EyeIcon className="w-4 h-4 text-secondary-700" />
                     </button>
                     <button
                       onClick={() => copyUrl(item.file_path, item.id)}
-                      className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors"
+                      className="p-2 bg-white rounded-lg hover:bg-secondary-100 transition-colors"
                       title="Copy URL"
                     >
                       {copiedId === item.id ? (
-                        <CheckIcon className="w-4 h-4 text-green-600" />
+                        <CheckIcon className="w-4 h-4 text-success-600" />
                       ) : (
-                        <ClipboardIcon className="w-4 h-4 text-gray-700" />
+                        <ClipboardIcon className="w-4 h-4 text-secondary-700" />
                       )}
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(item.id)}
-                      className="p-2 bg-white rounded-lg hover:bg-red-50 transition-colors"
+                      className="p-2 bg-white rounded-lg hover:bg-error-50 transition-colors"
                       title="Delete"
                     >
-                      <TrashIcon className="w-4 h-4 text-red-600" />
+                      <TrashIcon className="w-4 h-4 text-error-600" />
                     </button>
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function SiteMedia() {
       {selectedMedia && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="aspect-video bg-gray-100 flex items-center justify-center">
+            <div className="aspect-video bg-secondary-100 flex items-center justify-center">
               <img
                 src={selectedMedia.file_path}
                 alt={selectedMedia.alt_text || selectedMedia.filename}
@@ -181,37 +181,37 @@ export default function SiteMedia() {
               />
             </div>
             <div className="p-6">
-              <h3 className="font-semibold text-lg text-gray-900 mb-4">{selectedMedia.filename}</h3>
+              <h3 className="font-semibold text-lg text-secondary-900 mb-4">{selectedMedia.filename}</h3>
               <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                 <div>
-                  <span className="text-gray-500">Size:</span>
+                  <span className="text-secondary-500">Size:</span>
                   <span className="ml-2 font-medium">{formatFileSize(selectedMedia.file_size)}</span>
                 </div>
                 {selectedMedia.width && selectedMedia.height && (
                   <div>
-                    <span className="text-gray-500">Dimensions:</span>
-                    <span className="ml-2 font-medium">{selectedMedia.width} × {selectedMedia.height}</span>
+                    <span className="text-secondary-500">Dimensions:</span>
+                    <span className="ml-2 font-medium">{selectedMedia.width} Ã— {selectedMedia.height}</span>
                   </div>
                 )}
                 <div>
-                  <span className="text-gray-500">Type:</span>
+                  <span className="text-secondary-500">Type:</span>
                   <span className="ml-2 font-medium">{selectedMedia.mime_type}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Uploaded:</span>
+                  <span className="text-secondary-500">Uploaded:</span>
                   <span className="ml-2 font-medium">
                     {new Date(selectedMedia.uploaded_at).toLocaleDateString()}
                   </span>
                 </div>
               </div>
               <div className="mb-4">
-                <label className="block text-sm text-gray-500 mb-1">URL</label>
+                <label className="block text-sm text-secondary-500 mb-1">URL</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={selectedMedia.file_path}
                     readOnly
-                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono"
+                    className="flex-1 px-3 py-2 bg-secondary-50 border border-secondary-300 rounded-lg text-sm font-mono"
                   />
                   <button
                     onClick={() => copyUrl(selectedMedia.file_path, selectedMedia.id)}
@@ -224,13 +224,13 @@ export default function SiteMedia() {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteConfirm(selectedMedia.id)}
-                  className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                  className="px-4 py-2 text-error-600 border border-error-300 rounded-lg hover:bg-error-50 transition-colors"
                 >
                   Delete
                 </button>
                 <button
                   onClick={() => setSelectedMedia(null)}
-                  className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 bg-secondary-100 rounded-lg hover:bg-secondary-200 transition-colors"
                 >
                   Close
                 </button>
@@ -244,20 +244,20 @@ export default function SiteMedia() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Media?</h3>
-            <p className="text-gray-500 text-sm mb-6">
+            <h3 className="text-lg font-bold text-secondary-900 mb-2">Delete Media?</h3>
+            <p className="text-secondary-500 text-sm mb-6">
               This action cannot be undone. The file will be permanently deleted.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-secondary-200 rounded-lg font-medium hover:bg-secondary-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
+                className="flex-1 px-4 py-2 bg-error-500 text-white rounded-lg font-medium hover:bg-error-600 transition-colors"
               >
                 Delete
               </button>

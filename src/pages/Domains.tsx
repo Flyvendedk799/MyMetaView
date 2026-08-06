@@ -371,19 +371,19 @@ export default function Domains() {
             <SparklesIcon className="w-6 h-6 text-primary mt-0.5" />
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-secondary mb-2">Embed Script</h3>
-              <p className="text-gray-600 mb-4">
-                Add this script tag to your website's <code className="px-1.5 py-0.5 bg-gray-100 rounded text-sm font-mono">&lt;head&gt;</code> to enable automatic URL previews.
+              <p className="text-secondary-600 mb-4">
+                Add this script tag to your website's <code className="px-1.5 py-0.5 bg-secondary-100 rounded text-sm font-mono">&lt;head&gt;</code> to enable automatic URL previews.
               </p>
             </div>
           </div>
-          <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
-            <code className="text-sm text-gray-100 font-mono">
+          <div className="bg-secondary-900 rounded-lg p-4 overflow-x-auto">
+            <code className="text-sm text-secondary-100 font-mono">
               {`<script src="https://mymetaview.com/static/snippet.js"></script>`}
             </code>
           </div>
-          <p className="text-xs text-gray-500 mt-3 flex items-start space-x-1">
+          <p className="text-xs text-secondary-500 mt-3 flex items-start space-x-1">
             <InformationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>Copy and paste this script tag into your website's <code className="px-1 py-0.5 bg-gray-100 rounded">&lt;head&gt;</code> section. It will automatically generate previews for all pages.</span>
+            <span>Copy and paste this script tag into your website's <code className="px-1 py-0.5 bg-secondary-100 rounded">&lt;head&gt;</code> section. It will automatically generate previews for all pages.</span>
           </p>
         </Card>
       )}
@@ -414,41 +414,41 @@ export default function Domains() {
         <Card className="overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-secondary-50 border-b border-secondary-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
                     Domain
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
                     Previews
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
                     Clicks
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-secondary-600 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-secondary-200">
                 {domains.map((domain) => (
-                  <tr key={domain.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={domain.id} className="hover:bg-secondary-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
-                        <GlobeAltIcon className="w-5 h-5 text-gray-400" />
-                        <div className="text-sm font-medium text-gray-900">{domain.name}</div>
+                        <GlobeAltIcon className="w-5 h-5 text-secondary-400" />
+                        <div className="text-sm font-medium text-secondary-900">{domain.name}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(domain.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-600">
                       {getPreviewsCount(domain.name)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-600">
                       {domain.monthly_clicks.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -467,7 +467,7 @@ export default function Domains() {
                         )}
                         <button
                           onClick={() => handleDeleteDomain(domain.id)}
-                          className="text-red-600 hover:text-red-800 transition-colors inline-flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-red-50"
+                          className="text-error-600 hover:text-error-800 transition-colors inline-flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-error-50"
                           title="Delete domain"
                         >
                           <TrashIcon className="w-4 h-4" />
@@ -490,12 +490,12 @@ export default function Domains() {
         title="Add New Domain"
       >
         <div className="space-y-5">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <div className="flex items-start space-x-2">
-              <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-800">
+              <InformationCircleIcon className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-primary-800">
                 <p className="font-medium mb-1">Before you start:</p>
-                <ul className="list-disc list-inside space-y-1 text-blue-700">
+                <ul className="list-disc list-inside space-y-1 text-primary-700">
                   <li>Enter your domain without "www" (e.g., example.com)</li>
                   <li>You'll need to verify ownership after adding</li>
                   <li>Verification takes 2-5 minutes</li>
@@ -505,8 +505,8 @@ export default function Domains() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Domain Name <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-secondary-700 mb-2">
+              Domain Name <span className="text-error-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -529,7 +529,7 @@ export default function Domains() {
               />
               {domainName && !error && validateDomain(domainName).valid && (
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                  <CheckCircleIcon className="w-5 h-5 text-success-500" />
                 </div>
               )}
             </div>
@@ -537,30 +537,30 @@ export default function Domains() {
               <Alert variant="error" className="mt-2">{error}</Alert>
             )}
             {!error && domainName && (
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-secondary-500">
                 ✓ Valid domain format
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-secondary-700 mb-2">
               Environment
             </label>
             <select
               value={environment}
               onChange={(e) => setEnvironment(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             >
               <option value="production">Production</option>
               <option value="staging">Staging</option>
             </select>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-secondary-500">
               Choose the environment where this domain will be used
             </p>
           </div>
 
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-secondary-200">
             <Button variant="secondary" onClick={handleCloseModal} disabled={isSubmitting}>
               Cancel
             </Button>
@@ -603,18 +603,18 @@ export default function Domains() {
                 <div key={step} className="flex items-center flex-1">
                   <div className="flex flex-col items-center flex-1">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                      isCompleted ? 'bg-green-500 text-white' :
+                      isCompleted ? 'bg-success-500 text-white' :
                       isActive ? 'bg-primary text-white' :
-                      'bg-gray-200 text-gray-600'
+                      'bg-secondary-200 text-secondary-600'
                     }`}>
                       {isCompleted ? <CheckIcon className="w-5 h-5" /> : index + 1}
                     </div>
-                    <span className={`text-xs mt-2 text-center ${isActive ? 'font-medium text-primary' : 'text-gray-500'}`}>
+                    <span className={`text-xs mt-2 text-center ${isActive ? 'font-medium text-primary' : 'text-secondary-500'}`}>
                       {stepNames[index]}
                     </span>
                   </div>
                   {index < 3 && (
-                    <div className={`h-0.5 flex-1 mx-2 ${isCompleted ? 'bg-green-500' : 'bg-gray-200'}`} />
+                    <div className={`h-0.5 flex-1 mx-2 ${isCompleted ? 'bg-success-500' : 'bg-secondary-200'}`} />
                   )}
                 </div>
               )
@@ -624,12 +624,12 @@ export default function Domains() {
           {/* Method Selection */}
           {verificationStep === 'method' && (
             <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                 <div className="flex items-start space-x-2">
-                  <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-800">
+                  <InformationCircleIcon className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-primary-800">
                     <p className="font-medium mb-1">Choose a verification method</p>
-                    <p className="text-blue-700">Select the method that works best for your setup. You can change this later if needed.</p>
+                    <p className="text-primary-700">Select the method that works best for your setup. You can change this later if needed.</p>
                   </div>
                 </div>
               </div>
@@ -639,29 +639,29 @@ export default function Domains() {
                   <button
                     key={method.id}
                     onClick={() => handleStartVerification(method.id)}
-                    className="w-full text-left p-4 border-2 border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all group"
+                    className="w-full text-left p-4 border-2 border-secondary-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all group"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <span className="text-2xl">{method.icon}</span>
                           <div>
-                            <div className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                            <div className="font-semibold text-secondary-900 group-hover:text-primary transition-colors">
                               {method.name}
                             </div>
-                            <div className="text-xs text-gray-500">{method.description}</div>
+                            <div className="text-xs text-secondary-500">{method.description}</div>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">{method.details}</p>
+                        <p className="text-sm text-secondary-600 mb-2">{method.details}</p>
                         <ul className="flex flex-wrap gap-2">
                           {method.pros.map((pro, idx) => (
-                            <li key={idx} className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            <li key={idx} className="text-xs text-secondary-500 bg-secondary-100 px-2 py-1 rounded">
                               {pro}
                             </li>
                           ))}
                         </ul>
                       </div>
-                      <ArrowRightIcon className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors ml-4" />
+                      <ArrowRightIcon className="w-5 h-5 text-secondary-400 group-hover:text-primary transition-colors ml-4" />
                     </div>
                   </button>
                 ))}
@@ -672,48 +672,48 @@ export default function Domains() {
           {/* Instructions */}
           {verificationStep === 'instructions' && verificationData && (
             <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="bg-success-50 border border-success-200 rounded-lg p-4">
                 <div className="flex items-start space-x-2">
-                  <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-green-800">
+                  <CheckCircleIcon className="w-5 h-5 text-success-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-success-800">
                     <p className="font-medium mb-1">Follow these steps to verify your domain</p>
-                    <p className="text-green-700">Copy the information below and add it to your domain settings.</p>
+                    <p className="text-success-700">Copy the information below and add it to your domain settings.</p>
                   </div>
                 </div>
               </div>
 
               {verificationMethod === 'dns' && (
                 <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  <div className="bg-secondary-50 rounded-lg p-4 space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                      <label className="block text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">
                         Step 1: Add DNS TXT Record
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Record Type</label>
-                          <div className="bg-white border border-gray-300 rounded px-3 py-2 font-mono text-sm">
+                          <label className="block text-xs font-medium text-secondary-600 mb-1">Record Type</label>
+                          <div className="bg-white border border-secondary-300 rounded px-3 py-2 font-mono text-sm">
                             TXT
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Name / Host</label>
-                          <div className="bg-white border border-gray-300 rounded px-3 py-2 font-mono text-sm">
+                          <label className="block text-xs font-medium text-secondary-600 mb-1">Name / Host</label>
+                          <div className="bg-white border border-secondary-300 rounded px-3 py-2 font-mono text-sm">
                             @ or {verifyingDomain?.name}
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Value / Content</label>
+                          <label className="block text-xs font-medium text-secondary-600 mb-1">Value / Content</label>
                           <div className="flex items-center space-x-2">
-                            <code className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm font-mono break-all">
+                            <code className="flex-1 px-3 py-2 bg-white border border-secondary-300 rounded text-sm font-mono break-all">
                               {verificationData.instructions.txt_record}
                             </code>
                             <button
                               onClick={() => copyToClipboard(verificationData.instructions.txt_record, 'txt')}
                               className={`p-2 rounded transition-colors ${
                                 copiedField === 'txt' 
-                                  ? 'bg-green-100 text-green-600' 
-                                  : 'text-gray-600 hover:bg-gray-100'
+                                  ? 'bg-success-100 text-success-600' 
+                                  : 'text-secondary-600 hover:bg-secondary-100'
                               }`}
                               title="Copy TXT record"
                             >
@@ -729,19 +729,19 @@ export default function Domains() {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                     <div className="flex items-start space-x-2">
-                      <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-blue-800 space-y-2">
+                      <InformationCircleIcon className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-primary-800 space-y-2">
                         <p className="font-medium">How to add a DNS TXT record:</p>
-                        <ol className="list-decimal list-inside space-y-1 text-blue-700">
+                        <ol className="list-decimal list-inside space-y-1 text-primary-700">
                           <li>Log in to your domain registrar or DNS provider</li>
                           <li>Navigate to DNS management / DNS settings</li>
                           <li>Add a new TXT record with the values above</li>
                           <li>Save the changes (may take 30-60 seconds to propagate)</li>
                           <li>Click "Verify Domain" below</li>
                         </ol>
-                        <p className="text-xs text-blue-600 mt-2">
+                        <p className="text-xs text-primary-600 mt-2">
                           💡 Common providers: Cloudflare, GoDaddy, Namecheap, Google Domains
                         </p>
                       </div>
@@ -752,30 +752,30 @@ export default function Domains() {
 
               {verificationMethod === 'html' && (
                 <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  <div className="bg-secondary-50 rounded-lg p-4 space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                      <label className="block text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">
                         Step 1: Create Verification File
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">File Name</label>
-                          <div className="bg-white border border-gray-300 rounded px-3 py-2 font-mono text-sm">
+                          <label className="block text-xs font-medium text-secondary-600 mb-1">File Name</label>
+                          <div className="bg-white border border-secondary-300 rounded px-3 py-2 font-mono text-sm">
                             {verificationData.instructions.file_name || 'verify.html'}
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">File Content</label>
+                          <label className="block text-xs font-medium text-secondary-600 mb-1">File Content</label>
                           <div className="flex items-start space-x-2">
-                            <code className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm font-mono whitespace-pre-wrap break-all">
+                            <code className="flex-1 px-3 py-2 bg-white border border-secondary-300 rounded text-sm font-mono whitespace-pre-wrap break-all">
                               {verificationData.instructions.file_content}
                             </code>
                             <button
                               onClick={() => copyToClipboard(verificationData.instructions.file_content, 'html')}
                               className={`p-2 rounded transition-colors ${
                                 copiedField === 'html' 
-                                  ? 'bg-green-100 text-green-600' 
-                                  : 'text-gray-600 hover:bg-gray-100'
+                                  ? 'bg-success-100 text-success-600' 
+                                  : 'text-secondary-600 hover:bg-secondary-100'
                               }`}
                               title="Copy file content"
                             >
@@ -791,16 +791,16 @@ export default function Domains() {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                     <div className="flex items-start space-x-2">
-                      <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-blue-800 space-y-2">
+                      <InformationCircleIcon className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-primary-800 space-y-2">
                         <p className="font-medium">How to upload the verification file:</p>
-                        <ol className="list-decimal list-inside space-y-1 text-blue-700">
+                        <ol className="list-decimal list-inside space-y-1 text-primary-700">
                           <li>Create a new file with the name shown above</li>
                           <li>Paste the content into the file</li>
                           <li>Upload it to your website's root directory (where index.html is located)</li>
-                          <li>Ensure it's accessible at: <code className="bg-blue-100 px-1 rounded">https://{verifyingDomain?.name}/verify.html</code></li>
+                          <li>Ensure it's accessible at: <code className="bg-primary-100 px-1 rounded">https://{verifyingDomain?.name}/verify.html</code></li>
                           <li>Click "Verify Domain" below</li>
                         </ol>
                       </div>
@@ -811,24 +811,24 @@ export default function Domains() {
 
               {verificationMethod === 'meta' && (
                 <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  <div className="bg-secondary-50 rounded-lg p-4 space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                      <label className="block text-xs font-semibold text-secondary-700 mb-2 uppercase tracking-wide">
                         Step 1: Add Meta Tag to Homepage
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Meta Tag</label>
+                          <label className="block text-xs font-medium text-secondary-600 mb-1">Meta Tag</label>
                           <div className="flex items-start space-x-2">
-                            <code className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm font-mono whitespace-pre-wrap break-all">
+                            <code className="flex-1 px-3 py-2 bg-white border border-secondary-300 rounded text-sm font-mono whitespace-pre-wrap break-all">
                               {verificationData.instructions.meta_tag}
                             </code>
                             <button
                               onClick={() => copyToClipboard(verificationData.instructions.meta_tag, 'meta')}
                               className={`p-2 rounded transition-colors ${
                                 copiedField === 'meta' 
-                                  ? 'bg-green-100 text-green-600' 
-                                  : 'text-gray-600 hover:bg-gray-100'
+                                  ? 'bg-success-100 text-success-600' 
+                                  : 'text-secondary-600 hover:bg-secondary-100'
                               }`}
                               title="Copy meta tag"
                             >
@@ -844,15 +844,15 @@ export default function Domains() {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                     <div className="flex items-start space-x-2">
-                      <InformationCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-blue-800 space-y-2">
+                      <InformationCircleIcon className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-primary-800 space-y-2">
                         <p className="font-medium">How to add the meta tag:</p>
-                        <ol className="list-decimal list-inside space-y-1 text-blue-700">
+                        <ol className="list-decimal list-inside space-y-1 text-primary-700">
                           <li>Open your website's homepage HTML file</li>
-                          <li>Find the <code className="bg-blue-100 px-1 rounded">&lt;head&gt;</code> section</li>
-                          <li>Paste the meta tag above into the <code className="bg-blue-100 px-1 rounded">&lt;head&gt;</code> section</li>
+                          <li>Find the <code className="bg-primary-100 px-1 rounded">&lt;head&gt;</code> section</li>
+                          <li>Paste the meta tag above into the <code className="bg-primary-100 px-1 rounded">&lt;head&gt;</code> section</li>
                           <li>Save and publish your changes</li>
                           <li>Click "Verify Domain" below</li>
                         </ol>
@@ -868,9 +868,9 @@ export default function Domains() {
 
               {/* Debug Section for DNS */}
               {verificationMethod === 'dns' && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="bg-secondary-50 border border-secondary-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-700">DNS Debug Tool</h4>
+                    <h4 className="text-sm font-medium text-secondary-700">DNS Debug Tool</h4>
                     <Button 
                       variant="secondary" 
                       size="sm" 
@@ -882,31 +882,31 @@ export default function Domains() {
                   </div>
                   {debugInfo && (
                     <div className="mt-3 space-y-2 text-xs font-mono bg-white p-3 rounded border">
-                      <p><span className="text-gray-500">Domain:</span> {debugInfo.domain}</p>
-                      <p><span className="text-gray-500">Expected:</span> <span className="text-green-600">{debugInfo.expected_value}</span></p>
+                      <p><span className="text-secondary-500">Domain:</span> {debugInfo.domain}</p>
+                      <p><span className="text-secondary-500">Expected:</span> <span className="text-success-600">{debugInfo.expected_value}</span></p>
                       <div>
-                        <span className="text-gray-500">Found TXT Records:</span>
+                        <span className="text-secondary-500">Found TXT Records:</span>
                         {debugInfo.found_records.length > 0 ? (
                           <ul className="mt-1 pl-4">
                             {debugInfo.found_records.map((record, i) => (
-                              <li key={i} className={record.includes('preview-verification') ? 'text-green-600' : 'text-gray-700'}>
+                              <li key={i} className={record.includes('preview-verification') ? 'text-success-600' : 'text-secondary-700'}>
                                 {record}
                               </li>
                             ))}
                           </ul>
                         ) : (
-                          <span className="ml-2 text-orange-600">None found</span>
+                          <span className="ml-2 text-accent-600">None found</span>
                         )}
                       </div>
                       {debugInfo.error && (
-                        <p className="text-red-600"><span className="text-gray-500">Error:</span> {debugInfo.error}</p>
+                        <p className="text-error-600"><span className="text-secondary-500">Error:</span> {debugInfo.error}</p>
                       )}
                       <p className="pt-2 border-t">
-                        <span className="text-gray-500">Status:</span>{' '}
+                        <span className="text-secondary-500">Status:</span>{' '}
                         {debugInfo.is_verified ? (
-                          <span className="text-green-600 font-semibold">✓ Token found!</span>
+                          <span className="text-success-600 font-semibold">✓ Token found!</span>
                         ) : (
-                          <span className="text-orange-600">Token not found yet</span>
+                          <span className="text-accent-600">Token not found yet</span>
                         )}
                       </p>
                     </div>
@@ -918,33 +918,33 @@ export default function Domains() {
               {autoCheckEnabled && (
                 <div className={`flex items-center justify-between p-3 rounded-lg border ${
                   autoCheckStatus === 'found' 
-                    ? 'bg-green-50 border-green-200' 
+                    ? 'bg-success-50 border-success-200' 
                     : autoCheckStatus === 'not_found'
-                    ? 'bg-orange-50 border-orange-200'
-                    : 'bg-blue-50 border-blue-200'
+                    ? 'bg-accent-50 border-accent-200'
+                    : 'bg-primary-50 border-primary-200'
                 }`}>
                   <div className="flex items-center space-x-3">
                     <div className={`w-3 h-3 rounded-full ${
                       autoCheckStatus === 'found'
-                        ? 'bg-green-500'
+                        ? 'bg-success-500'
                         : autoCheckStatus === 'not_found'
-                        ? 'bg-orange-500'
-                        : 'bg-blue-500 animate-pulse'
+                        ? 'bg-accent-500'
+                        : 'bg-primary-500 animate-pulse'
                     }`} />
                     <div>
                       <p className={`text-sm font-medium ${
                         autoCheckStatus === 'found'
-                          ? 'text-green-800'
+                          ? 'text-success-800'
                           : autoCheckStatus === 'not_found'
-                          ? 'text-orange-800'
-                          : 'text-blue-800'
+                          ? 'text-accent-800'
+                          : 'text-primary-800'
                       }`}>
                         {autoCheckStatus === 'checking' && 'Checking DNS records...'}
                         {autoCheckStatus === 'found' && '✓ Verification record found!'}
                         {autoCheckStatus === 'not_found' && 'Record not found yet'}
                         {!autoCheckStatus && 'Auto-check starting...'}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-secondary-500">
                         {lastAutoCheckTime && `Last checked: ${lastAutoCheckTime.toLocaleTimeString()}`}
                         {!lastAutoCheckTime && 'Checking every 15 seconds'}
                         {autoCheckStatus === 'not_found' && ` • Attempt ${checkAttempts}/24`}
@@ -954,7 +954,7 @@ export default function Domains() {
                   {autoCheckStatus === 'not_found' && (
                     <button
                       onClick={() => setAutoCheckEnabled(false)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
+                      className="text-xs text-secondary-500 hover:text-secondary-700"
                     >
                       Stop
                     </button>
@@ -962,7 +962,7 @@ export default function Domains() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between pt-4 border-t border-secondary-200">
                 <Button variant="secondary" onClick={() => setVerificationStep('method')}>
                   Back
                 </Button>
@@ -994,14 +994,14 @@ export default function Domains() {
           {verificationStep === 'verifying' && (
             <div className="text-center py-8">
               <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Verifying your domain...</h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Verifying your domain...</h3>
+              <p className="text-sm text-secondary-600 mb-4">
                 Checking your DNS records now...
               </p>
               {verificationError && (
-                <div className="mt-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <p className="text-sm text-orange-800">{verificationError}</p>
-                  <p className="text-xs text-gray-500 mt-2">DNS propagation can take a few minutes. The auto-check will keep trying.</p>
+                <div className="mt-4 bg-accent-50 border border-accent-200 rounded-lg p-4">
+                  <p className="text-sm text-accent-800">{verificationError}</p>
+                  <p className="text-xs text-secondary-500 mt-2">DNS propagation can take a few minutes. The auto-check will keep trying.</p>
                 </div>
               )}
               <Button 
@@ -1017,11 +1017,11 @@ export default function Domains() {
           {/* Success State */}
           {verificationStep === 'success' && (
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircleIcon className="w-10 h-10 text-green-600" />
+              <div className="w-16 h-16 bg-success-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircleIcon className="w-10 h-10 text-success-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Domain Verified Successfully!</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="text-lg font-semibold text-secondary-900 mb-2">Domain Verified Successfully!</h3>
+              <p className="text-sm text-secondary-600">
                 Your domain <span className="font-medium">{verifyingDomain?.name}</span> has been verified and is ready to use.
               </p>
             </div>

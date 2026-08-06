@@ -142,7 +142,7 @@ export default function SitesList() {
               style={{ animationDelay: `${index * 50}ms` }}
             >
               {/* Gradient accent top */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 to-accent-500 rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-accent-500 rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity" />
               
               {/* Header */}
               <div className="flex items-start justify-between mb-4">

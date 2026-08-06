@@ -28,10 +28,10 @@ import Toast from '../components/Toast'
 function renderContent(content: string, featuredImageUrl?: string, contentImageUrl?: string): JSX.Element {
   const processInline = (text: string): string => {
     return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-secondary-900">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[0.9em] font-mono border border-orange-100">$1</code>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-orange-600 hover:text-orange-700 underline decoration-orange-300 underline-offset-2 transition-colors font-medium" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 bg-accent-50 text-accent-600 rounded text-[0.9em] font-mono border border-accent-100">$1</code>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-accent-600 hover:text-accent-700 underline decoration-accent-300 underline-offset-2 transition-colors font-medium" target="_blank" rel="noopener noreferrer">$1</a>')
   }
 
   // Pre-process content to clean up common paste artifacts and recover structure
@@ -255,17 +255,17 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
     switch (block.type) {
       case 'code':
         return (
-          <div key={index} className="my-8 rounded-xl overflow-hidden border border-gray-200 shadow-lg">
+          <div key={index} className="my-8 rounded-xl overflow-hidden border border-secondary-200 shadow-lg">
             {block.lines?.[0] && (
-              <div className="bg-gray-800 px-4 py-2.5 text-xs font-mono text-gray-400 border-b border-gray-700 flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-500/80"></span>
-                <span className="w-3 h-3 rounded-full bg-yellow-500/80"></span>
-                <span className="w-3 h-3 rounded-full bg-green-500/80"></span>
+              <div className="bg-secondary-800 px-4 py-2.5 text-xs font-mono text-secondary-400 border-b border-secondary-700 flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-error-500/80"></span>
+                <span className="w-3 h-3 rounded-full bg-warning-500/80"></span>
+                <span className="w-3 h-3 rounded-full bg-success-500/80"></span>
                 <span className="ml-2">{block.lines[0]}</span>
               </div>
             )}
-            <pre className="bg-gray-900 p-5 overflow-x-auto">
-              <code className="text-sm font-mono text-gray-100 leading-relaxed">{block.content}</code>
+            <pre className="bg-secondary-900 p-5 overflow-x-auto">
+              <code className="text-sm font-mono text-secondary-100 leading-relaxed">{block.content}</code>
             </pre>
           </div>
         )
@@ -277,7 +277,7 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
         
         return (
           <>
-            <h2 key={index} id={id} className="text-2xl sm:text-3xl font-bold text-gray-900 mt-12 mb-4 leading-tight">
+            <h2 key={index} id={id} className="text-2xl sm:text-3xl font-bold text-secondary-900 mt-12 mb-4 leading-tight">
               {block.content}
             </h2>
             {shouldInsertImage && contentImageUrl && isValidImageUrl(contentImageUrl) && !insertedImageIndices.includes(index) && (() => {
@@ -306,7 +306,7 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
         
         return (
           <>
-            <h3 key={index} id={id} className="text-xl sm:text-2xl font-bold text-gray-900 mt-10 mb-3 leading-tight">
+            <h3 key={index} id={id} className="text-xl sm:text-2xl font-bold text-secondary-900 mt-10 mb-3 leading-tight">
               {block.content}
             </h3>
             {shouldInsertImage && contentImageUrl && isValidImageUrl(contentImageUrl) && !insertedImageIndices.includes(index) && (() => {
@@ -334,10 +334,10 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
         const cleanTitle = block.content.replace(/\*+$/, '').replace(/^\*+/, '').trim()
         return (
           <div key={index} className="mt-10 mb-4 flex items-start gap-4">
-            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-white font-bold text-sm flex items-center justify-center shadow-lg shadow-orange-500/20">
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-500 text-white font-bold text-sm flex items-center justify-center shadow-lg shadow-accent-500/20">
               {block.lines?.[0]}
             </span>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight pt-0.5">
+            <h3 className="text-xl sm:text-2xl font-bold text-secondary-900 leading-tight pt-0.5">
               {cleanTitle}
             </h3>
           </div>
@@ -364,9 +364,9 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
 
       case 'quote':
         return (
-          <blockquote key={index} className="my-8 pl-6 py-4 border-l-4 border-orange-500 bg-orange-50/50 rounded-r-xl">
+          <blockquote key={index} className="my-8 pl-6 py-4 border-l-4 border-accent-500 bg-accent-50/50 rounded-r-xl">
             <p 
-              className="text-lg sm:text-xl italic text-gray-700 leading-relaxed"
+              className="text-lg sm:text-xl italic text-secondary-700 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: processInline(block.content) }}
             />
           </blockquote>
@@ -374,7 +374,7 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
 
       case 'callout':
         return (
-          <div key={index} className="my-8 p-6 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl shadow-lg">
+          <div key={index} className="my-8 p-6 bg-ink rounded-xl shadow-lg">
             <p className="text-lg sm:text-xl font-semibold text-white leading-relaxed text-center">
               {block.content}
             </p>
@@ -386,9 +386,9 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
           <ul key={index} className="my-6 space-y-3 pl-2">
             {block.lines?.map((item, i) => (
               <li key={i} className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-orange-500 mt-2.5"></span>
+                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-accent-500 mt-2.5"></span>
                 <span 
-                  className="text-lg text-gray-700 leading-relaxed"
+                  className="text-lg text-secondary-700 leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: processInline(item) }}
                 />
               </li>
@@ -401,11 +401,11 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
           <ol key={index} className="my-6 space-y-4">
             {block.lines?.map((item, i) => (
               <li key={i} className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-orange-500 text-white font-bold text-sm flex items-center justify-center mt-0.5">
+                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-accent-500 text-white font-bold text-sm flex items-center justify-center mt-0.5">
                   {i + 1}
                 </span>
                 <span 
-                  className="text-lg text-gray-700 leading-relaxed flex-1"
+                  className="text-lg text-secondary-700 leading-relaxed flex-1"
                   dangerouslySetInnerHTML={{ __html: processInline(item) }}
                 />
               </li>
@@ -415,7 +415,7 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
 
       case 'hr':
         return (
-          <hr key={index} className="my-10 border-none h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+          <hr key={index} className="my-10 border-none h-px bg-line" />
         )
 
       case 'paragraph':
@@ -427,7 +427,7 @@ function renderContent(content: string, featuredImageUrl?: string, contentImageU
           <>
             <p 
               key={index} 
-              className="text-lg text-gray-700 leading-relaxed mb-6"
+              className="text-lg text-secondary-700 leading-relaxed mb-6"
               dangerouslySetInnerHTML={{ __html: processInline(block.content) }}
             />
             {shouldInsertImagePara && contentImageUrl && isValidImageUrl(contentImageUrl) && !insertedImageIndices.includes(index) && (() => {
@@ -465,16 +465,16 @@ function TocSidebar({ toc, scrollToHeading }: { toc: TocItem[], scrollToHeading:
   const [isExpanded, setIsExpanded] = useState(false)
   
   return (
-    <div className="mb-8 border border-gray-200 rounded-lg overflow-hidden">
+    <div className="mb-8 border border-secondary-200 rounded-lg overflow-hidden">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between text-left"
+        className="w-full px-4 py-3 bg-secondary-50 hover:bg-secondary-100 transition-colors flex items-center justify-between text-left"
       >
-        <span className="text-sm font-semibold text-gray-900">Table of Contents</span>
+        <span className="text-sm font-semibold text-secondary-900">Table of Contents</span>
         {isExpanded ? (
-          <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+          <ChevronUpIcon className="w-4 h-4 text-secondary-500" />
         ) : (
-          <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+          <ChevronDownIcon className="w-4 h-4 text-secondary-500" />
         )}
       </button>
       {isExpanded && (
@@ -486,8 +486,8 @@ function TocSidebar({ toc, scrollToHeading }: { toc: TocItem[], scrollToHeading:
                 scrollToHeading(item.id)
                 setIsExpanded(false)
               }}
-              className={`block w-full text-left text-xs hover:text-orange-600 transition-colors py-1 ${
-                item.level === 3 ? 'pl-4 text-gray-600' : 'font-medium text-gray-700'
+              className={`block w-full text-left text-xs hover:text-accent-600 transition-colors py-1 ${
+                item.level === 3 ? 'pl-4 text-secondary-600' : 'font-medium text-secondary-700'
               }`}
             >
               {item.title}
@@ -861,12 +861,12 @@ export default function BlogPost() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-pulse space-y-8 max-w-3xl w-full px-4">
-          <div className="h-8 bg-gray-200 rounded w-3/4" />
-          <div className="h-64 bg-gray-200 rounded-xl" />
+          <div className="h-8 bg-secondary-200 rounded w-3/4" />
+          <div className="h-64 bg-secondary-200 rounded-xl" />
           <div className="space-y-3">
-            <div className="h-4 bg-gray-200 rounded w-full" />
-            <div className="h-4 bg-gray-200 rounded w-5/6" />
-            <div className="h-4 bg-gray-200 rounded w-4/5" />
+            <div className="h-4 bg-secondary-200 rounded w-full" />
+            <div className="h-4 bg-secondary-200 rounded w-5/6" />
+            <div className="h-4 bg-secondary-200 rounded w-4/5" />
           </div>
         </div>
       </div>
@@ -877,11 +877,11 @@ export default function BlogPost() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-          <p className="text-gray-500 mb-8">Post not found</p>
+          <h1 className="text-4xl font-bold text-secondary-900 mb-4">404</h1>
+          <p className="text-secondary-500 mb-8">Post not found</p>
           <Link
             to="/blog"
-            className="text-orange-600 font-semibold hover:text-orange-700"
+            className="text-accent-600 font-semibold hover:text-accent-700"
           >
             ← Back to Blog
           </Link>
@@ -893,9 +893,9 @@ export default function BlogPost() {
   return (
     <div className="min-h-screen bg-white">
         {/* Reading Progress Bar */}
-        <div className="fixed top-0 left-0 right-0 z-[60] h-1 bg-gray-100">
+        <div className="fixed top-0 left-0 right-0 z-[60] h-1 bg-secondary-100">
           <div
-            className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-150"
+            className="h-full bg-accent-500 transition-all duration-150"
             style={{ width: `${readingProgress}%` }}
           />
         </div>
@@ -910,23 +910,23 @@ export default function BlogPost() {
         )}
 
         {/* Navigation */}
-        <nav className="fixed top-1 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-b border-gray-100/80">
+        <nav className="fixed top-1 left-0 right-0 z-50 bg-white/90  border-b border-secondary-100/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
             <div className="flex items-center justify-between h-16">
               <Link to="/" className="flex items-center space-x-2.5 group">
-                <div className="w-9 h-9 bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/25 group-hover:scale-110 transition-transform">
+                <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center shadow-lg shadow-accent-500/25 group-hover:scale-110 transition-transform">
                   <span className="text-white font-black text-base">M</span>
                 </div>
-                <span className="text-lg font-black text-gray-900">MetaView</span>
+                <span className="text-lg font-black text-secondary-900">MetaView</span>
               </Link>
               <div className="hidden md:flex items-center space-x-8">
-                <Link to="/" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">Home</Link>
-                <Link to="/blog" className="text-orange-600 font-semibold text-sm">Blog</Link>
-                <Link to="/#pricing" className="text-gray-600 hover:text-gray-900 font-semibold text-sm">Pricing</Link>
+                <Link to="/" className="text-secondary-600 hover:text-secondary-900 font-semibold text-sm">Home</Link>
+                <Link to="/blog" className="text-accent-600 font-semibold text-sm">Blog</Link>
+                <Link to="/#pricing" className="text-secondary-600 hover:text-secondary-900 font-semibold text-sm">Pricing</Link>
               </div>
               <Link
                 to="/app"
-                className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all"
+                className="px-5 py-2.5 bg-accent-500 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all"
               >
                 Get Started
               </Link>
@@ -935,25 +935,25 @@ export default function BlogPost() {
         </nav>
 
         {/* Breadcrumb */}
-        <div className="pt-24 bg-gray-50 border-b border-gray-100">
+        <div className="pt-24 bg-secondary-50 border-b border-secondary-100">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
             <nav className="flex items-center space-x-2 text-sm">
-              <Link to="/" className="text-gray-500 hover:text-gray-700">Home</Link>
-              <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              <Link to="/blog" className="text-gray-500 hover:text-gray-700">Blog</Link>
+              <Link to="/" className="text-secondary-500 hover:text-secondary-700">Home</Link>
+              <ChevronRightIcon className="w-4 h-4 text-secondary-400" />
+              <Link to="/blog" className="text-secondary-500 hover:text-secondary-700">Blog</Link>
               {post.category && (
                 <>
-                  <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+                  <ChevronRightIcon className="w-4 h-4 text-secondary-400" />
                   <Link
                     to={`/blog?category=${post.category.slug}`}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-secondary-500 hover:text-secondary-700"
                   >
                     {post.category.name}
                   </Link>
                 </>
               )}
-              <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-900 font-medium truncate max-w-[200px]">{post.title}</span>
+              <ChevronRightIcon className="w-4 h-4 text-secondary-400" />
+              <span className="text-secondary-900 font-medium truncate max-w-[200px]">{post.title}</span>
             </nav>
           </div>
         </div>
@@ -972,28 +972,28 @@ export default function BlogPost() {
                 </Link>
               )}
               {post.read_time_minutes && (
-                <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                <span className="flex items-center gap-1.5 text-sm text-secondary-500">
                   <ClockIcon className="w-4 h-4" />
                   {post.read_time_minutes} min read
                 </span>
               )}
-              <span className="flex items-center gap-1.5 text-sm text-gray-500">
+              <span className="flex items-center gap-1.5 text-sm text-secondary-500">
                 <EyeIcon className="w-4 h-4" />
                 {post.views_count.toLocaleString()} views
               </span>
             </div>
             
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 leading-tight mb-6">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-secondary-900 leading-tight mb-6">
               {post.title}
             </h1>
             
             {post.excerpt && (
-              <p className="text-xl text-gray-600 leading-relaxed mb-8">
+              <p className="text-xl text-secondary-600 leading-relaxed mb-8">
                 {post.excerpt}
               </p>
             )}
             
-            <div className="flex items-center justify-between flex-wrap gap-4 pb-8 border-b border-gray-100">
+            <div className="flex items-center justify-between flex-wrap gap-4 pb-8 border-b border-secondary-100">
               <div className="flex items-center gap-4">
                 {post.author_avatar ? (
                   <img
@@ -1002,13 +1002,13 @@ export default function BlogPost() {
                     className="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow-lg"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-amber-400 ring-2 ring-white shadow-lg" />
+                  <div className="w-12 h-12 rounded-full bg-brand-100 ring-2 ring-white shadow-lg" />
                 )}
                 <div>
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-secondary-900">
                     {post.author_name || 'MetaView Team'}
                   </div>
-                  <div className="text-sm text-gray-500 flex items-center gap-2">
+                  <div className="text-sm text-secondary-500 flex items-center gap-2">
                     <CalendarIcon className="w-4 h-4" />
                     {formatDate(post.published_at)}
                   </div>
@@ -1019,7 +1019,7 @@ export default function BlogPost() {
                 {/* Social Sharing Buttons */}
                 <button
                   onClick={shareToTwitter}
-                  className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                  className="p-2.5 rounded-xl border border-secondary-200 text-secondary-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 transition-colors"
                   aria-label="Share on Twitter"
                   title="Share on Twitter"
                 >
@@ -1029,7 +1029,7 @@ export default function BlogPost() {
                 </button>
                 <button
                   onClick={shareToFacebook}
-                  className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                  className="p-2.5 rounded-xl border border-secondary-200 text-secondary-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 transition-colors"
                   aria-label="Share on Facebook"
                   title="Share on Facebook"
                 >
@@ -1039,7 +1039,7 @@ export default function BlogPost() {
                 </button>
                 <button
                   onClick={shareToLinkedIn}
-                  className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                  className="p-2.5 rounded-xl border border-secondary-200 text-secondary-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 transition-colors"
                   aria-label="Share on LinkedIn"
                   title="Share on LinkedIn"
                 >
@@ -1049,7 +1049,7 @@ export default function BlogPost() {
                 </button>
                 <button
                   onClick={copyLink}
-                  className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                  className="p-2.5 rounded-xl border border-secondary-200 text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900 transition-colors"
                   aria-label="Copy Link"
                   title="Copy Link"
                 >
@@ -1058,7 +1058,7 @@ export default function BlogPost() {
                 {'share' in navigator && (
                   <button
                     onClick={sharePost}
-                    className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                    className="p-2.5 rounded-xl border border-secondary-200 text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900 transition-colors"
                     aria-label="Share"
                     title="Share"
                   >
@@ -1066,7 +1066,7 @@ export default function BlogPost() {
                   </button>
                 )}
                 <button
-                  className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                  className="p-2.5 rounded-xl border border-secondary-200 text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900 transition-colors"
                   aria-label="Bookmark"
                   title="Bookmark"
                 >
@@ -1112,14 +1112,14 @@ export default function BlogPost() {
             
             {/* Tags */}
             {getTags().length > 0 && (
-              <div className="mt-12 pt-8 border-t border-gray-100">
+              <div className="mt-12 pt-8 border-t border-secondary-100">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <TagIcon className="w-5 h-5 text-gray-400" />
+                  <TagIcon className="w-5 h-5 text-secondary-400" />
                   {getTags().map((tag) => (
                     <Link
                       key={tag}
                       to={`/blog?tag=${encodeURIComponent(tag)}`}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                      className="px-3 py-1 bg-secondary-100 text-secondary-600 rounded-full text-sm font-medium hover:bg-secondary-200 transition-colors"
                     >
                       {tag}
                     </Link>
@@ -1130,7 +1130,7 @@ export default function BlogPost() {
 
             {/* Author Bio */}
             {post.author_bio && (
-              <div className="mt-12 p-6 bg-gray-50 rounded-2xl">
+              <div className="mt-12 p-6 bg-secondary-50 rounded-2xl">
                 <div className="flex items-start gap-4">
                   {post.author_avatar ? (
                     <img
@@ -1139,13 +1139,13 @@ export default function BlogPost() {
                       className="w-16 h-16 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-amber-400" />
+                    <div className="w-16 h-16 rounded-full bg-brand-100" />
                   )}
                   <div>
-                    <div className="font-bold text-gray-900 mb-1">
+                    <div className="font-bold text-secondary-900 mb-1">
                       About {post.author_name || 'the Author'}
                     </div>
-                    <p className="text-gray-600">{post.author_bio}</p>
+                    <p className="text-secondary-600">{post.author_bio}</p>
                   </div>
                 </div>
               </div>
@@ -1155,15 +1155,15 @@ export default function BlogPost() {
 
         {/* Related Posts */}
         {relatedPosts.length > 0 && (
-          <section className="py-16 px-4 sm:px-6 bg-gray-50">
+          <section className="py-16 px-4 sm:px-6 bg-secondary-50">
             <div className="max-w-7xl mx-auto">
-              <h2 className="text-2xl font-bold text-gray-900 mb-8">Continue Reading</h2>
+              <h2 className="text-2xl font-bold text-secondary-900 mb-8">Continue Reading</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {relatedPosts.map((relatedPost) => (
                   <Link
                     key={relatedPost.id}
                     to={`/blog/${relatedPost.slug}`}
-                    className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all"
+                    className="group bg-white rounded-xl border border-secondary-200 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all"
                   >
                     {relatedPost.featured_image ? (
                       <div className="h-32 overflow-hidden">
@@ -1174,15 +1174,15 @@ export default function BlogPost() {
                         />
                       </div>
                     ) : (
-                      <div className="h-32 bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
-                        <SparklesIcon className="w-8 h-8 text-orange-300" />
+                      <div className="h-32 bg-brand-100 flex items-center justify-center">
+                        <SparklesIcon className="w-8 h-8 text-accent-300" />
                       </div>
                     )}
                     <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-2 mb-2">
+                      <h3 className="font-semibold text-secondary-900 group-hover:text-accent-600 transition-colors line-clamp-2 mb-2">
                         {relatedPost.title}
                       </h3>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-secondary-500">
                         {formatDate(relatedPost.published_at)}
                       </span>
                     </div>
@@ -1194,15 +1194,15 @@ export default function BlogPost() {
         )}
 
         {/* CTA Section */}
-        <section className="py-16 px-4 sm:px-6 bg-gradient-to-br from-orange-500 via-amber-500 to-orange-500">
+        <section className="py-16 px-4 sm:px-6 bg-primary-500">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-white mb-4">Ready to boost your CTR?</h2>
-            <p className="text-orange-100 mb-8">
+            <p className="text-accent-100 mb-8">
               Start creating beautiful, high-converting URL previews today with MetaView.
             </p>
             <Link
               to="/app"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-orange-600 rounded-xl font-bold hover:bg-orange-50 transition-colors"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-accent-600 rounded-xl font-bold hover:bg-accent-50 transition-colors"
             >
               Start Free Trial
               <ChevronRightIcon className="w-5 h-5" />
@@ -1211,21 +1211,21 @@ export default function BlogPost() {
         </section>
 
         {/* Footer */}
-        <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6">
+        <footer className="bg-secondary-900 text-white py-12 px-4 sm:px-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <Link to="/" className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 rounded-xl flex items-center justify-center">
+                <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center">
                   <span className="text-white font-black text-sm">M</span>
                 </div>
                 <span className="text-lg font-black">MetaView</span>
               </Link>
-              <div className="flex items-center gap-6 text-sm text-gray-400">
+              <div className="flex items-center gap-6 text-sm text-secondary-400">
                 <Link to="/" className="hover:text-white transition-colors">Home</Link>
                 <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
                 <Link to="/#pricing" className="hover:text-white transition-colors">Pricing</Link>
               </div>
-              <span className="text-sm text-gray-500">© 2024 MetaView. All rights reserved.</span>
+              <span className="text-sm text-secondary-500">© 2024 MetaView. All rights reserved.</span>
             </div>
           </div>
         </footer>

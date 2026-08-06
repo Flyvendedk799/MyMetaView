@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { PhotoIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -41,31 +41,31 @@ export default function Brand() {
   return (
     <div>
       <div className="mb-6">
-        <p className="text-gray-600">Customize how your URL previews appear across all platforms.</p>
+        <p className="text-secondary-600">Customize how your URL previews appear across all platforms.</p>
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
       {saveError && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {saveError}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {saveError}</p>
         </Card>
       )}
 
       {saveSuccess && (
-        <Card className="mb-6 bg-green-50 border-green-200">
-          <p className="text-green-800">Settings saved successfully!</p>
+        <Card className="mb-6 bg-success-50 border-success-200">
+          <p className="text-success-800">Settings saved successfully!</p>
         </Card>
       )}
 
       {loading ? (
         <Card>
           <div className="text-center py-12">
-            <p className="text-gray-500">Loading brand settings...</p>
+            <p className="text-secondary-500">Loading brand settings...</p>
           </div>
         </Card>
       ) : settings ? (
@@ -75,15 +75,15 @@ export default function Brand() {
             <Card>
               <h3 className="text-lg font-semibold text-secondary mb-4">Logo</h3>
               <div className="flex items-center space-x-6">
-                <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                <div className="w-24 h-24 bg-secondary-100 rounded-lg flex items-center justify-center border-2 border-dashed border-secondary-300">
                   {settings.logo_url ? (
                     <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain rounded-lg" />
                   ) : (
-                    <PhotoIcon className="w-8 h-8 text-gray-400" />
+                    <PhotoIcon className="w-8 h-8 text-secondary-400" />
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-gray-600 mb-2">
+                  <p className="text-sm text-secondary-600 mb-2">
                     Upload your logo (PNG, SVG recommended)
                   </p>
                   <Button variant="secondary">Upload Logo</Button>
@@ -97,27 +97,27 @@ export default function Brand() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <div className="w-full h-20 rounded-lg mb-2" style={{ backgroundColor: settings.primary_color }}></div>
-                  <p className="text-sm font-medium text-gray-700">Primary</p>
-                  <p className="text-xs text-gray-500">{settings.primary_color}</p>
+                  <p className="text-sm font-medium text-secondary-700">Primary</p>
+                  <p className="text-xs text-secondary-500">{settings.primary_color}</p>
                 </div>
                 <div>
                   <div className="w-full h-20 rounded-lg mb-2" style={{ backgroundColor: settings.secondary_color }}></div>
-                  <p className="text-sm font-medium text-gray-700">Secondary</p>
-                  <p className="text-xs text-gray-500">{settings.secondary_color}</p>
+                  <p className="text-sm font-medium text-secondary-700">Secondary</p>
+                  <p className="text-xs text-secondary-500">{settings.secondary_color}</p>
                 </div>
                 <div>
                   <div className="w-full h-20 rounded-lg mb-2" style={{ backgroundColor: settings.accent_color }}></div>
-                  <p className="text-sm font-medium text-gray-700">Accent</p>
-                  <p className="text-xs text-gray-500">{settings.accent_color}</p>
+                  <p className="text-sm font-medium text-secondary-700">Accent</p>
+                  <p className="text-xs text-secondary-500">{settings.accent_color}</p>
                 </div>
                 <div>
-                  <div className="w-full h-20 bg-gray-200 rounded-lg mb-2"></div>
-                  <p className="text-sm font-medium text-gray-700">Neutral</p>
-                  <p className="text-xs text-gray-500">#E5E7EB</p>
+                  <div className="w-full h-20 bg-secondary-200 rounded-lg mb-2"></div>
+                  <p className="text-sm font-medium text-secondary-700">Neutral</p>
+                  <p className="text-xs text-secondary-500">#E5E7EB</p>
                 </div>
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
                   Accent Color (Hex)
                 </label>
                 <input
@@ -125,7 +125,7 @@ export default function Brand() {
                   value={accentColor}
                   onChange={(e) => setAccentColor(e.target.value)}
                   placeholder="#3FFFD3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                 />
               </div>
             </Card>
@@ -135,13 +135,13 @@ export default function Brand() {
               <h3 className="text-lg font-semibold text-secondary mb-4">Typography</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
                     Font Family
                   </label>
                   <select
                     value={fontFamily}
                     onChange={(e) => setFontFamily(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                    className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                   >
                     <option value="Inter">Inter (Current)</option>
                     <option value="Roboto">Roboto</option>
@@ -151,20 +151,20 @@ export default function Brand() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">
                       Heading Size
                     </label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
+                    <select className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
                       <option>Large</option>
                       <option>Medium</option>
                       <option>Small</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">
                       Body Size
                     </label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
+                    <select className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all">
                       <option>Medium</option>
                       <option>Large</option>
                       <option>Small</option>
@@ -179,7 +179,7 @@ export default function Brand() {
           <div className="lg:col-span-1">
             <Card className="sticky top-24">
               <h3 className="text-lg font-semibold text-secondary mb-4">Preview</h3>
-              <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+              <div className="border border-secondary-200 rounded-lg overflow-hidden bg-white">
                 <div
                   className="aspect-video flex items-center justify-center"
                   style={{
@@ -194,11 +194,11 @@ export default function Brand() {
                   </div>
                 </div>
                 <div className="p-4" style={{ fontFamily: settings.font_family }}>
-                  <h4 className="font-semibold text-gray-900 mb-1">Your Website Title</h4>
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                  <h4 className="font-semibold text-secondary-900 mb-1">Your Website Title</h4>
+                  <p className="text-sm text-secondary-600 mb-2 line-clamp-2">
                     This is a preview of how your URL previews will appear on social media and messaging platforms.
                   </p>
-                  <p className="text-xs text-gray-500">example.com</p>
+                  <p className="text-xs text-secondary-500">example.com</p>
                 </div>
               </div>
               <div className="mt-4">

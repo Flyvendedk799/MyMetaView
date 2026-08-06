@@ -33,13 +33,13 @@ export class PageErrorBoundary extends Component<Props, State> {
       
       return (
         <Card className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
-          <p className="text-gray-600 mb-4">
+          <h2 className="font-display text-xl font-semibold tracking-display-sm text-secondary-900 mb-2">Something went wrong</h2>
+          <p className="text-secondary-600 mb-4">
             There was an error loading this page. Please try refreshing.
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="text-primary hover:text-primary/80"
+            className="text-sm font-semibold text-primary-500 hover:text-primary-600 transition-colors"
           >
             Try again
           </button>

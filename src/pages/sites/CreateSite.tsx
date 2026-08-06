@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowRightIcon,
@@ -119,7 +119,7 @@ export default function CreateSite() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-secondary mb-2">Create New Site</h1>
+        <h1 className="heading-3 mb-2">Create New Site</h1>
         <p className="text-muted">Set up your white-label blog in minutes</p>
       </div>
 
@@ -135,9 +135,9 @@ export default function CreateSite() {
               <div key={step.id} className="flex items-center flex-1">
                 <div className="flex flex-col items-center flex-1">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                    isCompleted ? 'bg-green-500 text-white' :
-                    isActive ? 'bg-primary text-white shadow-lg shadow-primary/30' :
-                    'bg-gray-100 text-gray-400'
+                    isCompleted ? 'bg-success-500 text-paper' :
+                    isActive ? 'bg-primary-500 text-paper shadow-card' :
+                    'bg-secondary-100 text-secondary-400'
                   }`}>
                     {isCompleted ? (
                       <CheckCircleIcon className="w-6 h-6" />
@@ -146,16 +146,16 @@ export default function CreateSite() {
                     )}
                   </div>
                   <span className={`text-sm mt-2 ${
-                    isActive ? 'font-semibold text-primary' : 
-                    isCompleted ? 'font-medium text-green-600' :
-                    'text-gray-400'
+                    isActive ? 'font-semibold text-primary-500' :
+                    isCompleted ? 'font-medium text-success-600' :
+                    'text-secondary-400'
                   }`}>
                     {step.name}
                   </span>
                 </div>
                 {index < steps.length - 1 && (
                   <div className={`h-1 flex-1 mx-4 rounded-full ${
-                    isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                    isCompleted ? 'bg-success-500' : 'bg-secondary-200'
                   }`} />
                 )}
               </div>
@@ -165,8 +165,8 @@ export default function CreateSite() {
       </Card>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">{error}</p>
+        <Card className="mb-6 bg-error-50 border-error-100">
+          <p className="text-error-600">{error}</p>
         </Card>
       )}
 
@@ -175,19 +175,19 @@ export default function CreateSite() {
         {currentStep === 'domain' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-secondary mb-2">Select Your Domain</h2>
+              <h2 className="heading-4 mb-2">Select Your Domain</h2>
               <p className="text-muted">Choose a verified domain to host your site</p>
             </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-16">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : domains.length === 0 ? (
               <div className="text-center py-12">
-                <GlobeAltIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Domains Available</h3>
-                <p className="text-gray-500 mb-6">You need a verified domain to create a site</p>
+                <GlobeAltIcon className="w-16 h-16 text-secondary-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-secondary-900 mb-2">No Domains Available</h3>
+                <p className="text-secondary-500 mb-6">You need a verified domain to create a site</p>
                 <Button onClick={() => navigate('/app/domains')}>
                   Add & Verify Domain
                 </Button>
@@ -201,24 +201,24 @@ export default function CreateSite() {
                       onClick={() => setSelectedDomainId(domain.id)}
                       className={`text-left p-4 border-2 rounded-xl transition-all ${
                         selectedDomainId === domain.id
-                          ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
-                          : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                          ? 'border-primary-500 bg-brand-50 shadow-card'
+                          : 'border-secondary-200 hover:border-primary-300 hover:bg-secondary-50'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            selectedDomainId === domain.id ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'
+                            selectedDomainId === domain.id ? 'bg-primary-500 text-paper' : 'bg-secondary-100 text-secondary-600'
                           }`}>
                             <GlobeAltIcon className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="font-semibold text-secondary">{domain.name}</p>
+                            <p className="font-mono text-[13px] font-semibold text-secondary-900">{domain.name}</p>
                             <p className="text-sm text-muted">Verified and ready to use</p>
                           </div>
                         </div>
                         {selectedDomainId === domain.id && (
-                          <CheckCircleIcon className="w-6 h-6 text-primary" />
+                          <CheckCircleIcon className="w-6 h-6 text-primary-500" />
                         )}
                       </div>
                     </button>
@@ -226,7 +226,7 @@ export default function CreateSite() {
                 </div>
                 
                 {/* Add new domain button */}
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t border-line">
                   <Button
                     variant="secondary"
                     onClick={() => navigate('/app/domains')}
@@ -239,7 +239,7 @@ export default function CreateSite() {
               </div>
             )}
 
-            <div className="flex justify-end pt-6 border-t">
+            <div className="flex justify-end pt-6 border-t border-line">
               <Button
                 onClick={() => setCurrentStep('template')}
                 disabled={!selectedDomainId}
@@ -266,12 +266,12 @@ export default function CreateSite() {
                   className={`text-left border-2 rounded-xl overflow-hidden transition-all ${
                     templateId === template.id
                       ? 'border-primary shadow-lg shadow-primary/10'
-                      : 'border-gray-200 hover:border-primary/50'
+                      : 'border-secondary-200 hover:border-primary/50'
                   }`}
                 >
                   <div className="flex flex-col md:flex-row">
-                    <div className="w-full md:w-48 h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                      <DocumentTextIcon className="w-12 h-12 text-gray-400" />
+                    <div className="w-full md:w-48 h-32 bg-secondary-100 flex items-center justify-center">
+                      <DocumentTextIcon className="w-12 h-12 text-secondary-400" />
                     </div>
                     <div className="flex-1 p-4">
                       <div className="flex items-start justify-between">
@@ -287,7 +287,7 @@ export default function CreateSite() {
                         {template.features.map((feature) => (
                           <span
                             key={feature}
-                            className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
+                            className="px-2 py-1 bg-secondary-100 text-secondary-600 text-xs rounded-full"
                           >
                             {feature}
                           </span>
@@ -299,7 +299,7 @@ export default function CreateSite() {
               ))}
             </div>
 
-            <div className="flex justify-between pt-6 border-t">
+            <div className="flex justify-between pt-6 border-t border-line">
               <Button variant="secondary" onClick={() => setCurrentStep('domain')}>
                 <ArrowLeftIcon className="w-4 h-4 mr-2" />
                 Back
@@ -321,7 +321,7 @@ export default function CreateSite() {
 
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
                   Site Name *
                 </label>
                 <input
@@ -329,12 +329,12 @@ export default function CreateSite() {
                   value={siteName}
                   onChange={(e) => setSiteName(e.target.value)}
                   placeholder="My Awesome Blog"
-                  className="w-full px-4 py-3 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-4 py-3 text-lg border border-secondary-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
                   Description
                 </label>
                 <textarea
@@ -342,12 +342,12 @@ export default function CreateSite() {
                   onChange={(e) => setSiteDescription(e.target.value)}
                   placeholder="A brief description of your site..."
                   rows={2}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                  className="w-full px-4 py-3 border border-secondary-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-secondary-700 mb-3">
                   Color Scheme
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -358,7 +358,7 @@ export default function CreateSite() {
                       className={`p-4 border-2 rounded-xl transition-all ${
                         selectedPreset.name === preset.name
                           ? 'border-primary shadow-lg'
-                          : 'border-gray-200 hover:border-primary/50'
+                          : 'border-secondary-200 hover:border-primary/50'
                       }`}
                     >
                       <div className="flex items-center gap-3 mb-2">
@@ -380,14 +380,14 @@ export default function CreateSite() {
                           <CheckCircleIcon className="w-5 h-5 text-primary ml-auto" />
                         )}
                       </div>
-                      <p className="text-sm font-medium text-gray-900">{preset.name}</p>
+                      <p className="text-sm font-medium text-secondary-900">{preset.name}</p>
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-between pt-6 border-t">
+            <div className="flex justify-between pt-6 border-t border-line">
               <Button variant="secondary" onClick={() => setCurrentStep('template')}>
                 <ArrowLeftIcon className="w-4 h-4 mr-2" />
                 Back
@@ -407,8 +407,8 @@ export default function CreateSite() {
               <p className="text-muted">Everything looks good? Let's launch your site!</p>
             </div>
 
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 space-y-4">
-              <div className="flex items-center gap-4 pb-4 border-b border-gray-200">
+            <div className="bg-secondary-50 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-4 pb-4 border-b border-secondary-200">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl font-bold"
                   style={{ backgroundColor: selectedPreset.primary }}
@@ -423,21 +423,21 @@ export default function CreateSite() {
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Domain:</span>
+                  <span className="text-secondary-500">Domain:</span>
                   <span className="ml-2 font-medium">{selectedDomain?.name}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Template:</span>
+                  <span className="text-secondary-500">Template:</span>
                   <span className="ml-2 font-medium">
                     {TEMPLATES.find(t => t.id === templateId)?.name}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Color Scheme:</span>
+                  <span className="text-secondary-500">Color Scheme:</span>
                   <span className="ml-2 font-medium">{selectedPreset.name}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Status:</span>
+                  <span className="text-secondary-500">Status:</span>
                   <span className="ml-2 font-medium">
                     {publishImmediately ? 'Published (live)' : 'Draft (unpublished)'}
                   </span>
@@ -446,13 +446,13 @@ export default function CreateSite() {
             </div>
 
             {/* Publish immediately option */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <div className="bg-secondary-50 border border-secondary-200 rounded-xl p-4">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={publishImmediately}
                   onChange={(e) => setPublishImmediately(e.target.checked)}
-                  className="mt-1 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                  className="mt-1 w-5 h-5 text-primary border-secondary-300 rounded focus:ring-primary"
                 />
                 <div className="flex-1">
                   <p className="font-medium text-secondary">Publish immediately</p>
@@ -474,12 +474,12 @@ export default function CreateSite() {
             </div>
 
             {publishImmediately && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="bg-success-50 border border-success-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
-                  <SparklesIcon className="w-5 h-5 text-green-600 mt-0.5" />
+                  <SparklesIcon className="w-5 h-5 text-success-600 mt-0.5" />
                   <div>
-                    <p className="text-green-900 font-medium">Site will be live immediately!</p>
-                    <p className="text-sm text-green-700 mt-1">
+                    <p className="text-success-900 font-medium">Site will be live immediately!</p>
+                    <p className="text-sm text-success-700 mt-1">
                       Once created, visitors to <span className="font-mono font-semibold">{selectedDomain?.name}</span> will see your site.
                       Make sure your domain DNS is pointing to our servers.
                     </p>
@@ -488,7 +488,7 @@ export default function CreateSite() {
               </div>
             )}
 
-            <div className="flex justify-between pt-6 border-t">
+            <div className="flex justify-between pt-6 border-t border-line">
               <Button variant="secondary" onClick={() => setCurrentStep('branding')}>
                 <ArrowLeftIcon className="w-4 h-4 mr-2" />
                 Back
@@ -512,16 +512,16 @@ export default function CreateSite() {
 
         {currentStep === 'complete' && (
           <div className="text-center py-12">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircleIcon className="w-12 h-12 text-green-600" />
+            <div className="w-20 h-20 bg-success-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircleIcon className="w-12 h-12 text-success-600" />
             </div>
             <h2 className="text-3xl font-bold text-secondary mb-2">Site Created!</h2>
             {publishImmediately ? (
               <>
                 <p className="text-lg text-muted mb-2">Your site is now live!</p>
                 <p className="text-sm text-primary font-mono mb-6">{selectedDomain?.name}</p>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
-                  <p className="text-sm text-green-800">
+                <div className="bg-success-50 border border-success-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
+                  <p className="text-sm text-success-800">
                     Visitors can now access your site at this domain. Make sure your DNS is configured correctly.
                   </p>
                 </div>
@@ -529,8 +529,8 @@ export default function CreateSite() {
             ) : (
               <p className="text-lg text-muted mb-6">Your new site is ready to customize</p>
             )}
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-sm text-gray-500 mt-4">Redirecting to your dashboard...</p>
+            <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm text-secondary-500 mt-4">Redirecting to your dashboard...</p>
           </div>
         )}
       </Card>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
@@ -178,7 +178,7 @@ export default function SiteSettings() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-secondary-200 mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -186,7 +186,7 @@ export default function SiteSettings() {
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === tab.id
                 ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-secondary-500 hover:text-secondary-700'
             }`}
           >
             {tab.name}
@@ -197,22 +197,22 @@ export default function SiteSettings() {
       {/* General Settings */}
       {activeTab === 'general' && (
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-6">General Settings</h3>
+          <h3 className="font-semibold text-secondary-900 mb-6">General Settings</h3>
           <div className="space-y-6 max-w-2xl">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Site Name
               </label>
               <input
                 type="text"
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Site Description
               </label>
               <textarea
@@ -220,18 +220,18 @@ export default function SiteSettings() {
                 onChange={(e) => setSiteDescription(e.target.value)}
                 placeholder="A brief description of your site"
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Language
               </label>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="en">English</option>
                 <option value="es">Spanish</option>
@@ -246,13 +246,13 @@ export default function SiteSettings() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Timezone
               </label>
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="UTC">UTC</option>
                 <option value="America/New_York">Eastern Time</option>
@@ -273,38 +273,38 @@ export default function SiteSettings() {
       {/* SEO Settings */}
       {activeTab === 'seo' && (
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-6">SEO Settings</h3>
+          <h3 className="font-semibold text-secondary-900 mb-6">SEO Settings</h3>
           <div className="space-y-6 max-w-2xl">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Default Meta Title
-                <span className="text-gray-400 ml-2">({metaTitle.length}/70)</span>
+                <span className="text-secondary-400 ml-2">({metaTitle.length}/70)</span>
               </label>
               <input
                 type="text"
                 value={metaTitle}
                 onChange={(e) => setMetaTitle(e.target.value.slice(0, 70))}
                 placeholder="Your Site | Tagline"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Default Meta Description
-                <span className="text-gray-400 ml-2">({metaDescription.length}/160)</span>
+                <span className="text-secondary-400 ml-2">({metaDescription.length}/160)</span>
               </label>
               <textarea
                 value={metaDescription}
                 onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))}
                 placeholder="A brief description for search engines"
                 rows={2}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Meta Keywords
               </label>
               <input
@@ -312,12 +312,12 @@ export default function SiteSettings() {
                 value={metaKeywords}
                 onChange={(e) => setMetaKeywords(e.target.value)}
                 placeholder="keyword1, keyword2, keyword3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Social Sharing Image
               </label>
               {socialImage ? (
@@ -329,7 +329,7 @@ export default function SiteSettings() {
                   />
                   <button
                     onClick={() => setSocialImage('')}
-                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                    className="absolute -top-2 -right-2 p-1 bg-error-500 text-white rounded-full"
                   >
                     <XMarkIcon className="w-3 h-3" />
                   </button>
@@ -337,10 +337,10 @@ export default function SiteSettings() {
               ) : (
                 <button
                   onClick={() => setShowSocialImageModal(true)}
-                  className="w-64 h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
+                  className="w-64 h-32 border-2 border-dashed border-secondary-300 rounded-lg flex flex-col items-center justify-center text-secondary-400 hover:border-primary hover:text-primary transition-colors"
                 >
                   <PhotoIcon className="w-8 h-8 mb-1" />
-                  <span className="text-sm">1200 × 630 recommended</span>
+                  <span className="text-sm">1200 Ã— 630 recommended</span>
                 </button>
               )}
               {socialImage && (
@@ -354,7 +354,7 @@ export default function SiteSettings() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Twitter Handle
               </label>
               <input
@@ -362,7 +362,7 @@ export default function SiteSettings() {
                 value={twitterHandle}
                 onChange={(e) => setTwitterHandle(e.target.value)}
                 placeholder="@yourhandle"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -372,9 +372,9 @@ export default function SiteSettings() {
                   type="checkbox"
                   checked={enableSitemap}
                   onChange={(e) => setEnableSitemap(e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  className="w-4 h-4 text-primary border-secondary-300 rounded focus:ring-primary"
                 />
-                <span className="text-sm text-gray-700">Enable XML Sitemap</span>
+                <span className="text-sm text-secondary-700">Enable XML Sitemap</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -382,9 +382,9 @@ export default function SiteSettings() {
                   type="checkbox"
                   checked={enableRss}
                   onChange={(e) => setEnableRss(e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  className="w-4 h-4 text-primary border-secondary-300 rounded focus:ring-primary"
                 />
-                <span className="text-sm text-gray-700">Enable RSS Feed</span>
+                <span className="text-sm text-secondary-700">Enable RSS Feed</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -392,9 +392,9 @@ export default function SiteSettings() {
                   type="checkbox"
                   checked={noIndex}
                   onChange={(e) => setNoIndex(e.target.checked)}
-                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  className="w-4 h-4 text-primary border-secondary-300 rounded focus:ring-primary"
                 />
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-secondary-700">
                   Discourage search engines from indexing this site
                 </span>
               </label>
@@ -406,10 +406,10 @@ export default function SiteSettings() {
       {/* Analytics Settings */}
       {activeTab === 'analytics' && (
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-6">Analytics & Tracking</h3>
+          <h3 className="font-semibold text-secondary-900 mb-6">Analytics & Tracking</h3>
           <div className="space-y-6 max-w-2xl">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Google Analytics ID
               </label>
               <input
@@ -417,15 +417,15 @@ export default function SiteSettings() {
                 value={googleAnalyticsId}
                 onChange={(e) => setGoogleAnalyticsId(e.target.value)}
                 placeholder="G-XXXXXXXXXX or UA-XXXXXXXX-X"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-secondary-500 mt-1">
                 Enter your Google Analytics 4 or Universal Analytics ID
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Google Tag Manager ID
               </label>
               <input
@@ -433,12 +433,12 @@ export default function SiteSettings() {
                 value={googleTagManagerId}
                 onChange={(e) => setGoogleTagManagerId(e.target.value)}
                 placeholder="GTM-XXXXXXX"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-secondary-700 mb-1">
                 Facebook Pixel ID
               </label>
               <input
@@ -446,7 +446,7 @@ export default function SiteSettings() {
                 value={facebookPixelId}
                 onChange={(e) => setFacebookPixelId(e.target.value)}
                 placeholder="XXXXXXXXXXXXXXXX"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono"
               />
             </div>
           </div>
@@ -457,43 +457,43 @@ export default function SiteSettings() {
       {activeTab === 'advanced' && (
         <div className="space-y-6">
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Custom Header Code</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Custom Header Code</h3>
             <textarea
               value={customHeaderCode}
               onChange={(e) => setCustomHeaderCode(e.target.value)}
               placeholder="<!-- Add custom HTML/scripts to <head> -->"
               rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-secondary-500 mt-2">
               This code will be inserted before the closing &lt;/head&gt; tag
             </p>
           </Card>
 
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Custom Footer Code</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Custom Footer Code</h3>
             <textarea
               value={customFooterCode}
               onChange={(e) => setCustomFooterCode(e.target.value)}
               placeholder="<!-- Add custom HTML/scripts before </body> -->"
               rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-secondary-500 mt-2">
               This code will be inserted before the closing &lt;/body&gt; tag
             </p>
           </Card>
 
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Custom JavaScript</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Custom JavaScript</h3>
             <textarea
               value={customJs}
               onChange={(e) => setCustomJs(e.target.value)}
               placeholder="// Add custom JavaScript here"
               rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-secondary-500 mt-2">
               This JavaScript will be loaded after the page content
             </p>
           </Card>

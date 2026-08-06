@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { TrashIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -101,31 +101,31 @@ export default function AdminPreviews() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Domain</label>
+          <label className="block text-sm font-medium text-secondary-700 mb-2">Filter by Domain</label>
           <input
             type="text"
             placeholder="Search domain..."
             value={filterDomain}
             onChange={(e) => setFilterDomain(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+            className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Filter by User</label>
+          <label className="block text-sm font-medium text-secondary-700 mb-2">Filter by User</label>
           <input
             type="text"
             placeholder="Search user email..."
             value={filterUser}
             onChange={(e) => setFilterUser(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+            className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
           />
         </div>
       </div>
@@ -134,30 +134,30 @@ export default function AdminPreviews() {
         <Card>
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading previews...</p>
+            <p className="text-secondary-500">Loading previews...</p>
           </div>
         </Card>
       ) : (
         <>
           <Card className="p-0 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-secondary-200">
+                <thead className="bg-secondary-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12"></th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Domain</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Clicks</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase w-12"></th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Title</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">URL</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Domain</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">User</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Clicks</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-secondary-500 uppercase">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-secondary-200">
                   {filteredPreviews.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan={8} className="px-6 py-12 text-center text-secondary-500">
                         No previews found
                       </td>
                     </tr>
@@ -168,12 +168,12 @@ export default function AdminPreviews() {
                       
                       return (
                         <>
-                          <tr key={preview.id} className="hover:bg-gray-50">
+                          <tr key={preview.id} className="hover:bg-secondary-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               {previewVariants.length > 0 && (
                                 <button
                                   onClick={() => handleToggleExpand(preview.id)}
-                                  className="text-gray-500 hover:text-gray-700"
+                                  className="text-secondary-500 hover:text-secondary-700"
                                 >
                                   {isExpanded ? (
                                     <ChevronDownIcon className="w-5 h-5" />
@@ -184,29 +184,29 @@ export default function AdminPreviews() {
                               )}
                             </td>
                             <td className="px-6 py-4">
-                              <div className="text-sm font-medium text-gray-900">{preview.title}</div>
+                              <div className="text-sm font-medium text-secondary-900">{preview.title}</div>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="text-sm text-gray-500 max-w-xs truncate">{preview.url}</div>
+                              <div className="text-sm text-secondary-500 max-w-xs truncate">{preview.url}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{preview.domain}</div>
+                              <div className="text-sm text-secondary-900">{preview.domain}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{preview.user_email}</div>
+                              <div className="text-sm text-secondary-900">{preview.user_email}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full capitalize">
+                              <span className="px-2 py-1 text-xs font-medium bg-secondary-100 text-secondary-800 rounded-full capitalize">
                                 {preview.type}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{preview.monthly_clicks.toLocaleString()}</div>
+                              <div className="text-sm text-secondary-900">{preview.monthly_clicks.toLocaleString()}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
                                 onClick={() => handleDelete(preview.id, preview.title)}
-                                className="text-red-600 hover:text-red-800"
+                                className="text-error-600 hover:text-error-800"
                               >
                                 <TrashIcon className="w-5 h-5" />
                               </button>
@@ -214,24 +214,24 @@ export default function AdminPreviews() {
                           </tr>
                           {isExpanded && previewVariants.length > 0 && (
                             <tr>
-                              <td colSpan={8} className="px-6 py-4 bg-gray-50">
+                              <td colSpan={8} className="px-6 py-4 bg-secondary-50">
                                 <div className="ml-8">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Variants</h4>
+                                  <h4 className="text-sm font-semibold text-secondary-700 mb-2">Variants</h4>
                                   <div className="space-y-2">
                                     {previewVariants.map((variant) => (
-                                      <div key={variant.id} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                                      <div key={variant.id} className="bg-white p-3 rounded-lg border border-secondary-200 flex items-center justify-between">
                                         <div className="flex-1">
                                           <div className="flex items-center space-x-2 mb-1">
-                                            <span className="text-xs font-medium text-gray-500">Variant {variant.variant_key.toUpperCase()}</span>
-                                            <span className="text-sm font-medium text-gray-900">{variant.title}</span>
+                                            <span className="text-xs font-medium text-secondary-500">Variant {variant.variant_key.toUpperCase()}</span>
+                                            <span className="text-sm font-medium text-secondary-900">{variant.title}</span>
                                           </div>
                                           {variant.description && (
-                                            <p className="text-xs text-gray-600 line-clamp-1">{variant.description}</p>
+                                            <p className="text-xs text-secondary-600 line-clamp-1">{variant.description}</p>
                                           )}
                                         </div>
                                         <button
                                           onClick={() => handleDeleteVariant(variant.id, preview.id)}
-                                          className="text-red-600 hover:text-red-800 ml-4"
+                                          className="text-error-600 hover:text-error-800 ml-4"
                                         >
                                           <TrashIcon className="w-4 h-4" />
                                         </button>
@@ -260,7 +260,7 @@ export default function AdminPreviews() {
             >
               Previous
             </Button>
-            <span className="text-gray-600">Page {page + 1}</span>
+            <span className="text-secondary-600">Page {page + 1}</span>
             <Button
               onClick={() => setPage(page + 1)}
               disabled={previews.length < limit}

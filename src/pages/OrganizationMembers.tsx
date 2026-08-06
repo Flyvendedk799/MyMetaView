@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   UserGroupIcon,
@@ -121,7 +121,7 @@ export default function OrganizationMembers() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-secondary mb-2">Team Members</h1>
-          <p className="text-gray-600">Manage team members and their roles.</p>
+          <p className="text-secondary-600">Manage team members and their roles.</p>
         </div>
         {canManageMembers && (
           <Button onClick={() => setShowInviteModal(true)}>
@@ -132,8 +132,8 @@ export default function OrganizationMembers() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
@@ -141,22 +141,22 @@ export default function OrganizationMembers() {
         <Card>
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading members...</p>
+            <p className="text-secondary-500">Loading members...</p>
           </div>
         </Card>
       ) : (
         <Card className="p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-secondary-200">
+              <thead className="bg-secondary-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">
                     Member
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">
                     Role
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">
                     Joined
                   </th>
                   {canManageMembers && (
@@ -166,14 +166,14 @@ export default function OrganizationMembers() {
                   )}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-secondary-200">
                 {members.map((member) => {
                   const Icon = roleIcons[member.role]
                   const canEdit = canManageMembers && member.role !== 'owner'
                   const canRemove = canManageMembers && member.role !== 'owner'
 
                   return (
-                    <tr key={member.id} className="hover:bg-gray-50">
+                    <tr key={member.id} className="hover:bg-secondary-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -182,7 +182,7 @@ export default function OrganizationMembers() {
                             </span>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-secondary-900">
                               {member.user_email || `User ID: ${member.user_id}`}
                             </div>
                           </div>
@@ -190,11 +190,11 @@ export default function OrganizationMembers() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <Icon className="w-5 h-5 mr-2 text-gray-500" />
-                          <span className="text-sm text-gray-900">{roleLabels[member.role]}</span>
+                          <Icon className="w-5 h-5 mr-2 text-secondary-500" />
+                          <span className="text-sm text-secondary-900">{roleLabels[member.role]}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
                         {new Date(member.created_at).toLocaleDateString()}
                       </td>
                       {canManageMembers && (
@@ -206,7 +206,7 @@ export default function OrganizationMembers() {
                                 onChange={(e) =>
                                   handleUpdateRole(member.id, e.target.value as OrganizationRole)
                                 }
-                                className="text-sm border border-gray-300 rounded-lg px-2 py-1"
+                                className="text-sm border border-secondary-300 rounded-lg px-2 py-1"
                               >
                                 <option value="viewer">Viewer</option>
                                 <option value="editor">Editor</option>
@@ -216,7 +216,7 @@ export default function OrganizationMembers() {
                             {canRemove && (
                               <button
                                 onClick={() => handleRemoveMember(member.id)}
-                                className="text-red-600 hover:text-red-800"
+                                className="text-error-600 hover:text-error-800"
                               >
                                 <TrashIcon className="w-5 h-5" />
                               </button>
@@ -246,13 +246,13 @@ export default function OrganizationMembers() {
           <div className="space-y-4">
             {inviteLink ? (
               <div>
-                <p className="text-sm text-gray-600 mb-2">Invite link created:</p>
+                <p className="text-sm text-secondary-600 mb-2">Invite link created:</p>
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
                     readOnly
                     value={inviteLink}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                    className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg bg-secondary-50 text-sm"
                   />
                   <Button
                     variant="secondary"
@@ -264,19 +264,19 @@ export default function OrganizationMembers() {
                     Copy
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-secondary-500 mt-2">
                   Share this link with the person you want to invite. They can join by clicking the link.
                 </p>
               </div>
             ) : (
               <>
                 <div>
-                  <label htmlFor="inviteRole" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="inviteRole" className="block text-sm font-medium text-secondary-700 mb-2">
                     Role
                   </label>
                   <select
                     id="inviteRole"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                    className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-primary focus:border-primary"
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value as OrganizationRole)}
                   >
@@ -284,7 +284,7 @@ export default function OrganizationMembers() {
                     <option value="editor">Editor</option>
                     {currentUserRole === 'owner' && <option value="admin">Admin</option>}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-secondary-500 mt-1">
                     {inviteRole === 'viewer' && 'Can view organization data'}
                     {inviteRole === 'editor' && 'Can create and edit previews'}
                     {inviteRole === 'admin' && 'Can manage members and settings'}

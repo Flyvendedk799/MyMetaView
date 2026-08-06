@@ -20,10 +20,10 @@ interface ReconstructedPreviewProps {
 // Quality badge shown on hover
 const QualityBadge = ({ quality, score }: { quality: string; score: number }) => {
   const colors: Record<string, string> = {
-    excellent: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    good: 'bg-blue-100 text-blue-700 border-blue-200',
-    fair: 'bg-amber-100 text-amber-700 border-amber-200',
-    poor: 'bg-gray-100 text-gray-600 border-gray-200',
+    excellent: 'bg-success-100 text-success-700 border-success-200',
+    good: 'bg-primary-100 text-primary-700 border-primary-200',
+    fair: 'bg-warning-100 text-warning-700 border-warning-200',
+    poor: 'bg-secondary-100 text-secondary-600 border-secondary-200',
   }
 
   return (
@@ -74,10 +74,10 @@ export default function ReconstructedPreview({ preview, className = '' }: Recons
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
               preview.design_fidelity_score >= 0.8
-                ? 'bg-violet-100 text-violet-700 border-violet-200'
+                ? 'bg-primary-100 text-primary-700 border-primary-200'
                 : preview.design_fidelity_score >= 0.6
-                ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                : 'bg-gray-100 text-gray-600 border-gray-200'
+                ? 'bg-primary-100 text-primary-700 border-primary-200'
+                : 'bg-secondary-100 text-secondary-600 border-secondary-200'
             }`}
           >
             🧬 {Math.round(preview.design_fidelity_score * 100)}% fidelity

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { ClipboardDocumentIcon, CheckIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -187,44 +187,44 @@ export default function AdminActivity() {
   }
 
   const getActionBadgeColor = (action: string) => {
-    if (action.includes('completed')) return 'bg-green-100 text-green-800'
-    if (action.includes('failed')) return 'bg-red-100 text-red-800'
-    if (action.includes('job_created')) return 'bg-blue-100 text-blue-800'
-    if (action.includes('admin')) return 'bg-purple-100 text-purple-800'
-    return 'bg-gray-100 text-gray-700'
+    if (action.includes('completed')) return 'bg-success-50 text-success-500'
+    if (action.includes('failed')) return 'bg-error-50 text-error-500'
+    if (action.includes('job_created')) return 'bg-brand-100 text-primary-500'
+    if (action.includes('admin')) return 'bg-secondary-100 text-secondary-700'
+    return 'bg-secondary-100 text-secondary-600'
   }
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-secondary mb-1">Activity</h1>
-          <p className="text-gray-500 text-sm">Each row is one event. Copy = one-line JSON. Full = pretty JSON. Support = human-readable + JSON for tickets.</p>
+          <h1 className="heading-3 mb-1">Activity</h1>
+          <p className="text-secondary-500 text-sm">Each row is one event. Copy = one-line JSON. Full = pretty JSON. Support = human-readable + JSON for tickets.</p>
         </div>
         <Button
           onClick={copyAllVisible}
           variant="secondary"
           className="text-sm flex items-center gap-1.5"
         >
-          {copiedId === -1 ? <CheckIcon className="w-4 h-4 text-green-600" /> : <ClipboardDocumentIcon className="w-4 h-4" />}
+          {copiedId === -1 ? <CheckIcon className="w-4 h-4 text-success-500" /> : <ClipboardDocumentIcon className="w-4 h-4" />}
           {copiedId === -1 ? 'Copied!' : 'Copy all visible'}
         </Button>
       </div>
 
       {error && (
-        <Card className="mb-4 bg-red-50 border-red-200">
-          <p className="text-red-800 text-sm">Error: {error}</p>
+        <Card className="mb-4 bg-error-50 border-error-100">
+          <p className="text-error-600 text-sm">Error: {error}</p>
         </Card>
       )}
 
       {/* Filters */}
       <Card className="mb-4 p-3">
         <div className="flex items-center gap-2 text-sm">
-          <FunnelIcon className="w-4 h-4 text-gray-400 shrink-0" />
+          <FunnelIcon className="w-4 h-4 text-secondary-400 shrink-0" />
           <select
             value={filterUserId || ''}
             onChange={(e) => { setFilterUserId(e.target.value ? parseInt(e.target.value) : undefined); setPage(0) }}
-            className="px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary outline-none"
+            className="px-2 py-1.5 bg-surface border border-secondary-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
           >
             <option value="">All Users</option>
             {users.map((user) => (
@@ -234,7 +234,7 @@ export default function AdminActivity() {
           <select
             value={filterAction}
             onChange={(e) => { setFilterAction(e.target.value); setPage(0) }}
-            className="px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary outline-none"
+            className="px-2 py-1.5 bg-surface border border-secondary-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
           >
             <option value="">All Actions</option>
             {actionTypes.map((action) => (
@@ -246,7 +246,7 @@ export default function AdminActivity() {
             value={filterUrl}
             onChange={(e) => setFilterUrl(e.target.value)}
             placeholder="Filter by URL..."
-            className="flex-1 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-primary outline-none min-w-0"
+            className="flex-1 px-2 py-1.5 bg-surface border border-secondary-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none min-w-0"
           />
         </div>
       </Card>
@@ -255,13 +255,13 @@ export default function AdminActivity() {
         <Card>
           <div className="text-center py-12">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-            <p className="text-gray-500 text-sm">Loading...</p>
+            <p className="text-secondary-500 text-sm">Loading...</p>
           </div>
         </Card>
       ) : logs.length === 0 ? (
         <Card>
           <div className="text-center py-12">
-            <p className="text-gray-500 text-sm">No activity logs found.</p>
+            <p className="text-secondary-500 text-sm">No activity logs found.</p>
           </div>
         </Card>
       ) : (
@@ -275,38 +275,38 @@ export default function AdminActivity() {
               return (
                 <div
                   key={log.id}
-                  className="group flex items-start gap-2 px-3 py-2 bg-white border border-gray-100 rounded-md hover:border-gray-200 hover:bg-gray-50/50 transition-colors font-mono text-xs leading-relaxed"
+                  className="group flex items-start gap-2 px-3 py-2 bg-white border border-secondary-100 rounded-md hover:border-secondary-200 hover:bg-secondary-50/50 transition-colors font-mono text-xs leading-relaxed"
                 >
                   {/* Copy one-line */}
                   <button
                     onClick={() => copyLogLine(log)}
-                    className="shrink-0 mt-0.5 p-0.5 rounded hover:bg-gray-200 transition-colors"
+                    className="shrink-0 mt-0.5 p-0.5 rounded hover:bg-secondary-200 transition-colors"
                     title="Copy one-line JSON (id, action, metadata)"
                   >
                     {isCopied
-                      ? <CheckIcon className="w-3.5 h-3.5 text-green-600" />
-                      : <ClipboardDocumentIcon className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />
+                      ? <CheckIcon className="w-3.5 h-3.5 text-success-600" />
+                      : <ClipboardDocumentIcon className="w-3.5 h-3.5 text-secondary-400 group-hover:text-secondary-600" />
                     }
                   </button>
                   {/* Copy full */}
                   <button
                     onClick={() => copyLogFull(log)}
-                    className="shrink-0 mt-0.5 px-1 py-0.5 rounded hover:bg-gray-200 transition-colors text-[10px] text-gray-400 group-hover:text-gray-600"
+                    className="shrink-0 mt-0.5 px-1 py-0.5 rounded hover:bg-secondary-200 transition-colors text-[10px] text-secondary-400 group-hover:text-secondary-600"
                     title="Copy full log as pretty JSON"
                   >
-                    {isCopiedFull ? '✓' : 'full'}
+                    {isCopiedFull ? 'âœ“' : 'full'}
                   </button>
                   {/* Copy for support */}
                   <button
                     onClick={() => copyLogForSupport(log)}
-                    className="shrink-0 mt-0.5 px-1 py-0.5 rounded hover:bg-gray-200 transition-colors text-[10px] text-gray-400 group-hover:text-gray-600"
+                    className="shrink-0 mt-0.5 px-1 py-0.5 rounded hover:bg-secondary-200 transition-colors text-[10px] text-secondary-400 group-hover:text-secondary-600"
                     title="Copy human-readable + JSON for support tickets"
                   >
-                    {isCopiedSupport ? '✓' : 'support'}
+                    {isCopiedSupport ? 'âœ“' : 'support'}
                   </button>
 
                   {/* Timestamp */}
-                  <span className="shrink-0 text-gray-400 tabular-nums">
+                  <span className="shrink-0 text-secondary-400 tabular-nums">
                     {new Date(log.created_at).toLocaleString('en-US', {
                       month: '2-digit', day: '2-digit',
                       hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -321,13 +321,13 @@ export default function AdminActivity() {
 
                   {/* User */}
                   {(user || log.user_id) && (
-                    <span className="shrink-0 text-gray-500">
+                    <span className="shrink-0 text-secondary-500">
                       {user ? user.email.split('@')[0] : `#${log.user_id}`}
                     </span>
                   )}
 
                   {/* Metadata summary - the key debugging info */}
-                  <span className="text-gray-700 truncate min-w-0">
+                  <span className="text-secondary-700 truncate min-w-0">
                     {summarizeMetadata(log)}
                   </span>
                 </div>
@@ -345,7 +345,7 @@ export default function AdminActivity() {
             >
               Previous
             </Button>
-            <span className="text-gray-500 text-sm">Page {page + 1}</span>
+            <span className="text-secondary-500 text-sm">Page {page + 1}</span>
             <Button
               onClick={() => setPage(page + 1)}
               disabled={logs.length < limit}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { PhotoIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
@@ -141,11 +141,11 @@ export default function SiteBranding() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Colors */}
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-4">Colors</h3>
+          <h3 className="font-semibold text-secondary-900 mb-4">Colors</h3>
           
           {/* Presets */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-secondary-700 mb-2">
               Quick Presets
             </label>
             <div className="flex flex-wrap gap-2">
@@ -153,7 +153,7 @@ export default function SiteBranding() {
                 <button
                   key={preset.name}
                   onClick={() => applyPreset(preset)}
-                  className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:border-primary transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 border border-secondary-200 rounded-lg hover:border-primary transition-colors"
                 >
                   <div className="flex gap-0.5">
                     <div
@@ -173,7 +173,7 @@ export default function SiteBranding() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Primary Color
               </label>
               <div className="flex items-center gap-3">
@@ -181,19 +181,19 @@ export default function SiteBranding() {
                   type="color"
                   value={branding.primary_color || '#f97316'}
                   onChange={(e) => updateBranding({ primary_color: e.target.value })}
-                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                  className="w-12 h-10 border border-secondary-300 rounded cursor-pointer"
                 />
                 <input
                   type="text"
                   value={branding.primary_color || '#f97316'}
                   onChange={(e) => updateBranding({ primary_color: e.target.value })}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Secondary Color
               </label>
               <div className="flex items-center gap-3">
@@ -201,19 +201,19 @@ export default function SiteBranding() {
                   type="color"
                   value={branding.secondary_color || '#1f2937'}
                   onChange={(e) => updateBranding({ secondary_color: e.target.value })}
-                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                  className="w-12 h-10 border border-secondary-300 rounded cursor-pointer"
                 />
                 <input
                   type="text"
                   value={branding.secondary_color || '#1f2937'}
                   onChange={(e) => updateBranding({ secondary_color: e.target.value })}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Accent Color
               </label>
               <div className="flex items-center gap-3">
@@ -221,19 +221,19 @@ export default function SiteBranding() {
                   type="color"
                   value={branding.accent_color || '#fbbf24'}
                   onChange={(e) => updateBranding({ accent_color: e.target.value })}
-                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                  className="w-12 h-10 border border-secondary-300 rounded cursor-pointer"
                 />
                 <input
                   type="text"
                   value={branding.accent_color || '#fbbf24'}
                   onChange={(e) => updateBranding({ accent_color: e.target.value })}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Background Color
               </label>
               <div className="flex items-center gap-3">
@@ -241,19 +241,19 @@ export default function SiteBranding() {
                   type="color"
                   value={branding.background_color || '#ffffff'}
                   onChange={(e) => updateBranding({ background_color: e.target.value })}
-                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                  className="w-12 h-10 border border-secondary-300 rounded cursor-pointer"
                 />
                 <input
                   type="text"
                   value={branding.background_color || '#ffffff'}
                   onChange={(e) => updateBranding({ background_color: e.target.value })}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Text Color
               </label>
               <div className="flex items-center gap-3">
@@ -261,13 +261,13 @@ export default function SiteBranding() {
                   type="color"
                   value={branding.text_color || '#1f2937'}
                   onChange={(e) => updateBranding({ text_color: e.target.value })}
-                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                  className="w-12 h-10 border border-secondary-300 rounded cursor-pointer"
                 />
                 <input
                   type="text"
                   value={branding.text_color || '#1f2937'}
                   onChange={(e) => updateBranding({ text_color: e.target.value })}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -277,15 +277,15 @@ export default function SiteBranding() {
         {/* Typography & Images */}
         <div className="space-y-6">
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Typography</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Typography</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Font Family
               </label>
               <select
                 value={branding.font_family || 'Inter'}
                 onChange={(e) => updateBranding({ font_family: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 style={{ fontFamily: branding.font_family || 'Inter' }}
               >
                 {GOOGLE_FONTS.map((font) => (
@@ -294,7 +294,7 @@ export default function SiteBranding() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-secondary-500 mt-2">
                 Preview: <span style={{ fontFamily: branding.font_family || 'Inter' }}>
                   The quick brown fox jumps over the lazy dog
                 </span>
@@ -303,7 +303,7 @@ export default function SiteBranding() {
           </Card>
 
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Logo</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Logo</h3>
             {branding.logo_url ? (
               <div className="relative inline-block">
                 <img
@@ -313,7 +313,7 @@ export default function SiteBranding() {
                 />
                 <button
                   onClick={() => updateBranding({ logo_url: '' })}
-                  className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                  className="absolute -top-2 -right-2 p-1 bg-error-500 text-white rounded-full"
                 >
                   <XMarkIcon className="w-3 h-3" />
                 </button>
@@ -321,7 +321,7 @@ export default function SiteBranding() {
             ) : (
               <button
                 onClick={() => setShowLogoModal(true)}
-                className="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
+                className="w-full h-24 border-2 border-dashed border-secondary-300 rounded-lg flex flex-col items-center justify-center text-secondary-400 hover:border-primary hover:text-primary transition-colors"
               >
                 <PhotoIcon className="w-8 h-8 mb-1" />
                 <span className="text-sm">Upload Logo</span>
@@ -338,7 +338,7 @@ export default function SiteBranding() {
           </Card>
 
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Favicon</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Favicon</h3>
             {branding.favicon_url ? (
               <div className="relative inline-block">
                 <img
@@ -348,7 +348,7 @@ export default function SiteBranding() {
                 />
                 <button
                   onClick={() => updateBranding({ favicon_url: '' })}
-                  className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                  className="absolute -top-2 -right-2 p-1 bg-error-500 text-white rounded-full"
                 >
                   <XMarkIcon className="w-3 h-3" />
                 </button>
@@ -356,7 +356,7 @@ export default function SiteBranding() {
             ) : (
               <button
                 onClick={() => setShowFaviconModal(true)}
-                className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
+                className="w-16 h-16 border-2 border-dashed border-secondary-300 rounded-lg flex items-center justify-center text-secondary-400 hover:border-primary hover:text-primary transition-colors"
               >
                 <PhotoIcon className="w-6 h-6" />
               </button>
@@ -369,21 +369,21 @@ export default function SiteBranding() {
                 Change Favicon
               </button>
             )}
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-secondary-500 mt-2">
               Recommended: 32x32 or 64x64 PNG
             </p>
           </Card>
 
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-4">Custom CSS</h3>
+            <h3 className="font-semibold text-secondary-900 mb-4">Custom CSS</h3>
             <textarea
               value={branding.custom_css || ''}
               onChange={(e) => updateBranding({ custom_css: e.target.value })}
               placeholder="/* Add custom CSS here */"
               rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-secondary-500 mt-2">
               Add custom CSS to override template styles
             </p>
           </Card>
@@ -392,7 +392,7 @@ export default function SiteBranding() {
 
       {/* Color Preview */}
       <Card className="mt-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Preview</h3>
+        <h3 className="font-semibold text-secondary-900 mb-4">Preview</h3>
         <div
           className="p-6 rounded-lg"
           style={{

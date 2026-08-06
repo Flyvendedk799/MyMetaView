@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -80,7 +80,7 @@ export default function AdminNewsletter() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-secondary mb-2">Admin / Newsletter Subscribers</h1>
-          <p className="text-gray-600">Manage newsletter email subscriptions</p>
+          <p className="text-secondary-600">Manage newsletter email subscriptions</p>
         </div>
         <div className="flex items-center space-x-3">
           <Button
@@ -104,8 +104,8 @@ export default function AdminNewsletter() {
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
@@ -113,7 +113,7 @@ export default function AdminNewsletter() {
       <Card className="mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-secondary-400" />
             <input
               type="text"
               value={search}
@@ -122,7 +122,7 @@ export default function AdminNewsletter() {
                 setPage(1) // Reset to first page on search
               }}
               placeholder="Search by email..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2.5 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
           <select
@@ -131,7 +131,7 @@ export default function AdminNewsletter() {
               setSourceFilter(e.target.value)
               setPage(1) // Reset to first page on filter change
             }}
-            className="px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="px-4 py-2.5 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="all">All Sources</option>
             {uniqueSources.map((source) => (
@@ -148,7 +148,7 @@ export default function AdminNewsletter() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Total Subscribers</p>
+              <p className="text-sm text-secondary-600 mb-1">Total Subscribers</p>
               <p className="text-2xl font-bold text-secondary">{total.toLocaleString()}</p>
             </div>
             <EnvelopeIcon className="w-8 h-8 text-primary" />
@@ -157,21 +157,21 @@ export default function AdminNewsletter() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Active</p>
-              <p className="text-2xl font-bold text-emerald-600">
+              <p className="text-sm text-secondary-600 mb-1">Active</p>
+              <p className="text-2xl font-bold text-success-600">
                 {subscribers.filter(s => s.is_active).length.toLocaleString()}
               </p>
             </div>
-            <CheckCircleIcon className="w-8 h-8 text-emerald-500" />
+            <CheckCircleIcon className="w-8 h-8 text-success-500" />
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 mb-1">This Page</p>
-              <p className="text-2xl font-bold text-gray-900">{subscribers.length.toLocaleString()}</p>
+              <p className="text-sm text-secondary-600 mb-1">This Page</p>
+              <p className="text-2xl font-bold text-secondary-900">{subscribers.length.toLocaleString()}</p>
             </div>
-            <XCircleIcon className="w-8 h-8 text-gray-400" />
+            <XCircleIcon className="w-8 h-8 text-secondary-400" />
           </div>
         </Card>
       </div>
@@ -180,7 +180,7 @@ export default function AdminNewsletter() {
         <Card>
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading subscribers...</p>
+            <p className="text-secondary-500">Loading subscribers...</p>
           </div>
         </Card>
       ) : (
@@ -188,42 +188,42 @@ export default function AdminNewsletter() {
           <Card className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Source</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Subscribed At</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Consent</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">IP Address</th>
+                <tr className="border-b border-secondary-200">
+                  <th className="text-left py-3 px-4 font-semibold text-secondary-700">Email</th>
+                  <th className="text-left py-3 px-4 font-semibold text-secondary-700">Source</th>
+                  <th className="text-left py-3 px-4 font-semibold text-secondary-700">Subscribed At</th>
+                  <th className="text-left py-3 px-4 font-semibold text-secondary-700">Status</th>
+                  <th className="text-left py-3 px-4 font-semibold text-secondary-700">Consent</th>
+                  <th className="text-left py-3 px-4 font-semibold text-secondary-700">IP Address</th>
                 </tr>
               </thead>
               <tbody>
                 {subscribers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-gray-500">
+                    <td colSpan={6} className="text-center py-12 text-secondary-500">
                       No subscribers found
                     </td>
                   </tr>
                 ) : (
                   subscribers.map((subscriber) => (
-                    <tr key={subscriber.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 font-medium text-gray-900">{subscriber.email}</td>
+                    <tr key={subscriber.id} className="border-b border-secondary-100 hover:bg-secondary-50">
+                      <td className="py-3 px-4 font-medium text-secondary-900">{subscriber.email}</td>
                       <td className="py-3 px-4">
-                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded capitalize">
+                        <span className="inline-block px-2 py-1 bg-secondary-100 text-secondary-700 text-xs font-medium rounded capitalize">
                           {subscriber.source}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">
+                      <td className="py-3 px-4 text-sm text-secondary-600">
                         {new Date(subscriber.subscribed_at).toLocaleString()}
                       </td>
                       <td className="py-3 px-4">
                         {subscriber.is_active ? (
-                          <span className="inline-flex items-center space-x-1 text-emerald-600">
+                          <span className="inline-flex items-center space-x-1 text-success-600">
                             <CheckCircleIcon className="w-4 h-4" />
                             <span className="text-sm font-medium">Active</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center space-x-1 text-red-600">
+                          <span className="inline-flex items-center space-x-1 text-error-600">
                             <XCircleIcon className="w-4 h-4" />
                             <span className="text-sm font-medium">Inactive</span>
                           </span>
@@ -231,12 +231,12 @@ export default function AdminNewsletter() {
                       </td>
                       <td className="py-3 px-4">
                         {subscriber.consent_given ? (
-                          <span className="text-emerald-600 text-sm font-medium">Yes</span>
+                          <span className="text-success-600 text-sm font-medium">Yes</span>
                         ) : (
-                          <span className="text-red-600 text-sm font-medium">No</span>
+                          <span className="text-error-600 text-sm font-medium">No</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-500">
+                      <td className="py-3 px-4 text-sm text-secondary-500">
                         {subscriber.ip_address || '-'}
                       </td>
                     </tr>
@@ -249,7 +249,7 @@ export default function AdminNewsletter() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-secondary-600">
                 Showing {(page - 1) * perPage + 1} to {Math.min(page * perPage, total)} of {total} subscribers
               </div>
               <div className="flex items-center space-x-2">
@@ -260,7 +260,7 @@ export default function AdminNewsletter() {
                 >
                   Previous
                 </Button>
-                <span className="px-4 py-2 text-sm text-gray-700">
+                <span className="px-4 py-2 text-sm text-secondary-700">
                   Page {page} of {totalPages}
                 </span>
                 <Button

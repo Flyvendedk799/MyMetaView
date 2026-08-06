@@ -467,29 +467,29 @@ export default function AdminBlogEditor() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 -m-8 p-8">
+    <div className="min-h-screen bg-secondary-50 -m-8 p-8">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200 -mx-8 -mt-8 px-8 py-4 mb-6 sticky top-0 z-30">
+      <div className="bg-white border-b border-secondary-200 -mx-8 -mt-8 px-8 py-4 mb-6 sticky top-0 z-30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/app/admin/blog')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
             >
-              <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+              <ArrowLeftIcon className="w-5 h-5 text-secondary-600" />
             </button>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">
+              <h1 className="text-lg font-bold text-secondary-900">
                 {isEditing ? 'Edit Post' : 'New Post'}
               </h1>
               {lastSaved && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-secondary-500">
                   Last saved {lastSaved.toLocaleTimeString()}
                 </p>
               )}
@@ -498,9 +498,9 @@ export default function AdminBlogEditor() {
           
           <div className="flex items-center gap-3">
             {!isEditing && (
-              <label className="px-4 py-2 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors cursor-pointer flex items-center gap-2">
-                <ArrowDownTrayIcon className="w-5 h-5 text-gray-600" />
-                <span className="text-gray-700">Import JSON</span>
+              <label className="px-4 py-2 border border-secondary-200 rounded-lg font-medium hover:bg-secondary-50 transition-colors cursor-pointer flex items-center gap-2">
+                <ArrowDownTrayIcon className="w-5 h-5 text-secondary-600" />
+                <span className="text-secondary-700">Import JSON</span>
                 <input
                   type="file"
                   accept=".json,application/json"
@@ -509,25 +509,25 @@ export default function AdminBlogEditor() {
                 />
               </label>
             )}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary-100 rounded-lg">
               <span className={`w-2 h-2 rounded-full ${
-                formData.status === 'published' ? 'bg-green-500' :
-                formData.status === 'scheduled' ? 'bg-blue-500' :
-                'bg-gray-400'
+                formData.status === 'published' ? 'bg-success-500' :
+                formData.status === 'scheduled' ? 'bg-primary-500' :
+                'bg-secondary-400'
               }`} />
-              <span className="text-sm font-medium text-gray-700 capitalize">{formData.status}</span>
+              <span className="text-sm font-medium text-secondary-700 capitalize">{formData.status}</span>
             </div>
             <button
               onClick={() => handleSave()}
               disabled={saving}
-              className="px-4 py-2 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2 border border-secondary-200 rounded-lg font-medium hover:bg-secondary-50 transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Draft'}
             </button>
             <button
               onClick={handlePublish}
               disabled={saving || !formData.title || !formData.content}
-              className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-accent-500 text-white rounded-lg font-medium hover:bg-accent-600 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <CloudArrowUpIcon className="w-5 h-5" />
               {formData.status === 'published' ? 'Update' : 'Publish'}
@@ -540,7 +540,7 @@ export default function AdminBlogEditor() {
         {/* Main Editor */}
         <div className="flex-1 space-y-6">
           {/* Title */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
             <input
               type="text"
               value={formData.title}
@@ -555,10 +555,10 @@ export default function AdminBlogEditor() {
                 }
               }}
               placeholder="Post title..."
-              className="w-full text-3xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none"
+              className="w-full text-3xl font-bold text-secondary-900 placeholder-secondary-400 border-none outline-none"
             />
             <div className="flex items-center gap-2 mt-4">
-              <span className="text-sm text-gray-500">/blog/</span>
+              <span className="text-sm text-secondary-500">/blog/</span>
               <input
                 type="text"
                 value={formData.slug}
@@ -567,20 +567,20 @@ export default function AdminBlogEditor() {
                   updateFormData('slug', e.target.value)
                 }}
                 placeholder="post-slug"
-                className="flex-1 text-sm text-gray-600 border-none outline-none bg-gray-50 px-2 py-1 rounded"
+                className="flex-1 text-sm text-secondary-600 border-none outline-none bg-secondary-50 px-2 py-1 rounded"
               />
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="flex border-b border-gray-200">
+          <div className="bg-white rounded-xl border border-secondary-200 overflow-hidden">
+            <div className="flex border-b border-secondary-200">
               <button
                 onClick={() => setActiveTab('write')}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'write'
-                    ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/50'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-accent-600 border-b-2 border-accent-500 bg-accent-50/50'
+                    : 'text-secondary-500 hover:text-secondary-700'
                 }`}
               >
                 <PencilIcon className="w-4 h-4 inline mr-2" />
@@ -590,8 +590,8 @@ export default function AdminBlogEditor() {
                 onClick={() => setActiveTab('preview')}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'preview'
-                    ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/50'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-accent-600 border-b-2 border-accent-500 bg-accent-50/50'
+                    : 'text-secondary-500 hover:text-secondary-700'
                 }`}
               >
                 <EyeIcon className="w-4 h-4 inline mr-2" />
@@ -604,7 +604,7 @@ export default function AdminBlogEditor() {
                 <div className="space-y-4">
                   {/* Excerpt */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Excerpt</label>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Excerpt</label>
                     <textarea
                       value={formData.excerpt}
                       onChange={(e) => updateFormData('excerpt', e.target.value)}
@@ -619,11 +619,11 @@ export default function AdminBlogEditor() {
                       }}
                       placeholder="Brief summary of the post (shown in listings)..."
                       rows={2}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
+                      className="w-full px-4 py-3 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 resize-none"
                     />
                     <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-400">Recommended: 150-200 characters</span>
-                      <span className={`text-xs ${(formData.excerpt?.length || 0) > 200 ? 'text-red-500' : 'text-gray-400'}`}>
+                      <span className="text-xs text-secondary-400">Recommended: 150-200 characters</span>
+                      <span className={`text-xs ${(formData.excerpt?.length || 0) > 200 ? 'text-error-500' : 'text-secondary-400'}`}>
                         {formData.excerpt?.length || 0}/200
                       </span>
                     </div>
@@ -631,10 +631,10 @@ export default function AdminBlogEditor() {
                   
                   {/* Content */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Content (Markdown)</label>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Content (Markdown)</label>
                     
                     {/* Formatting Toolbar */}
-                    <div className="flex items-center gap-1 p-2 bg-gray-50 border border-gray-200 border-b-0 rounded-t-lg">
+                    <div className="flex items-center gap-1 p-2 bg-secondary-50 border border-secondary-200 border-b-0 rounded-t-lg">
                       <button
                         type="button"
                         onClick={() => {
@@ -650,7 +650,7 @@ export default function AdminBlogEditor() {
                             textarea.setSelectionRange(start + 2, end + 2)
                           }, 0)
                         }}
-                        className="p-2 hover:bg-gray-200 rounded text-gray-700 font-bold text-sm"
+                        className="p-2 hover:bg-secondary-200 rounded text-secondary-700 font-bold text-sm"
                         title="Bold (wrap selection)"
                       >
                         B
@@ -670,12 +670,12 @@ export default function AdminBlogEditor() {
                             textarea.setSelectionRange(start + 1, end + 1)
                           }, 0)
                         }}
-                        className="p-2 hover:bg-gray-200 rounded text-gray-700 italic text-sm"
+                        className="p-2 hover:bg-secondary-200 rounded text-secondary-700 italic text-sm"
                         title="Italic (wrap selection)"
                       >
                         I
                       </button>
-                      <div className="w-px h-5 bg-gray-300 mx-1" />
+                      <div className="w-px h-5 bg-secondary-300 mx-1" />
                       <button
                         type="button"
                         onClick={() => {
@@ -686,7 +686,7 @@ export default function AdminBlogEditor() {
                           const newText = text.substring(0, lineStart) + '## ' + text.substring(lineStart)
                           updateFormData('content', newText)
                         }}
-                        className="p-2 hover:bg-gray-200 rounded text-gray-700 text-sm font-semibold"
+                        className="p-2 hover:bg-secondary-200 rounded text-secondary-700 text-sm font-semibold"
                         title="Heading 2"
                       >
                         H2
@@ -701,12 +701,12 @@ export default function AdminBlogEditor() {
                           const newText = text.substring(0, lineStart) + '### ' + text.substring(lineStart)
                           updateFormData('content', newText)
                         }}
-                        className="p-2 hover:bg-gray-200 rounded text-gray-700 text-sm"
+                        className="p-2 hover:bg-secondary-200 rounded text-secondary-700 text-sm"
                         title="Heading 3"
                       >
                         H3
                       </button>
-                      <div className="w-px h-5 bg-gray-300 mx-1" />
+                      <div className="w-px h-5 bg-secondary-300 mx-1" />
                       <button
                         type="button"
                         onClick={() => {
@@ -717,7 +717,7 @@ export default function AdminBlogEditor() {
                           const newText = text.substring(0, lineStart) + '- ' + text.substring(lineStart)
                           updateFormData('content', newText)
                         }}
-                        className="p-2 hover:bg-gray-200 rounded text-gray-700 text-sm"
+                        className="p-2 hover:bg-secondary-200 rounded text-secondary-700 text-sm"
                         title="Bullet point"
                       >
                         •
@@ -732,13 +732,13 @@ export default function AdminBlogEditor() {
                           const newText = text.substring(0, lineStart) + '> ' + text.substring(lineStart)
                           updateFormData('content', newText)
                         }}
-                        className="p-2 hover:bg-gray-200 rounded text-gray-700 text-sm"
+                        className="p-2 hover:bg-secondary-200 rounded text-secondary-700 text-sm"
                         title="Blockquote"
                       >
                         "
                       </button>
                       <div className="flex-1" />
-                      <span className="text-xs text-gray-400 px-2">Paste formatted text - it auto-converts to Markdown!</span>
+                      <span className="text-xs text-secondary-400 px-2">Paste formatted text - it auto-converts to Markdown!</span>
                     </div>
                     
                     <textarea
@@ -790,10 +790,10 @@ Regular paragraph text goes here. Use **bold** and *italic* for emphasis.
 
 More content here..."
                       rows={20}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-mono text-sm resize-y min-h-[400px]"
+                      className="w-full px-4 py-3 border border-secondary-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 font-mono text-sm resize-y min-h-[400px]"
                     />
                     <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-secondary-400">
                         {formData.content.split(/\s+/).filter(Boolean).length} words • ~{readTime} min read
                       </span>
                     </div>
@@ -812,19 +812,19 @@ More content here..."
                           return <h3 key={i} className="text-xl font-bold mt-4 mb-2">{trimmed.slice(4)}</h3>
                         }
                         if (trimmed.startsWith('> ')) {
-                          return <blockquote key={i} className="border-l-4 border-orange-500 pl-4 italic text-gray-600">{trimmed.slice(2)}</blockquote>
+                          return <blockquote key={i} className="border-l-4 border-accent-500 pl-4 italic text-secondary-600">{trimmed.slice(2)}</blockquote>
                         }
                         if (trimmed.startsWith('- ')) {
                           return <li key={i} className="ml-4">{trimmed.slice(2)}</li>
                         }
                         if (trimmed) {
-                          return <p key={i} className="text-gray-700">{trimmed}</p>
+                          return <p key={i} className="text-secondary-700">{trimmed}</p>
                         }
                         return null
                       })}
                     </div>
                   ) : (
-                    <p className="text-gray-400 italic">Start writing to see preview...</p>
+                    <p className="text-secondary-400 italic">Start writing to see preview...</p>
                   )}
                 </div>
               )}
@@ -835,9 +835,9 @@ More content here..."
         {/* Sidebar */}
         <div className="w-96 space-y-6">
           {/* Featured Image */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <PhotoIcon className="w-5 h-5 text-gray-400" />
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
+            <h3 className="font-semibold text-secondary-900 mb-4 flex items-center gap-2">
+              <PhotoIcon className="w-5 h-5 text-secondary-400" />
               Featured Image
             </h3>
             {formData.featured_image ? (
@@ -849,15 +849,15 @@ More content here..."
                 />
                 <button
                   onClick={() => updateFormData('featured_image', '')}
-                  className="text-sm text-red-500 hover:text-red-600"
+                  className="text-sm text-error-500 hover:text-error-600"
                 >
                   Remove image
                 </button>
               </div>
             ) : (
-              <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
-                <PhotoIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Enter image URL below</p>
+              <div className="border-2 border-dashed border-secondary-200 rounded-lg p-6 text-center">
+                <PhotoIcon className="w-8 h-8 text-secondary-300 mx-auto mb-2" />
+                <p className="text-sm text-secondary-500">Enter image URL below</p>
               </div>
             )}
             <input
@@ -906,7 +906,7 @@ More content here..."
                 }
               }}
               placeholder="https://example.com/image.jpg"
-              className="w-full mt-3 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              className="w-full mt-3 px-3 py-2 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
             {formData.featured_image && (() => {
               const url = formData.featured_image.trim()
@@ -914,7 +914,7 @@ More content here..."
               // Comprehensive validation
               if (!url || url.length < 10 || url.length > 2048) {
                 return (
-                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-error-600 mt-1 flex items-center gap-1">
                     <span>❌</span>
                     <span>Error: Invalid URL length</span>
                   </p>
@@ -923,7 +923,7 @@ More content here..."
               
               if (!/^https?:\/\//i.test(url)) {
                 return (
-                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-error-600 mt-1 flex items-center gap-1">
                     <span>❌</span>
                     <span>Error: URL must start with http:// or https://</span>
                   </p>
@@ -932,7 +932,7 @@ More content here..."
               
               if (/[\s\n\r]/.test(url)) {
                 return (
-                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-error-600 mt-1 flex items-center gap-1">
                     <span>❌</span>
                     <span>Error: URL contains invalid characters (spaces, newlines)</span>
                   </p>
@@ -976,7 +976,7 @@ More content here..."
                 
                 if (!hasImageExtension && !isFromTrustedDomain) {
                   return (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-warning-600 mt-1 flex items-center gap-1">
                       <span>⚠️</span>
                       <span>Warning: This doesn't appear to be a direct image link. Use URLs ending in .jpg, .png, .webp, etc.</span>
                     </p>
@@ -985,7 +985,7 @@ More content here..."
                 
                 if (isRejected) {
                   return (
-                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-error-600 mt-1 flex items-center gap-1">
                       <span>❌</span>
                       <span>Error: This URL type is not supported. Please use a direct image link.</span>
                     </p>
@@ -994,7 +994,7 @@ More content here..."
                 
                 if (hasSuspiciousPath || !hasImageLikePath) {
                   return (
-                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-error-600 mt-1 flex items-center gap-1">
                       <span>❌</span>
                       <span>Error: URL path looks suspicious or doesn't appear to be an image</span>
                     </p>
@@ -1004,7 +1004,7 @@ More content here..."
                 // Show accessibility check result if available
                 if (imageCheckStatus.checking) {
                   return (
-                    <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-primary-600 mt-1 flex items-center gap-1">
                       <span>⏳</span>
                       <span>Checking image accessibility...</span>
                     </p>
@@ -1013,7 +1013,7 @@ More content here..."
                 
                 if (imageCheckStatus.accessible === false && imageCheckStatus.error) {
                   return (
-                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-error-600 mt-1 flex items-center gap-1">
                       <span>❌</span>
                       <span>{imageCheckStatus.error}</span>
                     </p>
@@ -1022,7 +1022,7 @@ More content here..."
                 
                 if (imageCheckStatus.accessible === true) {
                   return (
-                    <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-success-600 mt-1 flex items-center gap-1">
                       <span>✅</span>
                       <span>Valid image URL and accessible</span>
                     </p>
@@ -1030,14 +1030,14 @@ More content here..."
                 }
                 
                 return (
-                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-success-600 mt-1 flex items-center gap-1">
                     <span>✅</span>
                     <span>Valid image URL format (click outside field to check accessibility)</span>
                   </p>
                 )
               } catch (e) {
                 return (
-                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-error-600 mt-1 flex items-center gap-1">
                     <span>❌</span>
                     <span>Error: Invalid URL format</span>
                   </p>
@@ -1049,23 +1049,23 @@ More content here..."
               value={formData.featured_image_alt}
               onChange={(e) => updateFormData('featured_image_alt', e.target.value)}
               placeholder="Image alt text (for accessibility)"
-              className="w-full mt-2 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              className="w-full mt-2 px-3 py-2 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
           </div>
 
           {/* Category & Tags */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <HashtagIcon className="w-5 h-5 text-gray-400" />
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
+            <h3 className="font-semibold text-secondary-900 mb-4 flex items-center gap-2">
+              <HashtagIcon className="w-5 h-5 text-secondary-400" />
               Organization
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Category</label>
+                <label className="block text-sm text-secondary-600 mb-1">Category</label>
                 <select
                   value={formData.category_id || ''}
                   onChange={(e) => updateFormData('category_id', e.target.value ? parseInt(e.target.value) : undefined)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                  className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                 >
                   <option value="">No category</option>
                   {categories.map((cat) => (
@@ -1074,7 +1074,7 @@ More content here..."
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Tags</label>
+                <label className="block text-sm text-secondary-600 mb-1">Tags</label>
                 <input
                   type="text"
                   value={formData.tags}
@@ -1089,17 +1089,17 @@ More content here..."
                     }
                   }}
                   placeholder="seo, marketing, tips"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                  className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                 />
-                <p className="text-xs text-gray-400 mt-1">Comma-separated</p>
+                <p className="text-xs text-secondary-400 mt-1">Comma-separated</p>
               </div>
             </div>
           </div>
 
           {/* Author */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <UserIcon className="w-5 h-5 text-gray-400" />
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
+            <h3 className="font-semibold text-secondary-900 mb-4 flex items-center gap-2">
+              <UserIcon className="w-5 h-5 text-secondary-400" />
               Author
             </h3>
             <div className="space-y-3">
@@ -1108,90 +1108,90 @@ More content here..."
                 value={formData.author_name}
                 onChange={(e) => updateFormData('author_name', e.target.value)}
                 placeholder="Author name"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
               />
               <input
                 type="text"
                 value={formData.author_avatar}
                 onChange={(e) => updateFormData('author_avatar', e.target.value)}
                 placeholder="Avatar URL"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
               />
               <textarea
                 value={formData.author_bio}
                 onChange={(e) => updateFormData('author_bio', e.target.value)}
                 placeholder="Brief author bio..."
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm resize-none"
+                className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm resize-none"
               />
             </div>
           </div>
 
           {/* Visibility */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Visibility</h3>
+          <div className="bg-white rounded-xl border border-secondary-200 p-6">
+            <h3 className="font-semibold text-secondary-900 mb-4">Visibility</h3>
             <div className="space-y-3">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.is_featured}
                   onChange={(e) => updateFormData('is_featured', e.target.checked)}
-                  className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+                  className="w-4 h-4 text-accent-500 border-secondary-300 rounded focus:ring-accent-500"
                 />
-                <span className="text-sm text-gray-700">Featured post</span>
+                <span className="text-sm text-secondary-700">Featured post</span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.is_pinned}
                   onChange={(e) => updateFormData('is_pinned', e.target.checked)}
-                  className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+                  className="w-4 h-4 text-accent-500 border-secondary-300 rounded focus:ring-accent-500"
                 />
-                <span className="text-sm text-gray-700">Pin to top</span>
+                <span className="text-sm text-secondary-700">Pin to top</span>
               </label>
             </div>
           </div>
 
           {/* SEO Section */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-secondary-200 overflow-hidden">
             <button
               onClick={() => toggleSection('seo')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-secondary-50 transition-colors"
             >
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+              <h3 className="font-semibold text-secondary-900 flex items-center gap-2">
+                <MagnifyingGlassIcon className="w-5 h-5 text-secondary-400" />
                 SEO Settings
               </h3>
               {expandedSections.seo ? (
-                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                <ChevronUpIcon className="w-5 h-5 text-secondary-400" />
               ) : (
-                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                <ChevronDownIcon className="w-5 h-5 text-secondary-400" />
               )}
             </button>
             {expandedSections.seo && (
-              <div className="px-6 pb-6 space-y-4 border-t border-gray-100 pt-4">
+              <div className="px-6 pb-6 space-y-4 border-t border-secondary-100 pt-4">
                 {/* Google Preview */}
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 mb-2">Google Preview</p>
-                  <div className="text-blue-600 text-lg hover:underline cursor-pointer truncate">
+                <div className="p-4 bg-secondary-50 rounded-lg">
+                  <p className="text-xs text-secondary-500 mb-2">Google Preview</p>
+                  <div className="text-primary-600 text-lg hover:underline cursor-pointer truncate">
                     {effectiveMetaTitle || 'Post Title'}
                   </div>
-                  <div className="text-green-700 text-sm truncate">
+                  <div className="text-success-700 text-sm truncate">
                     mymetaview.com/blog/{formData.slug || 'post-slug'}
                   </div>
-                  <div className="text-gray-600 text-sm line-clamp-2">
+                  <div className="text-secondary-600 text-sm line-clamp-2">
                     {effectiveMetaDesc || 'Add a meta description to improve SEO...'}
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-sm text-secondary-600 mb-1">
                     Meta Title
-                    <span className={`ml-2 ${(formData.meta_title?.length || 0) > 70 ? 'text-red-500' : (formData.meta_title?.length || 0) > 60 ? 'text-amber-500' : 'text-gray-400'}`}>
+                    <span className={`ml-2 ${(formData.meta_title?.length || 0) > 70 ? 'text-error-500' : (formData.meta_title?.length || 0) > 60 ? 'text-warning-500' : 'text-secondary-400'}`}>
                       ({formData.meta_title?.length || 0}/70)
                     </span>
                     {(formData.meta_title?.length || 0) > 70 && (
-                      <span className="ml-2 text-xs text-red-600">⚠️ Exceeds limit</span>
+                      <span className="ml-2 text-xs text-error-600">⚠️ Exceeds limit</span>
                     )}
                   </label>
                   <input
@@ -1199,21 +1199,21 @@ More content here..."
                     value={formData.meta_title}
                     onChange={(e) => updateFormData('meta_title', e.target.value)}
                     placeholder={formData.title || 'SEO title (defaults to post title)'}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                   />
                 </div>
                 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm text-gray-600">
+                    <label className="text-sm text-secondary-600">
                       Meta Description
-                      <span className={`ml-2 ${(formData.meta_description?.length || 0) > 160 ? 'text-red-500' : 'text-gray-400'}`}>
+                      <span className={`ml-2 ${(formData.meta_description?.length || 0) > 160 ? 'text-error-500' : 'text-secondary-400'}`}>
                         ({formData.meta_description?.length || 0}/160)
                       </span>
                     </label>
                     <button
                       onClick={autoGenerateMetaDescription}
-                      className="text-xs text-orange-500 hover:text-orange-600"
+                      className="text-xs text-accent-500 hover:text-accent-600"
                     >
                       Auto-generate
                     </button>
@@ -1232,18 +1232,18 @@ More content here..."
                     }}
                     placeholder="Brief description for search results..."
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm resize-none"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm resize-none"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Keywords</label>
+                  <label className="block text-sm text-secondary-600 mb-1">Keywords</label>
                   <input
                     type="text"
                     value={formData.meta_keywords}
                     onChange={(e) => updateFormData('meta_keywords', e.target.value)}
                     placeholder="keyword1, keyword2, keyword3"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                   />
                 </div>
 
@@ -1252,60 +1252,60 @@ More content here..."
                     type="checkbox"
                     checked={formData.no_index}
                     onChange={(e) => updateFormData('no_index', e.target.checked)}
-                    className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+                    className="w-4 h-4 text-accent-500 border-secondary-300 rounded focus:ring-accent-500"
                   />
-                  <span className="text-sm text-gray-700">No index (hide from search engines)</span>
+                  <span className="text-sm text-secondary-700">No index (hide from search engines)</span>
                 </label>
               </div>
             )}
           </div>
 
           {/* Social Media Section */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-secondary-200 overflow-hidden">
             <button
               onClick={() => toggleSection('social')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-secondary-50 transition-colors"
             >
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <GlobeAltIcon className="w-5 h-5 text-gray-400" />
+              <h3 className="font-semibold text-secondary-900 flex items-center gap-2">
+                <GlobeAltIcon className="w-5 h-5 text-secondary-400" />
                 Social Media
               </h3>
               {expandedSections.social ? (
-                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                <ChevronUpIcon className="w-5 h-5 text-secondary-400" />
               ) : (
-                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                <ChevronDownIcon className="w-5 h-5 text-secondary-400" />
               )}
             </button>
             {expandedSections.social && (
-              <div className="px-6 pb-6 space-y-4 border-t border-gray-100 pt-4">
+              <div className="px-6 pb-6 space-y-4 border-t border-secondary-100 pt-4">
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Open Graph Image</label>
+                  <label className="block text-sm text-secondary-600 mb-1">Open Graph Image</label>
                   <input
                     type="text"
                     value={formData.og_image}
                     onChange={(e) => updateFormData('og_image', e.target.value)}
                     placeholder="https://... (1200x630 recommended)"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Twitter Title</label>
+                  <label className="block text-sm text-secondary-600 mb-1">Twitter Title</label>
                   <input
                     type="text"
                     value={formData.twitter_title}
                     onChange={(e) => updateFormData('twitter_title', e.target.value)}
                     placeholder="Custom title for Twitter"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Twitter Description</label>
+                  <label className="block text-sm text-secondary-600 mb-1">Twitter Description</label>
                   <input
                     type="text"
                     value={formData.twitter_description}
                     onChange={(e) => updateFormData('twitter_description', e.target.value)}
                     placeholder="Custom description for Twitter"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                   />
                 </div>
               </div>
@@ -1313,40 +1313,40 @@ More content here..."
           </div>
 
           {/* Advanced Section */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-secondary-200 overflow-hidden">
             <button
               onClick={() => toggleSection('advanced')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-secondary-50 transition-colors"
             >
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <LinkIcon className="w-5 h-5 text-gray-400" />
+              <h3 className="font-semibold text-secondary-900 flex items-center gap-2">
+                <LinkIcon className="w-5 h-5 text-secondary-400" />
                 Advanced
               </h3>
               {expandedSections.advanced ? (
-                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                <ChevronUpIcon className="w-5 h-5 text-secondary-400" />
               ) : (
-                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                <ChevronDownIcon className="w-5 h-5 text-secondary-400" />
               )}
             </button>
             {expandedSections.advanced && (
-              <div className="px-6 pb-6 space-y-4 border-t border-gray-100 pt-4">
+              <div className="px-6 pb-6 space-y-4 border-t border-secondary-100 pt-4">
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Canonical URL</label>
+                  <label className="block text-sm text-secondary-600 mb-1">Canonical URL</label>
                   <input
                     type="text"
                     value={formData.canonical_url}
                     onChange={(e) => updateFormData('canonical_url', e.target.value)}
                     placeholder="https://example.com/original-post"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                   />
-                  <p className="text-xs text-gray-400 mt-1">Use if this content was originally published elsewhere</p>
+                  <p className="text-xs text-secondary-400 mt-1">Use if this content was originally published elsewhere</p>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">Schema Type</label>
+                  <label className="block text-sm text-secondary-600 mb-1">Schema Type</label>
                   <select
                     value={formData.schema_type}
                     onChange={(e) => updateFormData('schema_type', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-sm"
+                    className="w-full px-3 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-sm"
                   >
                     <option value="Article">Article</option>
                     <option value="BlogPosting">Blog Posting</option>

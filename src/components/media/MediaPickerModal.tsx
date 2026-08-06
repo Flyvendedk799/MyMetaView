@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { XMarkIcon, CheckIcon, MagnifyingGlassIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import UploadZone from './UploadZone'
 import { uploadSiteMedia, fetchSiteMedia, type SiteMedia } from '../../api/client'
@@ -77,10 +77,10 @@ export default function MediaPickerModal({
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-xl font-semibold text-secondary-900">{title}</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-secondary-100 rounded-lg transition-colors"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
@@ -93,7 +93,7 @@ export default function MediaPickerModal({
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'library'
                 ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-secondary-500 hover:text-secondary-700'
             }`}
           >
             Media Library
@@ -103,7 +103,7 @@ export default function MediaPickerModal({
             className={`px-6 py-3 font-medium transition-colors ${
               activeTab === 'upload'
                 ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-secondary-500 hover:text-secondary-700'
             }`}
           >
             Upload New
@@ -117,13 +117,13 @@ export default function MediaPickerModal({
               {/* Search */}
               <form onSubmit={handleSearch} className="p-4 border-b">
                 <div className="relative">
-                  <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search media..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </form>
@@ -135,7 +135,7 @@ export default function MediaPickerModal({
                     <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : media.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                  <div className="flex flex-col items-center justify-center h-48 text-secondary-500">
                     <PhotoIcon className="w-12 h-12 mb-2" />
                     <p>No media found</p>
                     <button
@@ -154,7 +154,7 @@ export default function MediaPickerModal({
                         className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
                           selectedMedia?.id === item.id
                             ? 'border-primary ring-2 ring-primary/30'
-                            : 'border-transparent hover:border-gray-300'
+                            : 'border-transparent hover:border-secondary-300'
                         }`}
                       >
                         <img
@@ -181,7 +181,7 @@ export default function MediaPickerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+        <div className="flex items-center justify-between p-4 border-t bg-secondary-50">
           {selectedMedia ? (
             <div className="flex items-center gap-3">
               <img
@@ -190,21 +190,21 @@ export default function MediaPickerModal({
                 className="w-10 h-10 object-cover rounded"
               />
               <div className="text-sm">
-                <p className="font-medium text-gray-900">{selectedMedia.filename}</p>
-                <p className="text-gray-500">
+                <p className="font-medium text-secondary-900">{selectedMedia.filename}</p>
+                <p className="text-secondary-500">
                   {selectedMedia.width && selectedMedia.height
-                    ? `${selectedMedia.width} × ${selectedMedia.height}`
+                    ? `${selectedMedia.width} Ã— ${selectedMedia.height}`
                     : 'Unknown size'}
                 </p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Select an image from the library or upload a new one</p>
+            <p className="text-sm text-secondary-500">Select an image from the library or upload a new one</p>
           )}
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+              className="px-4 py-2 border border-secondary-300 rounded-lg font-medium hover:bg-secondary-100 transition-colors"
             >
               Cancel
             </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import {
   UserIcon,
   GlobeAltIcon,
@@ -39,24 +39,24 @@ const ACTION_ICONS: Record<string, any> = {
 }
 
 const ACTION_COLORS: Record<string, string> = {
-  'user.login': 'text-blue-500',
-  'user.signup': 'text-green-500',
-  'domain.created': 'text-purple-500',
-  'domain.deleted': 'text-red-500',
-  'domain.verification.started': 'text-yellow-500',
-  'domain.verification.succeeded': 'text-green-500',
-  'domain.verification.failed': 'text-red-500',
+  'user.login': 'text-primary-500',
+  'user.signup': 'text-success-500',
+  'domain.created': 'text-primary-500',
+  'domain.deleted': 'text-error-500',
+  'domain.verification.started': 'text-warning-500',
+  'domain.verification.succeeded': 'text-success-500',
+  'domain.verification.failed': 'text-error-500',
   'preview.created': 'text-primary',
   'preview.updated': 'text-primary',
   'preview.edited': 'text-primary',
-  'preview.deleted': 'text-red-500',
-  'preview.ai_job.queued': 'text-yellow-500',
-  'preview.ai_job.completed': 'text-green-500',
-  'preview.ai_job.failed': 'text-red-500',
-  'demo.preview.flow_step': 'text-indigo-500',
-  'billing.subscription.created': 'text-green-500',
-  'billing.subscription.updated': 'text-blue-500',
-  'billing.subscription.canceled': 'text-red-500',
+  'preview.deleted': 'text-error-500',
+  'preview.ai_job.queued': 'text-warning-500',
+  'preview.ai_job.completed': 'text-success-500',
+  'preview.ai_job.failed': 'text-error-500',
+  'demo.preview.flow_step': 'text-primary-500',
+  'billing.subscription.created': 'text-success-500',
+  'billing.subscription.updated': 'text-primary-500',
+  'billing.subscription.canceled': 'text-error-500',
 }
 
 function formatAction(action: string): string {
@@ -145,12 +145,12 @@ export default function Activity() {
     <div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-secondary mb-2">Activity Log</h1>
-        <p className="text-gray-600">View your account activity and events</p>
+        <p className="text-secondary-600">View your account activity and events</p>
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
@@ -175,7 +175,7 @@ export default function Activity() {
           <div className="space-y-4">
               {logs.map((log) => {
                 const Icon = ACTION_ICONS[log.action] || ClockIcon
-                const color = ACTION_COLORS[log.action] || 'text-gray-500'
+                const color = ACTION_COLORS[log.action] || 'text-secondary-500'
                 return (
                   <Card key={log.id} className="p-4">
                     <div className="flex items-start space-x-4">
@@ -184,18 +184,18 @@ export default function Activity() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-gray-900">{formatAction(log.action)}</h3>
-                          <span className="text-sm text-gray-500">
+                          <h3 className="font-semibold text-secondary-900">{formatAction(log.action)}</h3>
+                          <span className="text-sm text-secondary-500">
                             {new Date(log.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">{getActionDescription(log.action, log.metadata)}</p>
+                        <p className="text-sm text-secondary-600">{getActionDescription(log.action, log.metadata)}</p>
                         {log.metadata && Object.keys(log.metadata).length > 0 && (
                           <details className="mt-2">
-                            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                            <summary className="text-xs text-secondary-500 cursor-pointer hover:text-secondary-700">
                               View metadata
                             </summary>
-                            <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+                            <pre className="mt-2 text-xs bg-secondary-50 p-2 rounded overflow-x-auto">
                               {JSON.stringify(log.metadata, null, 2)}
                             </pre>
                           </details>
@@ -216,7 +216,7 @@ export default function Activity() {
             >
               Previous
             </Button>
-            <span className="text-gray-600">Page {page + 1}</span>
+            <span className="text-secondary-600">Page {page + 1}</span>
             <Button
               onClick={() => setPage(page + 1)}
               disabled={logs.length < limit}

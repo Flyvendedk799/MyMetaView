@@ -1,4 +1,4 @@
-import { XMarkIcon, CheckIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
+﻿import { XMarkIcon, CheckIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 import GenerationProgress from './GenerationProgress'
 
 interface DemoGeneratingProps {
@@ -25,7 +25,7 @@ export default function DemoGenerating({
   if (!isGenerating) return null
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-gradient-to-br from-gray-900/90 via-gray-900/95 to-black/90 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-ink/95 animate-fade-in">
       {/* Cancel button */}
       <button
         onClick={onCancel}
@@ -53,10 +53,10 @@ export default function DemoGenerating({
           </div>
 
           <div className="relative">
-            <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/50 animate-bounce">
+            <div className="w-24 h-24 bg-success-500 rounded-full flex items-center justify-center mx-auto animate-bounce">
               <CheckIcon className="w-12 h-12 text-white" />
             </div>
-            <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30" />
+            <div className="absolute inset-0 rounded-full bg-success-400 animate-ping opacity-30" />
           </div>
 
           <h2 className="mt-6 text-3xl font-black text-white">Preview Ready!</h2>
@@ -75,7 +75,7 @@ export default function DemoGenerating({
           <div className="mt-6 text-center">
             <p className="text-white/60 text-sm mb-2">Analyzing:</p>
             <div className="bg-white/10 rounded-lg px-4 py-2 inline-flex items-center space-x-2">
-              <GlobeAltIcon className="w-4 h-4 text-orange-400" />
+              <GlobeAltIcon className="w-4 h-4 text-accent-400" />
               <span className="text-white/90 font-mono text-sm truncate max-w-xs">{url}</span>
             </div>
           </div>

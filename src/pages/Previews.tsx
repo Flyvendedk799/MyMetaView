@@ -82,14 +82,14 @@ export default function Previews() {
     loadVariants()
   }, [previews])
 
-  // Generate gradient class from type
-  const getImageGradient = (type: string) => {
-    const gradients: Record<string, string> = {
-      product: 'bg-gradient-to-br from-primary/30 to-accent/30',
-      blog: 'bg-gradient-to-br from-purple-300 to-pink-300',
-      landing: 'bg-gradient-to-br from-blue-300 to-cyan-300',
+  // Solid evergreen placeholder surface per preview type (no gradients in the identity)
+  const getPlaceholderSurface = (type: string) => {
+    const surfaces: Record<string, string> = {
+      product: 'bg-primary-500',
+      blog: 'bg-primary-600',
+      landing: 'bg-ink',
     }
-    return gradients[type.toLowerCase()] || 'bg-gradient-to-br from-gray-300 to-gray-400'
+    return surfaces[type.toLowerCase()] || 'bg-secondary-900'
   }
 
   const handleOpenCreateModal = () => {
@@ -285,13 +285,16 @@ export default function Previews() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-secondary mb-2">Your URL Previews</h1>
-        <p className="text-muted">Browse and manage all your generated URL previews.</p>
-      </div>
-      
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-        <Button onClick={handleOpenCreateModal} className="w-full sm:w-auto">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-display text-secondary-900 mb-1.5">Previews</h1>
+          <p className="text-[15px] text-secondary-600">
+            {previews.length > 0
+              ? `${previews.length.toLocaleString()} ${previews.length === 1 ? 'URL' : 'URLs'} covered${domains.length > 0 ? ` across ${domains.length} ${domains.length === 1 ? 'domain' : 'domains'}` : ''}`
+              : 'Browse and manage all your generated URL previews.'}
+          </p>
+        </div>
+        <Button variant="accent" onClick={handleOpenCreateModal} className="w-full sm:w-auto">
           <div className="flex items-center justify-center sm:justify-start space-x-2">
             <PlusIcon className="w-5 h-5" />
             <span>Create Preview</span>
@@ -311,10 +314,10 @@ export default function Previews() {
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}
-            className={`px-4 py-2.5 rounded-lg font-medium transition-all min-h-[44px] ${
+            className={`px-4 py-2.5 rounded-lg text-[13px] transition-colors min-h-[44px] ${
               activeFilter === filter
-                ? 'bg-primary-500 text-white shadow-md'
-                : 'bg-surface text-secondary-700 border border-secondary-200 hover:border-primary-500 hover:text-primary-600'
+                ? 'bg-primary-500 text-paper font-semibold'
+                : 'bg-surface text-secondary-600 font-medium border border-line hover:border-primary-500 hover:text-secondary-900'
             }`}
           >
             {filter}
@@ -346,21 +349,26 @@ export default function Previews() {
                 const hasVariants = variants.length > 0
                 
                 return (
-                  <Card key={preview.id} className="p-0 overflow-hidden group relative">
-                    <div className={`aspect-video ${getImageGradient(preview.type)} flex items-center justify-center transition-transform group-hover:scale-105`}>
+                  <Card key={preview.id} className="p-0 overflow-hidden group relative hover:border-primary-500 hover:-translate-y-0.5 transition-all">
+                    <div className={`aspect-video ${getPlaceholderSurface(preview.type)}`}>
                       {displayData.image_url ? (
-                        <img 
-                          src={displayData.image_url} 
-                          alt={displayData.title} 
-                          className="w-full h-full object-cover" 
+                        <img
+                          src={displayData.image_url}
+                          alt={displayData.title}
+                          className="w-full h-full object-cover"
                           loading="lazy"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = preview.image_url || ''
-                          }} 
+                          }}
                         />
                       ) : (
-                        <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                          <span className="text-white text-2xl font-bold">P</span>
+                        <div className="w-full h-full p-5 flex flex-col justify-between">
+                          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-paper/60">
+                            {preview.domain}
+                          </span>
+                          <span className="font-display text-xl font-semibold tracking-display-sm text-paper leading-tight line-clamp-2">
+                            {displayData.title}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -394,13 +402,13 @@ export default function Previews() {
                         </div>
                       )}
                       
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-secondary-900">{displayData.title}</h3>
-                        <span className="text-xs px-2 py-1 bg-secondary-100 text-secondary-600 rounded-full capitalize">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <h3 className="font-semibold text-secondary-900 truncate">{displayData.title}</h3>
+                        <span className="pill bg-secondary-100 text-secondary-600 capitalize flex-shrink-0">
                           {preview.type}
                         </span>
                       </div>
-                      <p className="text-sm text-secondary-500 mb-2 line-clamp-2">{preview.url}</p>
+                      <p className="font-mono text-xs text-secondary-500 mb-2 truncate">{preview.url}</p>
                       {displayData.description && (
                         <p className="text-xs text-secondary-600 mb-2 line-clamp-2">{displayData.description}</p>
                       )}
@@ -409,7 +417,7 @@ export default function Previews() {
                           {preview.keywords.split(',').map((keyword, idx) => (
                             <span
                               key={idx}
-                              className="text-xs px-2 py-0.5 bg-secondary-100 text-secondary-600 rounded-full"
+                              className="font-mono text-[11px] px-2 py-0.5 bg-secondary-100 text-secondary-600 rounded-md"
                             >
                               {keyword.trim()}
                             </span>
@@ -429,7 +437,7 @@ export default function Previews() {
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => handleOpenEditModal(preview, activeVariants[preview.id] || 'main')}
-                            className="text-primary hover:text-primary/80 transition-colors p-1"
+                            className="text-primary-500 hover:text-accent-500 transition-colors p-1"
                             title="Edit preview"
                           >
                             <PencilIcon className="w-4 h-4" />
@@ -466,7 +474,7 @@ export default function Previews() {
 
           <div>
             <label className="block text-sm font-medium text-secondary-700 mb-2">
-              URL <span className="text-red-500">*</span>
+              URL <span className="text-error-500">*</span>
             </label>
             <input
               type="url"
@@ -477,18 +485,18 @@ export default function Previews() {
                 setFormError(null)
               }}
               disabled={editingPreview !== null}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all ${
                 formError && !formData.url ? 'border-error-300 bg-error-50/50' : 'border-secondary-300'
               } ${editingPreview !== null ? 'bg-secondary-50 cursor-not-allowed' : ''}`}
             />
             {editingPreview !== null && (
-              <p className="text-xs text-gray-500 mt-1">URL cannot be changed after creation</p>
+              <p className="text-xs text-secondary-500 mt-1">URL cannot be changed after creation</p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Domain <span className="text-red-500">*</span>
+              Domain <span className="text-error-500">*</span>
             </label>
             {domains.length > 0 ? (
               <select
@@ -498,7 +506,7 @@ export default function Previews() {
                   setFormError(null)
                 }}
                 disabled={editingPreview !== null}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all ${
                   formError && !formData.domain ? 'border-error-300 bg-error-50/50' : 'border-secondary-300'
                 } ${editingPreview !== null ? 'bg-secondary-50 cursor-not-allowed' : ''}`}
               >
@@ -519,13 +527,13 @@ export default function Previews() {
                   setFormError(null)
                 }}
                 disabled={editingPreview !== null}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all ${
                   formError && !formData.domain ? 'border-error-300 bg-error-50/50' : 'border-secondary-300'
                 } ${editingPreview !== null ? 'bg-secondary-50 cursor-not-allowed' : ''}`}
               />
             )}
             {domains.length === 0 && (
-              <p className="text-xs text-gray-500 mt-1">Add a domain first in the Domains page</p>
+              <p className="text-xs text-secondary-500 mt-1">Add a domain first in the Domains page</p>
             )}
           </div>
 
@@ -540,8 +548,8 @@ export default function Previews() {
                   onClick={() => handleOpenEditModal(previews.find(p => p.id === editingPreview)!, 'main')}
                   className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                     editingVariant === 'main'
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-primary-500 text-paper'
+                      : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
                   }`}
                 >
                   Main
@@ -552,8 +560,8 @@ export default function Previews() {
                     onClick={() => handleOpenEditModal(previews.find(p => p.id === editingPreview)!, variant.variant_key as 'a' | 'b' | 'c')}
                     className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                       editingVariant === variant.variant_key
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-primary-500 text-paper'
+                        : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
                     }`}
                   >
                     {variant.variant_key.toUpperCase()}
@@ -565,7 +573,7 @@ export default function Previews() {
 
           <div>
             <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Title <span className="text-red-500">*</span>
+              Title <span className="text-error-500">*</span>
             </label>
             <input
               type="text"
@@ -575,7 +583,7 @@ export default function Previews() {
                 setFormData({ ...formData, title: e.target.value })
                 setFormError(null)
               }}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all ${
                 formError && !formData.title ? 'border-error-300 bg-error-50/50' : 'border-secondary-300'
               }`}
             />
@@ -594,14 +602,14 @@ export default function Previews() {
                   setFormError(null)
                 }}
                 rows={3}
-                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all"
               />
             </div>
           )}
 
           <div>
             <label className="block text-sm font-medium text-secondary-700 mb-2">
-              Type <span className="text-red-500">*</span>
+              Type <span className="text-error-500">*</span>
             </label>
             <select
               value={formData.type}
@@ -609,7 +617,7 @@ export default function Previews() {
                 setFormData({ ...formData, type: e.target.value })
                 setFormError(null)
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all"
             >
               <option value="product">Product</option>
               <option value="blog">Blog</option>
@@ -631,9 +639,9 @@ export default function Previews() {
                   setFormData({ ...formData, image_url: e.target.value || null })
                   setFormError(null)
                 }}
-                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all"
               />
-              <p className="text-xs text-gray-500 mt-1">Override the AI-generated image with a custom URL.</p>
+              <p className="text-xs text-secondary-500 mt-1">Override the AI-generated image with a custom URL.</p>
             </div>
           )}
 
@@ -674,13 +682,14 @@ export default function Previews() {
                 >
                   {isSubmitting ? 'Saving...' : 'Create Manually'}
                 </Button>
-                <Button 
-                  onClick={handleGenerateWithAI} 
+                <Button
+                  variant="accent"
+                  onClick={handleGenerateWithAI}
                   disabled={isSubmitting || isGeneratingAI || !formData.url || !formData.domain}
                 >
                   {isGeneratingAI ? (
                     <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-paper border-t-transparent rounded-full animate-spin" />
                       <span>Generating...</span>
                     </div>
                   ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import {
   UsersIcon,
   GlobeAltIcon,
@@ -82,19 +82,19 @@ export default function AdminDashboard() {
       name: 'Total Users',
       value: overview?.total_users.toLocaleString() || '0',
       icon: UsersIcon,
-      color: 'text-blue-500',
+      color: 'text-primary-500',
     },
     {
       name: 'Active Subscribers',
       value: overview?.active_subscribers.toLocaleString() || '0',
       icon: UsersIcon,
-      color: 'text-green-500',
+      color: 'text-success-500',
     },
     {
       name: 'Total Domains',
       value: overview?.total_domains.toLocaleString() || '0',
       icon: GlobeAltIcon,
-      color: 'text-purple-500',
+      color: 'text-primary-500',
     },
     {
       name: 'Verified Domains',
@@ -112,19 +112,19 @@ export default function AdminDashboard() {
       name: 'Queue Length',
       value: overview?.redis_queue_length.toLocaleString() || '0',
       icon: ChartBarIcon,
-      color: 'text-yellow-500',
+      color: 'text-warning-500',
     },
     {
       name: 'Errors (24h)',
       value: overview?.errors_past_24h.toLocaleString() || '0',
       icon: ExclamationTriangleIcon,
-      color: 'text-red-500',
+      color: 'text-error-500',
     },
     {
       name: 'Jobs Running',
       value: overview?.jobs_running.toLocaleString() || '0',
       icon: ChartBarIcon,
-      color: 'text-indigo-500',
+      color: 'text-primary-500',
     },
   ]
 
@@ -132,12 +132,12 @@ export default function AdminDashboard() {
     <div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-secondary mb-2">Admin / Dashboard</h1>
-        <p className="text-gray-600">System-wide overview and metrics</p>
+        <p className="text-secondary-600">System-wide overview and metrics</p>
       </div>
 
       {error && (
-        <Card className="mb-6 bg-red-50 border-red-200">
-          <p className="text-red-800">Error: {error}</p>
+        <Card className="mb-6 bg-error-50 border-error-200">
+          <p className="text-error-800">Error: {error}</p>
         </Card>
       )}
 
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
         <Card>
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading system overview...</p>
+            <p className="text-secondary-500">Loading system overview...</p>
           </div>
         </Card>
       ) : (
@@ -158,7 +158,7 @@ export default function AdminDashboard() {
                 <Card key={stat.name} className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">{stat.name}</p>
+                      <p className="text-sm text-secondary-600 mb-1">{stat.name}</p>
                       <p className="text-2xl font-bold text-secondary">{stat.value}</p>
                     </div>
                     <Icon className={`w-8 h-8 ${stat.color}`} />
@@ -173,12 +173,12 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <h2 className="text-xl font-semibold text-secondary mb-2">Demo Cache Control</h2>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-secondary-600 text-sm mb-4">
                   When enabled, demo routes generate fresh previews on each request instead of using cached results.
                   Useful for development testing.
                 </p>
                 {cacheToggleError && (
-                  <p className="text-red-600 text-sm mb-2">{cacheToggleError}</p>
+                  <p className="text-error-600 text-sm mb-2">{cacheToggleError}</p>
                 )}
               </div>
               <div className="ml-6">
@@ -190,8 +190,8 @@ export default function AdminDashboard() {
                     disabled={cacheToggleLoading}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                  <span className="ml-3 text-sm font-medium text-gray-700">
+                  <div className="w-11 h-6 bg-secondary-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-secondary-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  <span className="ml-3 text-sm font-medium text-secondary-700">
                     {demoCacheDisabled ? 'Cache Disabled' : 'Cache Enabled'}
                   </span>
                 </label>
@@ -203,22 +203,22 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="p-6">
               <h2 className="text-xl font-semibold text-secondary mb-4">Daily Previews Generated</h2>
-              <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                <p className="text-gray-500">Chart placeholder - integrate charting library</p>
+              <div className="h-64 flex items-center justify-center bg-secondary-50 rounded-lg">
+                <p className="text-secondary-500">Chart placeholder - integrate charting library</p>
               </div>
             </Card>
 
             <Card className="p-6">
               <h2 className="text-xl font-semibold text-secondary mb-4">New Signups</h2>
-              <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                <p className="text-gray-500">Chart placeholder - integrate charting library</p>
+              <div className="h-64 flex items-center justify-center bg-secondary-50 rounded-lg">
+                <p className="text-secondary-500">Chart placeholder - integrate charting library</p>
               </div>
             </Card>
 
             <Card className="p-6">
               <h2 className="text-xl font-semibold text-secondary mb-4">Queue Activity</h2>
-              <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                <p className="text-gray-500">Chart placeholder - integrate charting library</p>
+              <div className="h-64 flex items-center justify-center bg-secondary-50 rounded-lg">
+                <p className="text-secondary-500">Chart placeholder - integrate charting library</p>
               </div>
             </Card>
           </div>

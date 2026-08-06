@@ -234,13 +234,13 @@ export default function GenerationProgress({
   if (failureReason) {
     return (
       <div className="w-full max-w-lg mx-auto">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 text-rose-900">
+        <div className="rounded-2xl border border-error-200 bg-error-50/70 p-5 text-error-900">
           <h3 className="text-base font-semibold mb-1">
             We couldn't finish your preview
           </h3>
           <p className="text-sm">{FAILURE_REASON_COPY[failureReason]}</p>
           {failureDetail ? (
-            <p className="text-xs text-rose-700/80 mt-2 break-words">
+            <p className="text-xs text-error-700/80 mt-2 break-words">
               {failureDetail}
             </p>
           ) : null}
@@ -248,7 +248,7 @@ export default function GenerationProgress({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-3 inline-flex items-center px-3 py-1.5 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700"
+              className="mt-3 inline-flex items-center px-3 py-1.5 rounded-lg bg-error-600 text-white text-sm font-medium hover:bg-error-700"
             >
               Try again
             </button>
@@ -261,9 +261,9 @@ export default function GenerationProgress({
   return (
     <div className="w-full max-w-lg mx-auto">
       {/* Main Progress Card */}
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200/80 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl border border-secondary-200/80 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 px-6 py-4">
+        <div className="bg-primary-500 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="relative">
@@ -315,7 +315,7 @@ export default function GenerationProgress({
                 key={stage.id}
                 className={`
                   relative flex items-center space-x-3 p-3 rounded-xl transition-all duration-300
-                  ${isActive ? 'bg-orange-50 border border-orange-200' : ''}
+                  ${isActive ? 'bg-accent-50 border border-accent-200' : ''}
                   ${isCompleted ? 'opacity-60' : ''}
                   ${isPending ? 'opacity-40' : ''}
                 `}
@@ -326,9 +326,9 @@ export default function GenerationProgress({
                 <div className={`
                   relative w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
                   transition-all duration-300
-                  ${isCompleted ? 'bg-emerald-500' : ''}
-                  ${isActive ? 'bg-orange-500' : ''}
-                  ${isPending ? 'bg-gray-200' : ''}
+                  ${isCompleted ? 'bg-success-500' : ''}
+                  ${isActive ? 'bg-accent-500' : ''}
+                  ${isPending ? 'bg-secondary-200' : ''}
                 `}>
                   {isCompleted ? (
                     <CheckCircleSolidIcon className="w-6 h-6 text-white" />
@@ -336,29 +336,29 @@ export default function GenerationProgress({
                     <>
                       <StageIcon className="w-5 h-5 text-white" />
                       {/* Pulse ring for active */}
-                      <div className="absolute inset-0 rounded-full bg-orange-500 animate-ping opacity-30" />
+                      <div className="absolute inset-0 rounded-full bg-accent-500 animate-ping opacity-30" />
                     </>
                   ) : (
-                    <span className="text-gray-500 font-semibold text-sm">{index + 1}</span>
+                    <span className="text-secondary-500 font-semibold text-sm">{index + 1}</span>
                   )}
                 </div>
 
                 {/* Stage Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <span className={`font-semibold text-sm ${isActive ? 'text-orange-700' : isCompleted ? 'text-gray-600' : 'text-gray-500'}`}>
+                    <span className={`font-semibold text-sm ${isActive ? 'text-accent-700' : isCompleted ? 'text-secondary-600' : 'text-secondary-500'}`}>
                       {stage.name}
                     </span>
                     {isActive && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-100 text-accent-700">
                         In Progress
                       </span>
                     )}
                     {isCompleted && (
-                      <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                      <CheckCircleIcon className="w-4 h-4 text-success-500" />
                     )}
                   </div>
-                  <p className={`text-xs mt-0.5 ${isActive ? 'text-orange-600' : 'text-gray-400'}`}>
+                  <p className={`text-xs mt-0.5 ${isActive ? 'text-accent-600' : 'text-secondary-400'}`}>
                     {stage.description}
                   </p>
                 </div>
@@ -367,7 +367,7 @@ export default function GenerationProgress({
                 {index < stages.length - 1 && (
                   <div className={`
                     absolute left-7 top-14 w-0.5 h-4 -mt-1
-                    ${isCompleted ? 'bg-emerald-300' : 'bg-gray-200'}
+                    ${isCompleted ? 'bg-success-300' : 'bg-secondary-200'}
                   `} />
                 )}
               </div>
@@ -377,12 +377,12 @@ export default function GenerationProgress({
 
         {/* Footer Tips */}
         <div className="px-4 pb-4">
-          <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+          <div className="bg-secondary-50 rounded-xl p-3 border border-secondary-100">
             <div className="flex items-start space-x-2">
-              <SparklesIcon className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <SparklesIcon className="w-4 h-4 text-warning-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs text-gray-600">
-                  <span className="font-semibold text-gray-700">AI Insight:</span>
+                <p className="text-xs text-secondary-600">
+                  <span className="font-semibold text-secondary-700">AI Insight:</span>
                   {' '}Our multi-stage reasoning framework analyzes your page like a senior designer, identifying what matters most for social sharing.
                 </p>
               </div>
