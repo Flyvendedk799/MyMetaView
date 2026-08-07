@@ -287,9 +287,12 @@ def serve_sitemap(
 ):
     """Serve sitemap."""
     site = get_site_from_host(request, db)
-    
+
     if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
+        # Not a published customer site — this is the main product domain.
+        # Serve the platform sitemap instead of 404ing the domain's SEO.
+        from backend.api.v1.routes_sitemap import generate_sitemap
+        return generate_sitemap(request, db)
     
     # Check if sitemap is enabled
     settings = db.query(SiteSettings).filter(SiteSettings.site_id == site.id).first()
