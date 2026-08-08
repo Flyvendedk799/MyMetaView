@@ -219,15 +219,21 @@ class ReasonedPreview:
     
     # Images
     primary_image_base64: Optional[str]
-    
+
     # Design DNA (NEW - for design-intelligent rendering)
     design_dna: Optional[Dict[str, Any]] = None
-    
+
+    # Composition spec — the art director's decision on how to lay out the
+    # card (typographic vs split, whether to show a visual, which brand colour
+    # anchors the panel, where the single accent lands). Consumed by the
+    # premium HTML renderer. See SINGLE_PASS_PROMPT "composition" block.
+    composition: Optional[Dict[str, Any]] = None
+
     # Processing metadata
     processing_time_ms: int = 0
     reasoning_confidence: float = 0.0
     design_fidelity_score: float = 0.0
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "regions": [r.to_dict() for r in self.regions],
@@ -241,6 +247,7 @@ class ReasonedPreview:
             "cta_text": self.cta_text,
             "has_primary_image": self.primary_image_base64 is not None,
             "design_dna": self.design_dna,
+            "composition": self.composition,
             "processing_time_ms": self.processing_time_ms,
             "reasoning_confidence": self.reasoning_confidence,
             "design_fidelity_score": self.design_fidelity_score
@@ -1414,108 +1421,106 @@ def _normalize_purpose(purpose_str: str) -> RegionPurpose:
     return mapping.get(purpose_str.lower(), RegionPurpose.DECORATION)
 
 
-SINGLE_PASS_PROMPT = """You are a world-class web analyst creating a social media preview card from a webpage screenshot.
+SINGLE_PASS_PROMPT = """You are MetaView's art director and conversion copywriter. From a screenshot of a webpage, you compose a single link-preview card — the image that shows when someone shares this URL on Twitter/LinkedIn/Slack.
 
-YOUR GOAL: Extract the 3-4 most important pieces of text from this page to create a compelling, ACCURATE preview card. Think: what would make someone click this link on Twitter/LinkedIn?
+MetaView's whole promise: the card tells the story the page is trying to tell, SHARPER than the site's own OpenGraph image. You are not a scraper echoing the page's raw text — you are an editor who understands the page's goal and frames it so someone wants to click. But you are honest: you never invent facts, features, numbers, prices, or claims the page does not support.
 
-=== STEP 1: CLASSIFY THE PAGE ===
-What kind of page is this?
-- "saas" / "startup" / "tool" — software product with features/pricing
-- "ecommerce" / "product" — thing for sale with price/reviews
-- "profile" — individual person's page (name + photo + bio)
-- "blog" / "news" / "article" — written content with author/date
+=== STEP 1: READ THE PAGE'S INTENT ===
+First, silently answer for yourself: What is this page? What does it want the visitor to do or feel? What is the single most compelling, TRUE thing about it? Then classify page_type:
+- "saas" / "tool" — software product with features/pricing
+- "ecommerce" / "product" — a thing for sale with price/reviews
+- "profile" — an individual person (name + photo + bio)
+- "article" / "blog" / "news" — written content
 - "agency" / "portfolio" — showcasing work/services
 - "landing" — generic marketing/company page
-- "educational" / "documentation" — learning/reference content
+- "docs" / "educational" — reference/learning content
 
-=== STEP 2: EXTRACT CONTENT (VERBATIM ONLY) ===
+=== STEP 2: WRITE THE CARD ===
 
-Extract these fields by copying EXACT text from the page. NEVER rephrase, summarize, or invent text.
+**title** (REQUIRED) — the hook. The one line that makes someone stop scrolling.
+   - Capture the page's core value, sharpened. You MAY rephrase, tighten, or lead with the benefit — you are writing a headline, not transcribing one. Aim for specific and concrete over vague and grand.
+   - Ground every word in what the page actually offers. No invented features, no fake urgency, no clickbait.
+   - Ideal ≤ 55 characters, hard max 80. Title Case or sentence case, no trailing period.
+   - EXCEPTION — profiles: the title is the person's real full name exactly (e.g. "Sarah Chen"). Do not editorialize a person's name.
 
-1. **title** (REQUIRED) — The single most prominent headline on the page.
-   - For profiles: the person's FULL NAME (e.g. "Sarah Chen"), not their title/role
-   - For products: the product name or hero headline
-   - For articles: the article title
-   - For SaaS: the hero headline exactly as written
-   - MUST be verbatim from the page
+**subtitle** — one supporting line that earns the click: the concrete "what you get" or "why it matters." Grounded in the page. ≤ 90 characters, or null if the page gives you nothing real to say.
+   - Profiles: their role/company as shown (e.g. "Senior Product Designer at Stripe").
 
-2. **subtitle** — The secondary headline or subheading directly below the title.
-   - Copy it exactly. If none exists, use null.
-   - For profiles: their role/title (e.g. "Senior Product Designer at Stripe")
-   - For SaaS: the sub-headline that explains the product
+**description** — a tight 1-sentence value framing for downstream use. ≤ 160 chars. Grounded; null if nothing real.
 
-3. **description** — The first descriptive paragraph or value proposition.
-   - Copy the actual text, max ~200 chars. If only generic text exists ("Easy to use"), use null.
+**credibility** — the single strongest trust signal, VERBATIM, WITH specific numbers or named sources visible on the page ("4.9★ from 2,847 reviews", "Trusted by 50,000+ teams", "Featured in TechCrunch"). This one field is copy-exactly: if no concrete number/name is visible, return null. NEVER fabricate a statistic.
 
-4. **credibility** — The single strongest trust signal WITH specific numbers.
-   - "4.9 stars from 2,847 reviews" — copy exactly
-   - "Trusted by 50,000+ teams" — copy exactly
-   - "Featured in Forbes, TechCrunch" — only if visible on page
-   - If no specific numbers/names visible, use null. NEVER fabricate.
+**cta_text** — the primary action verb phrase as shown ("Start free trial", "Shop now"). null if only generic ("Submit").
 
-5. **cta_text** — The primary call-to-action button text (e.g. "Start Free Trial", "Shop Now").
-   - Copy the button text exactly. If generic ("Submit", "Click here"), use null.
+**tags** — 2-3 short topic labels (1-2 words each) describing the space (e.g. "AI", "Developer Tools").
 
-6. **tags** — 2-3 short category/topic labels that describe what this page is about.
-   - Use visible category tags, nav labels, or infer from content (e.g. "AI", "Developer Tools", "E-commerce")
-   - Keep each tag to 1-2 words. Max 3 tags.
+=== STEP 3: READ THE VISUAL IDENTITY ===
 
-=== STEP 3: EXTRACT VISUAL IDENTITY ===
-
-6. **colors** — The 3 dominant colors from the page:
-   - primary: the main brand color (buttons, headers)
-   - secondary: the background or secondary brand color
+**colors** — the page's 3 real brand colors as hex:
+   - primary: dominant brand color (buttons/headers)
+   - secondary: background or secondary brand color
    - accent: highlight/CTA color
 
-7. **logo_bbox** — Bounding box of the logo/avatar (usually top-left, top 15% of page):
-   - {{x, y, width, height}} as fractions 0.0-1.0 of image dimensions
-   - For profiles: the profile photo/avatar location
-   - null if no clear logo visible
+**logo_bbox** — bounding box of the logo (or, for profiles, the avatar), as fractions 0.0-1.0 {"x","y","width","height"}, usually the top ~15% of the page. null if none is clearly visible.
 
-8. **design_dna** — The design personality:
+**design_dna** — the brand's personality:
    - style: minimalist | corporate | luxurious | playful | technical | editorial | brutalist
    - mood: calm | balanced | dynamic | dramatic
    - typography_personality: authoritative | friendly | elegant | technical | bold
    - color_emotion: trust | energy | calm | sophistication | warmth | innovation
    - spacing_feel: compact | balanced | spacious
-   - brand_adjectives: 3 words describing the brand personality
+   - brand_adjectives: 3 words for the brand personality
+
+=== STEP 4: DIRECT THE COMPOSITION ===
+Decide how MetaView should lay out the card. MetaView's house style is confident and typographic: a brand-colored panel, a strong headline, ONE accent moment. Restraint reads as premium — a clean type-only card almost always beats a card cluttered with a screenshot.
+
+**composition**:
+   - layout: "typographic" (headline-led, no image — the default and usually best) OR "split" (headline on one side, a single clean visual on the other). Choose "split" ONLY when the page has ONE genuinely strong, self-contained hero visual (a product shot, a person's photo, a clean device mockup) that would make the card MORE compelling. When in doubt, "typographic".
+   - use_visual: true only if layout is "split" and a clean visual exists; else false.
+   - visual_source: "screenshot" (a crop of the page) | "logo" | "none".
+   - panel_color_role: which brand color anchors the card background — "primary" | "secondary" | "dark" (a deep near-black tint of the brand) | "light" (a soft off-white). Pick for contrast and mood; "dark" and "primary" feel premium for most brands.
+   - accent_moment: where the single accent lands — "bar" (a short rule under the headline) | "dot" | "shape" (a soft corner shape).
+   - mood: one word matching the brand (e.g. "confident", "warm", "precise", "bold", "calm").
+   - reasoning: one short sentence on why this composition tells THIS page's story.
 
 === EXCLUSIONS ===
-NEVER extract from: cookie banners, navigation menus, footer links, popups, breadcrumbs, "Skip to content" links.
+Ignore cookie banners, nav menus, footers, popups, breadcrumbs, "Skip to content".
 
-=== OUTPUT (valid JSON only) ===
-{{
+=== OUTPUT (valid JSON only, no markdown fences) ===
+{
     "page_type": "<type>",
-    "title": "<VERBATIM headline from page>",
-    "subtitle": "<VERBATIM sub-headline or null>",
-    "description": "<VERBATIM value prop paragraph or null>",
-    "credibility": "<VERBATIM trust signal with numbers or null>",
-    "cta_text": "<VERBATIM button text or null>",
+    "title": "<authored hook, grounded in the page>",
+    "subtitle": "<authored supporting line or null>",
+    "description": "<1-sentence value framing or null>",
+    "credibility": "<VERBATIM trust signal with numbers, or null>",
+    "cta_text": "<action phrase or null>",
     "tags": ["<tag1>", "<tag2>"],
     "is_individual_profile": <true|false>,
-    "colors": {{
-        "primary": "<hex>",
-        "secondary": "<hex>",
-        "accent": "<hex>"
-    }},
-    "logo_bbox": {{"x": <0-1>, "y": <0-1>, "width": <0-1>, "height": <0-1>}} or null,
-    "design_dna": {{
-        "style": "<style>",
-        "mood": "<mood>",
-        "typography_personality": "<personality>",
-        "color_emotion": "<emotion>",
-        "spacing_feel": "<feel>",
-        "brand_adjectives": ["<word1>", "<word2>", "<word3>"]
-    }},
+    "colors": {"primary": "<hex>", "secondary": "<hex>", "accent": "<hex>"},
+    "logo_bbox": {"x": <0-1>, "y": <0-1>, "width": <0-1>, "height": <0-1>} or null,
+    "design_dna": {
+        "style": "<style>", "mood": "<mood>", "typography_personality": "<personality>",
+        "color_emotion": "<emotion>", "spacing_feel": "<feel>",
+        "brand_adjectives": ["<w1>", "<w2>", "<w3>"]
+    },
+    "composition": {
+        "layout": "typographic|split",
+        "use_visual": <true|false>,
+        "visual_source": "screenshot|logo|none",
+        "panel_color_role": "primary|secondary|dark|light",
+        "accent_moment": "bar|dot|shape",
+        "mood": "<one word>",
+        "reasoning": "<one sentence>"
+    },
     "confidence": <0.0-1.0>
-}}
+}
 
 RULES:
-1. VERBATIM ONLY — copy text exactly as shown on the page
-2. NULL OVER FABRICATION — return null for any field where you cannot find exact text
-3. NUMBERS REQUIRED for credibility — no vague claims
-4. TITLE IS MANDATORY — always extract the most prominent headline
-5. Keep it focused — 3 strong fields beat 6 weak ones"""
+1. AUTHOR the title/subtitle/description — sharpen the page's real story; never transcribe blindly, never fabricate facts.
+2. credibility is the ONE verbatim field — real numbers/names only, else null.
+3. NULL OVER FABRICATION everywhere.
+4. TITLE IS MANDATORY.
+5. Prefer restraint: a clean typographic card beats a busy one."""
 
 
 def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> ReasonedPreview:
@@ -1553,8 +1558,11 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
                 {
                     "role": "system",
                     "content": (
-                        "You extract structured content from webpage screenshots for social media preview cards. "
-                        "Copy text VERBATIM from the page. Never rephrase or invent text. Output valid JSON only."
+                        "You are MetaView's art director and conversion copywriter. From a webpage screenshot you "
+                        "compose a link-preview card that tells the page's story sharper than its own OG image. "
+                        "Author the headline and supporting line — grounded in what the page actually offers, never "
+                        "fabricating facts, numbers, or claims. Trust signals (credibility) stay strictly verbatim. "
+                        "Output valid JSON only."
                     ),
                 },
                 {
@@ -1621,6 +1629,22 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
     design_dna.setdefault("spacing_feel", "balanced")
     design_dna.setdefault("brand_adjectives", ["professional", "modern"])
 
+    # Composition spec authored by the art director (Step 4). Defaults keep
+    # the premium house style (clean typographic card) if the model omits it.
+    composition = data.get("composition")
+    if not isinstance(composition, dict):
+        composition = {}
+    composition.setdefault("layout", "typographic")
+    composition.setdefault("use_visual", False)
+    composition.setdefault("visual_source", "none")
+    composition.setdefault("panel_color_role", "primary")
+    composition.setdefault("accent_moment", "bar")
+    composition.setdefault("mood", design_dna.get("mood") or "confident")
+    # Guard: a visual only makes sense on a split layout.
+    if composition.get("layout") != "split":
+        composition["use_visual"] = False
+        composition["visual_source"] = "none"
+
     palette = {
         "primary": colors.get("primary", "#3B82F6"),
         "secondary": colors.get("secondary", "#1E293B"),
@@ -1685,6 +1709,7 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
         cta_text=cta_text,
         primary_image_base64=primary_image_base64,
         design_dna=design_dna,
+        composition=composition,
         processing_time_ms=processing_time,
         reasoning_confidence=confidence,
         design_fidelity_score=confidence,
@@ -1692,7 +1717,8 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
 
     logger.info(
         f"[SinglePass] Done in {processing_time}ms: "
-        f"template={template_type}, quality={blueprint.overall_quality}"
+        f"template={template_type}, quality={blueprint.overall_quality}, "
+        f"layout={composition.get('layout')}, title='{title[:50]}'"
     )
 
     return result

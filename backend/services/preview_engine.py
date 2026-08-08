@@ -716,10 +716,12 @@ class PreviewEngine:
                 # Task 3: Run AI reasoning (most time-consuming, starts early)
                 # 400% optimization: Skip AI for demo when page has rich OG metadata (early exit)
                 # Circuit breaker gate: skip AI if breaker is open
-                use_html_fast_path = (
-                    not ctx.ai_available()
-                    or (self.config.is_demo and self._has_rich_og_metadata(html_content))
-                )
+                # The demo must ALWAYS run the marketing brain — its whole point
+                # is to SHOW MetaView's reconstruction, not echo the site's own
+                # og: tags back (well-known sites all have rich OG, so the old
+                # demo fast-path made the demo look generic). Only skip AI when
+                # the circuit breaker is open. The SaaS path is unchanged.
+                use_html_fast_path = not ctx.ai_available()
                 if use_html_fast_path:
                     if self.config.is_demo and self._has_rich_og_metadata(html_content):
                         self.logger.info(f"✅ [400%] OG-rich demo fast path: skipping AI, using HTML extraction")
@@ -1785,7 +1787,8 @@ class PreviewEngine:
                 "blueprint": blueprint_dict,
                 "reasoning_confidence": reasoned.reasoning_confidence,
                 "design_fidelity_score": reasoned.design_fidelity_score,
-                "design_dna": reasoned.design_dna or {}
+                "design_dna": reasoned.design_dna or {},
+                "composition": reasoned.composition or {}
             }
 
             self.logger.info(
@@ -2209,7 +2212,9 @@ class PreviewEngine:
                 "layout_reasoning": result.blueprint.layout_reasoning,
                 "composition_notes": result.blueprint.composition_notes
             },
-            "reasoning_confidence": result.reasoning_confidence
+            "reasoning_confidence": result.reasoning_confidence,
+            "design_dna": getattr(result, "design_dna", None) or {},
+            "composition": getattr(result, "composition", None) or {}
         }
     
     def _generate_composited_image(
@@ -2254,7 +2259,66 @@ class PreviewEngine:
                 if strategy_template:
                     template_type = strategy_template
                     self.logger.info(f"🎯 Using classification-aware template: {template_type}")
-            
+
+            # ── PREMIUM RENDERER (preferred) ────────────────────────────────
+            # Render the AI-authored card in real HTML/CSS via headless Chromium:
+            # MetaView's design language (Bricolage 600, restraint, one accent,
+            # mono labels) applied to the page's own brand colors and the brain's
+            # story + composition. Any failure falls through to the legacy
+            # generators below, so a render hiccup never fails the whole preview.
+            try:
+                from backend.services.premium_card_renderer import render_premium_card
+
+                spec = ai_result.get("composition") or {}
+                composition = {
+                    "layout": spec.get("layout", "typographic"),
+                    "use_visual": bool(spec.get("use_visual", False)),
+                    "visual_source": spec.get("visual_source", "none"),
+                    "panel_color_role": spec.get("panel_color_role", "primary"),
+                    "accent_moment": spec.get("accent_moment", "bar"),
+                    "mood": spec.get("mood", "confident"),
+                }
+                logo_uri = None
+                if primary_image:
+                    logo_uri = (
+                        primary_image if str(primary_image).startswith("data:")
+                        else f"data:image/png;base64,{primary_image}"
+                    )
+                # SEQ-3 GATE: visuals are intentionally disabled until focal-point
+                # cropping lands. A full-page screenshot cover-cropped center-top
+                # can catch a nav bar and cheapen the card, so for now every card
+                # renders in the premium typographic style (uniformly strong — see
+                # the landing mock). The director's panel/accent/mood still apply;
+                # `render_premium_card` auto-downgrades "split" to typographic when
+                # no visual is supplied. To re-enable, build visual_uri from a
+                # focal crop of screenshot_bytes here.
+                visual_uri = None
+
+                premium_png = render_premium_card(
+                    title=ai_result.get("title") or "",
+                    subtitle=ai_result.get("subtitle"),
+                    url=url,
+                    brand_name=(brand_elements or {}).get("brand_name"),
+                    colors=blueprint_colors,
+                    composition=composition,
+                    logo_data_uri=logo_uri,
+                    visual_data_uri=visual_uri,
+                )
+                if premium_png:
+                    premium_url = upload_file_to_r2(
+                        premium_png,
+                        f"previews/{'demo' if self.config.is_demo else 'saas'}/{uuid4()}.png",
+                        "image/png",
+                    )
+                    if premium_url:
+                        self.logger.info(f"✅ Premium card rendered: {premium_url}")
+                        return premium_url
+            except Exception as premium_err:
+                self.logger.warning(
+                    f"Premium renderer failed, falling back to legacy generators: {premium_err}",
+                    exc_info=True,
+                )
+
             # ENHANCED: Use 7-layer enhancement system if available
             if ENHANCED_SYSTEM_AVAILABLE:
                 try:

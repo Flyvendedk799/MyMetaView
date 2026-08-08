@@ -127,6 +127,10 @@ def normalize_ai_result(raw: Optional[Dict[str, Any]], url: str) -> Dict[str, An
         "blueprint": blueprint,
         "reasoning_confidence": confidence,
         "design_dna": raw.get("design_dna", {}),
+        # Composition spec authored by the art director (preview_reasoning
+        # SINGLE_PASS_PROMPT Step 4). Preserved verbatim so the premium HTML
+        # renderer can honour the layout/visual/color/accent decision.
+        "composition": raw.get("composition") if isinstance(raw.get("composition"), dict) else {},
     }
 
 
