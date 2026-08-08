@@ -503,11 +503,11 @@ export default function Demo() {
             <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
               <div className="relative">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary-500 rounded-xl flex items-center justify-center shadow-card transition-all duration-300">
-                  <span className="text-white font-black text-base sm:text-lg">M</span>
+                  <span className="text-white font-display font-semibold text-base sm:text-lg">M</span>
                 </div>
                 <div className="absolute -inset-1 hidden" />
               </div>
-              <span className="text-lg sm:text-xl font-black text-secondary-900 tracking-tight">MetaView</span>
+              <span className="text-lg sm:text-xl font-display font-semibold text-secondary-900 tracking-tight">MetaView</span>
             </Link>
             <div className="hidden lg:flex items-center space-x-10">
               {[
@@ -541,7 +541,6 @@ export default function Demo() {
               <Link
                 to="/app"
                 className="hidden sm:flex group relative px-5 sm:px-6 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 hover:scale-[1.04] active:scale-[0.98] overflow-hidden min-h-[44px] items-center justify-center select-none"
-                style={{ boxShadow: scrollY > 10 ? '0 4px 20px rgba(249, 115, 22, 0.3)' : 'none' }}
               >
                 <span className="relative z-10 flex items-center">
                   Get Started Free
@@ -631,7 +630,7 @@ export default function Demo() {
             <div className="flex flex-col items-center gap-3 mb-6">
               <div className="inline-flex items-center space-x-2 px-4 py-2 bg-accent-100 rounded-full border-2 border-accent-300/80 ">
                 <RocketLaunchIcon className="w-4 h-4 text-accent-600" aria-hidden="true" />
-                <span className="text-xs font-black text-accent-800 tracking-wide">AI-Powered Preview Demo</span>
+                <span className="text-xs font-display font-semibold text-accent-800 tracking-wide">AI-Powered Preview Demo</span>
               </div>
               {previewsGeneratedCount > 0 && (
                 <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-secondary-200 shadow-sm">
@@ -642,7 +641,7 @@ export default function Demo() {
                 </div>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[3.25rem] font-black text-secondary-900 leading-[1.1] tracking-[-0.03em] mb-3 sm:mb-4 px-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[3.25rem] font-display font-semibold text-secondary-900 leading-[1.1] tracking-[-0.03em] mb-3 sm:mb-4 px-2">
               See Your URLs{' '}
               <span className="relative inline-block">
                 <span className="text-accent-500">Come to Life</span>
@@ -650,8 +649,8 @@ export default function Demo() {
                   <path d="M0 8C50 4 100 8 150 4C175 2 200 6 200 6" stroke="url(#heroGradient)" strokeWidth="3" strokeLinecap="round" />
                   <defs>
                     <linearGradient id="heroGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#f97316" stopOpacity="0.5" />
-                      <stop offset="100%" stopColor="#eab308" stopOpacity="0.2" />
+                      <stop offset="0%" stopColor="#E8622C" stopOpacity="0.7" />
+                      <stop offset="100%" stopColor="#12523F" stopOpacity="0.25" />
                     </linearGradient>
                   </defs>
                 </svg>
@@ -665,14 +664,14 @@ export default function Demo() {
           {/* Input Step */}
           {step === 'input' && (
             <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-secondary-200/80 overflow-hidden relative">
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-overlay border border-secondary-200/80 overflow-hidden relative">
                 <div className="absolute inset-0 bg-brand-50/50" />
                 
                 <div className="relative p-4 sm:p-6 md:p-8 lg:p-10">
                   {/* Success overlay */}
                   {showEmailSuccess && (
                     <div className="absolute inset-0 bg-success-500/10 backdrop-blur-sm z-10 flex items-center justify-center animate-fade-in">
-                      <div className="bg-white rounded-2xl p-8 shadow-2xl border-2 border-success-200 animate-scale-in">
+                      <div className="bg-white rounded-2xl p-8 shadow-overlay border-2 border-success-200 animate-scale-in">
                         <div className="w-16 h-16 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
                           <CheckIcon className="w-8 h-8 text-white" />
                         </div>
@@ -889,7 +888,7 @@ export default function Demo() {
           {/* Optional Email Subscription Modal - Only shown after preview generation */}
           {showEmailPopup && preview && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-scale-in">
+              <div className="bg-white rounded-2xl shadow-overlay max-w-md w-full p-8 relative animate-scale-in">
                 {/* Close button */}
                 <button
                   onClick={() => {
@@ -908,7 +907,7 @@ export default function Demo() {
                   <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4 ">
                     <EnvelopeIcon className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-black text-secondary-900 mb-2">Stay Updated</h3>
+                  <h3 className="text-2xl font-display font-semibold text-secondary-900 mb-2">Stay Updated</h3>
                   <p className="text-secondary-600 text-sm">Get notified about new features and preview optimization tips (optional)</p>
                 </div>
 
@@ -982,7 +981,7 @@ export default function Demo() {
                       <button
                         type="submit"
                         disabled={isSubmittingEmail || !email.trim() || !consentChecked}
-                        className="flex-1 px-4 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold text-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-accent-500/40 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                        className="flex-1 px-4 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold text-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-card disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                       >
                         {isSubmittingEmail ? (
                           <div className="flex items-center justify-center space-x-2">
@@ -1013,7 +1012,7 @@ export default function Demo() {
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4  animate-bounce">
                     <CheckIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-secondary-900 mb-2">Preview Reconstructed!</h3>
+                  <h3 className="text-xl sm:text-2xl font-display font-semibold text-secondary-900 mb-2">Preview Reconstructed!</h3>
                   <p className="text-sm sm:text-base text-secondary-600 mb-3 sm:mb-4 px-2">Multi-stage AI reasoning extracted and optimized your content</p>
                   
                   {/* Quality Indicators */}
@@ -1232,7 +1231,7 @@ export default function Demo() {
                 <div className="absolute -inset-1 hidden" />
                 <div className="relative">
                   <div className="text-center mb-6">
-                    <h3 className="text-2xl font-black text-secondary-900 mb-2">Generated Preview</h3>
+                    <h3 className="text-2xl font-display font-semibold text-secondary-900 mb-2">Generated Preview</h3>
                     <p className="text-secondary-600">Your og:image â€” optimised for every social platform</p>
                   </div>
 
@@ -1304,7 +1303,7 @@ export default function Demo() {
                     {preview ? (
                       <ReconstructedPreview preview={preview} />
                     ) : (
-                      <div className="relative overflow-hidden rounded-2xl bg-white shadow-xl animate-pulse">
+                      <div className="relative overflow-hidden rounded-2xl bg-white shadow-card animate-pulse">
                         <div className="h-48 bg-secondary-200" />
                         <div className="p-6 space-y-4">
                           <div className="h-6 bg-secondary-200 rounded w-3/4" />
@@ -1338,7 +1337,7 @@ export default function Demo() {
                       <div className="max-w-full sm:max-w-2xl mx-auto px-2 sm:px-0">
                         <div className="relative group">
                           <div className="absolute -inset-1 hidden" />
-                          <div className="relative bg-white p-2 rounded-xl shadow-xl border border-secondary-200">
+                          <div className="relative bg-white p-2 rounded-xl shadow-card border border-secondary-200">
                             <div className="relative">
                               <img
                                 src={preview.composited_preview_image_url}
@@ -1350,7 +1349,7 @@ export default function Demo() {
                               <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={() => copyImageToClipboard(preview.composited_preview_image_url!)}
-                                  className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-colors"
+                                  className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-card hover:bg-white transition-colors"
                                   aria-label="Copy preview image to clipboard"
                                   title="Copy image"
                                 >
@@ -1362,7 +1361,7 @@ export default function Demo() {
                                 </button>
                                 <button
                                   onClick={() => downloadImage(preview.composited_preview_image_url!, `preview-${preview.title.replace(/\s+/g, '-').toLowerCase()}.png`)}
-                                  className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-colors"
+                                  className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-card hover:bg-white transition-colors"
                                   aria-label="Download preview image"
                                   title="Download image"
                                 >
@@ -1388,7 +1387,7 @@ export default function Demo() {
                                       setTimeout(() => setCopySuccess(false), 2000)
                                     }
                                   }}
-                                  className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-colors"
+                                  className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-card hover:bg-white transition-colors"
                                   aria-label="Share preview"
                                   title="Share preview"
                                 >
@@ -1421,7 +1420,7 @@ export default function Demo() {
                           <img 
                             src={preview.screenshot_url} 
                             alt="Original screenshot"
-                            className="w-full rounded-lg shadow-lg border border-secondary-200"
+                            className="w-full rounded-lg shadow-card border border-secondary-200"
                           />
                           <p className="text-xs text-secondary-500 mt-2">Original page screenshot (before reconstruction)</p>
                         </div>
@@ -1559,7 +1558,7 @@ export default function Demo() {
               {/* Mobile Platform Showcase */}
               <div className="bg-secondary-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 border border-secondary-200">
                 <div className="text-center mb-6 sm:mb-8">
-                  <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-secondary-900 mb-2">See It In Action</h3>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-display font-semibold text-secondary-900 mb-2">See It In Action</h3>
                   <p className="text-sm sm:text-base text-secondary-600 mb-4 sm:mb-6">How your preview appears on social media platforms</p>
                   
                   {/* Platform Selector - Visual Tab Pills */}
@@ -1580,7 +1579,7 @@ export default function Demo() {
                           onClick={() => setSelectedPlatform(platform.id)}
                           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 select-none ${
                             selectedPlatform === platform.id
-                              ? `${platform.color} text-white shadow-lg scale-105 ring-2 ring-white ring-offset-1`
+                              ? `${platform.color} text-white shadow-card scale-105 ring-2 ring-white ring-offset-1`
                               : 'bg-white border-2 border-secondary-200 text-secondary-600 hover:border-secondary-300 hover:text-secondary-900 hover:shadow-md'
                           }`}
                         >
@@ -1605,7 +1604,7 @@ export default function Demo() {
                         {/* Mobile Device Frame */}
                         <div className="relative w-full max-w-[260px] sm:max-w-[280px] mx-auto transform transition-all duration-300">
                           {/* Device Frame with Shadow - iPhone aspect ratio ~9:19.5 */}
-                          <div className="relative bg-secondary-900 rounded-[2rem] sm:rounded-[2.5rem] p-1 sm:p-1.5 shadow-2xl" style={{ aspectRatio: '9/19.5', minHeight: '500px' }}>
+                          <div className="relative bg-secondary-900 rounded-[2rem] sm:rounded-[2.5rem] p-1 sm:p-1.5 shadow-overlay" style={{ aspectRatio: '9/19.5', minHeight: '500px' }}>
                             {/* Notch */}
                             <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-36 h-7 bg-secondary-900 rounded-b-2xl z-10"></div>
                             
@@ -1801,7 +1800,7 @@ export default function Demo() {
               <div className="bg-ink rounded-2xl p-10 text-center text-white relative overflow-hidden">
                 <div className="absolute inset-0 hidden" />
                 <div className="relative z-10 max-w-2xl mx-auto">
-                  <h3 className="text-3xl font-black mb-3">Ready to Create Unlimited Previews?</h3>
+                  <h3 className="text-3xl font-display font-semibold mb-3">Ready to Create Unlimited Previews?</h3>
                   <p className="text-secondary-300 mb-2 text-lg font-semibold">
                     Increase click-through rates with brand-aware social previews
                   </p>
@@ -1831,7 +1830,7 @@ export default function Demo() {
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link
                       to="/app"
-                      className="group inline-flex items-center justify-center space-x-2 px-10 py-5 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-black text-lg transition-all duration-300 hover:scale-[1.05] relative overflow-hidden"
+                      className="btn-accent btn-lg group text-lg relative overflow-hidden"
                     >
                       <span className="relative z-10 flex items-center">
                         Get Full Access

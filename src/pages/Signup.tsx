@@ -107,7 +107,7 @@ export default function Signup() {
             </p>
           </header>
 
-          <div className="card shadow-soft-lg p-6 sm:p-8">
+          <div className="card shadow-card p-6 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               {(error || authError) && (
                 <div 
