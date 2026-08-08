@@ -28,6 +28,13 @@ _DROP_PARAMS = ("temperature", "seed")
 _INSTALLED = False
 
 
+# Our own marker. Do NOT use functools.wraps/__wrapped__ as the "already
+# patched" signal — the OpenAI SDK's create() is decorated with @required_args,
+# which already sets __wrapped__, so that check would falsely think it was
+# patched and skip us (the original bug this shim first shipped with).
+_MARKER = "_gateway_compat_patched"
+
+
 def _wrap(original):
     def _patched(self, *args, **kwargs):
         for key in _DROP_PARAMS:
@@ -37,7 +44,19 @@ def _wrap(original):
     _patched.__name__ = getattr(original, "__name__", "create")
     _patched.__doc__ = getattr(original, "__doc__", None)
     _patched.__wrapped__ = original
+    setattr(_patched, _MARKER, True)
     return _patched
+
+
+def _patch(cls) -> bool:
+    """Wrap cls.create once. Returns True if the class now carries our wrapper."""
+    create = cls.__dict__.get("create", getattr(cls, "create", None))
+    if create is None:
+        return False
+    if getattr(create, _MARKER, False):
+        return True  # already ours
+    cls.create = _wrap(create)
+    return True
 
 
 def install_openai_gateway_compat() -> bool:
@@ -47,20 +66,14 @@ def install_openai_gateway_compat() -> bool:
     if _INSTALLED:
         return True
     patched_any = False
-    # Sync client
     try:
         from openai.resources.chat.completions import Completions
-        if not getattr(Completions.create, "__wrapped__", None):
-            Completions.create = _wrap(Completions.create)
-        patched_any = True
+        patched_any = _patch(Completions) or patched_any
     except Exception as e:  # pragma: no cover
         logger.debug("openai_compat: sync patch skipped: %s", e)
-    # Async client
     try:
         from openai.resources.chat.completions import AsyncCompletions
-        if not getattr(AsyncCompletions.create, "__wrapped__", None):
-            AsyncCompletions.create = _wrap(AsyncCompletions.create)
-        patched_any = True
+        patched_any = _patch(AsyncCompletions) or patched_any
     except Exception as e:  # pragma: no cover
         logger.debug("openai_compat: async patch skipped: %s", e)
     if patched_any:
