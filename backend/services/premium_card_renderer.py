@@ -37,6 +37,34 @@ _GOOGLE_FONTS = (
     "family=IBM+Plex+Sans:wght@400;500;600&display=swap"
 )
 
+# Fonts are embedded as base64 @font-face so rasterizing never blocks on (or
+# fails because of) a network fetch inside the worker container — the whole
+# reason the first live render fell back to the legacy generator. Loaded once
+# and cached. If the asset is somehow missing, we fall back to the Google link
+# (a network dep, but better than no display font).
+import os as _os
+
+_FONTS_CSS_PATH = _os.path.join(_os.path.dirname(__file__), "assets", "premium_fonts.css")
+_FONT_HEAD_CACHE: Optional[str] = None
+
+
+def _font_head() -> str:
+    global _FONT_HEAD_CACHE
+    if _FONT_HEAD_CACHE is not None:
+        return _FONT_HEAD_CACHE
+    try:
+        with open(_FONTS_CSS_PATH, "r", encoding="utf-8") as fh:
+            css = fh.read()
+        _FONT_HEAD_CACHE = f"<style>{css}</style>"
+    except Exception as e:  # pragma: no cover
+        logger.warning(f"premium_fonts.css unavailable ({e}); using network font link")
+        _FONT_HEAD_CACHE = (
+            '<link rel="preconnect" href="https://fonts.googleapis.com">'
+            '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            f'<link href="{_GOOGLE_FONTS}" rel="stylesheet">'
+        )
+    return _FONT_HEAD_CACHE
+
 
 # ---------------------------------------------------------------------------
 # Color helpers
@@ -151,9 +179,7 @@ def _esc(text: str) -> str:
 _CARD_TEMPLATE = Template(
     """<!doctype html>
 <html><head><meta charset="utf-8"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="${fonts}" rel="stylesheet">
+${font_head}
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { width:${card_w}px; height:${card_h}px; }
@@ -281,7 +307,7 @@ def _build_html(
         accent_shape_html = '<div class="accent-shape"></div>'
 
     return _CARD_TEMPLATE.substitute(
-        fonts=_GOOGLE_FONTS,
+        font_head=_font_head(),
         card_w=str(CARD_W),
         card_h=str(CARD_H),
         panel=panel,
@@ -387,13 +413,22 @@ def _shoot(browser, doc: str) -> bytes:
         device_scale_factor=_SCALE,
     )
     try:
-        page.set_content(doc, wait_until="load", timeout=15000)
-        # Wait for web fonts so Bricolage/Plex actually render (not a fallback).
+        # domcontentloaded (not "load"): fonts are embedded as data: URIs, so
+        # there are no external resources to wait for — this can't hang on the
+        # network the way "load" + a Google Fonts link did.
+        page.set_content(doc, wait_until="domcontentloaded", timeout=15000)
+        # Bounded wait for font faces to parse/apply (embedded → near-instant),
+        # capped so it can never hang.
         try:
-            page.evaluate("async () => { await document.fonts.ready; }")
+            page.evaluate(
+                "() => Promise.race(["
+                "  (document.fonts ? document.fonts.ready : Promise.resolve()),"
+                "  new Promise(r => setTimeout(r, 2500))"
+                "])"
+            )
         except Exception:
             pass
-        page.wait_for_timeout(180)
+        page.wait_for_timeout(120)
         return page.screenshot(type="png", full_page=False)
     finally:
         page.close()
