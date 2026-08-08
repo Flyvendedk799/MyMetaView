@@ -307,7 +307,13 @@ def _build_html(
     # as a bug; suppress the wordmark when it's a substring of the title.
     _t = (title or "").strip().lower()
     _b = (brand_name or "").strip().lower()
-    show_wordmark = bool(_b) and _b not in _t and _t not in _b
+    # Only show a wordmark that is actually a NAME. Brand extraction sometimes
+    # returns a tagline/sentence as brand_name; a truncated sentence in the
+    # corner looks broken, so require it to be short and few-worded.
+    show_wordmark = (
+        bool(_b) and len(_b) <= 22 and len(_b.split()) <= 3
+        and _b not in _t and _t not in _b
+    )
     if logo_data_uri:
         logo_html = f'<img class="logo" src="{logo_data_uri}" alt="" />'
     elif show_wordmark:
