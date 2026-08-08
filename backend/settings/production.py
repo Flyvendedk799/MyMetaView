@@ -54,7 +54,13 @@ class ProductionSettings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY environment variable is required in production")
-    
+
+    # Optional override for the OpenAI-compatible endpoint. Empty -> vendor
+    # default. Point at a SubGate gateway's /v1 URL to route inference through
+    # it; OPENAI_API_KEY then holds the SubGate consumer token instead of a
+    # vendor key. Not required — an unset value keeps the direct-to-vendor path.
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "")
+
     # Redis - REQUIRED in production
     REDIS_URL: str = os.getenv("REDIS_URL", "")
     if not REDIS_URL:

@@ -312,7 +312,7 @@ def track_ai_call(model: str, provider: str = "openai", operation: str = "comple
                 logger.info(
                     f"Completed AI call: {provider}/{model}/{operation} "
                     f"({metrics.latency_ms:.0f}ms, {metrics.total_tokens or 0} tokens, "
-                    f"${metrics.estimated_cost:.4f})",
+                    f"${(metrics.estimated_cost or 0):.4f})",
                     extra={
                         **metrics.to_dict(),
                         **context.to_dict()

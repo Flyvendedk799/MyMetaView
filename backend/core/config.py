@@ -52,7 +52,12 @@ class Settings:
     
     # OpenAI API configuration
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    
+    # Optional override for the OpenAI-compatible endpoint. Empty -> the vendor
+    # default (https://api.openai.com/v1). Set to a SubGate gateway's /v1 URL to
+    # route inference through it; the OpenAI SDK reads base_url from here, so no
+    # other code changes. OPENAI_API_KEY then becomes the SubGate consumer token.
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "")
+
     # Redis configuration for job queue
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     

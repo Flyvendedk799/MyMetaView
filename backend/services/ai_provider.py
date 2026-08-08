@@ -146,8 +146,21 @@ class OpenAIProvider(BaseAIProvider):
         if not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY not configured")
 
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.logger.info("OpenAI provider initialized")
+        # Optional gateway override. When OPENAI_BASE_URL is set (e.g. a SubGate
+        # /v1 endpoint) the SDK talks to it instead of the vendor, and
+        # OPENAI_API_KEY carries the gateway's consumer token. Unset -> the
+        # vendor default, so existing deployments are unchanged.
+        base_url = (getattr(settings, "OPENAI_BASE_URL", "") or "").strip() or None
+        client_kwargs: Dict[str, Any] = {"api_key": settings.OPENAI_API_KEY}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+
+        self.client = OpenAI(**client_kwargs)
+        # Log the endpoint (never the key) so which path is live is visible.
+        self.logger.info(
+            "OpenAI provider initialized",
+            base_url=base_url or "https://api.openai.com/v1 (default)"
+        )
 
     def _build_messages(self, request: AICompletionRequest) -> List[Dict[str, Any]]:
         """Build OpenAI message format."""
