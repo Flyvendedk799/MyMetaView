@@ -172,6 +172,35 @@ def _esc(text: str) -> str:
     return _html.escape(text or "", quote=True)
 
 
+def _logo_usable(data_uri: str) -> bool:
+    """True only for a logo crop worth showing.
+
+    A tiny, near-empty, or near-uniform crop scaled to 34px reads as a faint
+    smudge in the corner and cheapens the card — better to fall back to the clean
+    text wordmark. Rejects crops that are too small, mostly transparent, or almost
+    a single flat color. Never blocks on a decode error.
+    """
+    try:
+        import base64
+        from PIL import Image
+        b64 = data_uri.split(",", 1)[1] if "," in data_uri else data_uri
+        img = Image.open(BytesIO(base64.b64decode(b64)))
+        w, h = img.size
+        if w < 44 or h < 14:
+            return False
+        small = img.convert("RGBA").resize((16, 16))
+        px = list(small.getdata())
+        if sum(1 for p in px if p[3] < 24) > len(px) * 0.82:
+            return False  # mostly transparent
+        def _var(xs):
+            m = sum(xs) / len(xs)
+            return sum((x - m) ** 2 for x in xs) / len(xs)
+        spread = _var([p[0] for p in px]) + _var([p[1] for p in px]) + _var([p[2] for p in px])
+        return spread >= 80  # reject near-uniform smudges
+    except Exception:
+        return True
+
+
 # ---------------------------------------------------------------------------
 # HTML
 # ---------------------------------------------------------------------------
@@ -229,7 +258,7 @@ ${font_head}
     position:relative; width:42%; height:100%; overflow:hidden;
     border-left:1px solid ${hline};
   }
-  .visual img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+  .visual img { width:100%; height:100%; object-fit:cover; object-position:center center; }
 </style></head>
 <body>
   <div class="card">
@@ -349,6 +378,10 @@ def render_premium_card(
     """
     colors = colors or {}
     composition = composition or {}
+
+    # Drop a weak logo crop so the clean wordmark shows instead.
+    if logo_data_uri and not _logo_usable(logo_data_uri):
+        logo_data_uri = None
 
     title_c = _clean(title, 80) or (brand_name or _url_label(url))
     subtitle_c = _clean(subtitle, 96)

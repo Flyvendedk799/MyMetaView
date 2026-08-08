@@ -2243,6 +2243,39 @@ class PreviewEngine:
             "composition": getattr(result, "composition", None) or {}
         }
     
+    def _focal_crop(self, screenshot_bytes: bytes, focus: Dict[str, Any]) -> Optional[str]:
+        """Crop the AI-chosen hero region from the full-page screenshot.
+
+        `focus` is {x,y,width,height} as 0-1 fractions. Returns a base64 data URI
+        (PNG) framed roughly to the split panel's portrait aspect, or None on any
+        problem (so the card falls back to typographic).
+        """
+        try:
+            import base64
+            from io import BytesIO
+            from PIL import Image
+
+            img = Image.open(BytesIO(screenshot_bytes)).convert("RGB")
+            W, H = img.size
+            x = max(0.0, min(0.95, float(focus.get("x", 0))))
+            y = max(0.0, min(0.95, float(focus.get("y", 0))))
+            w = max(0.08, min(1.0 - x, float(focus.get("width", 0))))
+            h = max(0.05, min(1.0 - y, float(focus.get("height", 0))))
+            left, top, right, bottom = int(x * W), int(y * H), int((x + w) * W), int((y + h) * H)
+            if right - left < 40 or bottom - top < 40:
+                return None
+            crop = img.crop((left, top, right, bottom))
+            # Cap size so the data URI stays small; the renderer covers/centers it.
+            if crop.width > 900:
+                nh = int(crop.height * 900 / crop.width)
+                crop = crop.resize((900, max(1, nh)), Image.Resampling.LANCZOS)
+            out = BytesIO()
+            crop.save(out, format="PNG", optimize=True)
+            return "data:image/png;base64," + base64.b64encode(out.getvalue()).decode()
+        except Exception as e:
+            self.logger.debug(f"Focal crop failed: {e}")
+            return None
+
     def _generate_composited_image(
         self,
         screenshot_bytes: bytes,
@@ -2310,15 +2343,18 @@ class PreviewEngine:
                         primary_image if str(primary_image).startswith("data:")
                         else f"data:image/png;base64,{primary_image}"
                     )
-                # SEQ-3 GATE: visuals are intentionally disabled until focal-point
-                # cropping lands. A full-page screenshot cover-cropped center-top
-                # can catch a nav bar and cheapen the card, so for now every card
-                # renders in the premium typographic style (uniformly strong — see
-                # the landing mock). The director's panel/accent/mood still apply;
-                # `render_premium_card` auto-downgrades "split" to typographic when
-                # no visual is supplied. To re-enable, build visual_uri from a
-                # focal crop of screenshot_bytes here.
+                # SEQ 3: focal-cropped screenshot for split cards. The art director
+                # only asks for "split" when the page has one clean hero visual, and
+                # gives a tight focus box (nav/banners excluded). We crop exactly
+                # that region so the panel shows the hero — not a squished full page.
+                # Any failure leaves visual_uri None and the renderer falls back to
+                # the premium typographic card.
                 visual_uri = None
+                vfocus = spec.get("visual_focus")
+                if (composition["use_visual"]
+                        and composition["visual_source"] == "screenshot"
+                        and isinstance(vfocus, dict) and screenshot_bytes):
+                    visual_uri = self._focal_crop(screenshot_bytes, vfocus)
 
                 premium_png = render_premium_card(
                     title=ai_result.get("title") or "",

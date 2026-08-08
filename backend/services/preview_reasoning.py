@@ -1475,9 +1475,10 @@ First, silently answer for yourself: What is this page? What does it want the vi
 Decide how MetaView should lay out the card. MetaView's house style is confident and typographic: a brand-colored panel, a strong headline, ONE accent moment. Restraint reads as premium — a clean type-only card almost always beats a card cluttered with a screenshot.
 
 **composition**:
-   - layout: "typographic" (headline-led, no image — the default and usually best) OR "split" (headline on one side, a single clean visual on the other). Choose "split" ONLY when the page has ONE genuinely strong, self-contained hero visual (a product shot, a person's photo, a clean device mockup) that would make the card MORE compelling. When in doubt, "typographic".
+   - layout: "typographic" (headline-led, no image — the default and usually best) OR "split" (headline on one side, a single clean visual on the other). Choose "split" ONLY when the page has ONE genuinely strong, self-contained hero visual (a product shot, a person's photo, a clean device mockup) that would make the card MORE compelling. Most SaaS/marketing pages are stronger typographic — when in doubt, "typographic".
    - use_visual: true only if layout is "split" and a clean visual exists; else false.
    - visual_source: "screenshot" (a crop of the page) | "logo" | "none".
+   - visual_focus: ONLY when layout is "split" — the bounding box of that single best visual region, as fractions {"x","y","width","height"} 0-1 of the screenshot. Frame the hero product/graphic/photo tightly; EXCLUDE the top nav bar, cookie/consent banners, and text-only areas. Prefer a roughly square-to-portrait region (it fills a tall panel). null when layout is "typographic".
    - panel_color_role: which brand color anchors the card background — "primary" | "secondary" | "dark" (a deep near-black tint of the brand) | "light" (a soft off-white). Pick for contrast and mood; "dark" and "primary" feel premium for most brands.
    - accent_moment: where the single accent lands — "bar" (a short rule under the headline) | "dot" | "shape" (a soft corner shape).
    - mood: one word matching the brand (e.g. "confident", "warm", "precise", "bold", "calm").
@@ -1507,6 +1508,7 @@ Ignore cookie banners, nav menus, footers, popups, breadcrumbs, "Skip to content
         "layout": "typographic|split",
         "use_visual": <true|false>,
         "visual_source": "screenshot|logo|none",
+        "visual_focus": {"x": <0-1>, "y": <0-1>, "width": <0-1>, "height": <0-1>} or null,
         "panel_color_role": "primary|secondary|dark|light",
         "accent_moment": "bar|dot|shape",
         "mood": "<one word>",
@@ -1641,10 +1643,24 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
     composition.setdefault("panel_color_role", "primary")
     composition.setdefault("accent_moment", "bar")
     composition.setdefault("mood", design_dna.get("mood") or "confident")
-    # Guard: a visual only makes sense on a split layout.
-    if composition.get("layout") != "split":
+    # Validate the focal box (fractions, sane size) — a bad box would crop garbage.
+    vf = composition.get("visual_focus")
+    if isinstance(vf, dict):
+        try:
+            x, y = float(vf.get("x", 0)), float(vf.get("y", 0))
+            w, h = float(vf.get("width", 0)), float(vf.get("height", 0))
+            ok = (0 <= x < 1 and 0 <= y < 1 and 0.08 <= w <= 1 and 0.05 <= h <= 1
+                  and x + w <= 1.02 and y + h <= 1.02)
+            composition["visual_focus"] = {"x": x, "y": y, "width": w, "height": h} if ok else None
+        except (TypeError, ValueError):
+            composition["visual_focus"] = None
+    else:
+        composition["visual_focus"] = None
+    # Guard: a visual only makes sense on a split layout with a valid focus box.
+    if composition.get("layout") != "split" or not composition.get("visual_focus"):
         composition["use_visual"] = False
         composition["visual_source"] = "none"
+        composition["visual_focus"] = None
 
     palette = {
         "primary": colors.get("primary", "#3B82F6"),
