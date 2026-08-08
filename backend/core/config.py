@@ -3,6 +3,15 @@ import os
 import secrets
 from typing import List
 
+# Install the LLM-gateway param-compat shim as early as possible. Every AI
+# service imports `settings` from here before it constructs an OpenAI client, so
+# importing this module guarantees the shim is in place before any chat request
+# (it drops `temperature`/`seed`, which the gateway's Anthropic model 400s on).
+try:  # never let a shim import break config loading
+    from backend.services import openai_compat  # noqa: F401
+except Exception:
+    pass
+
 # Check if we're in production mode
 ENV = os.getenv("ENV", "development").lower()
 
