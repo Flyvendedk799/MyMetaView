@@ -91,7 +91,13 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
             enable_ai_reasoning=True,
             enable_composited_image=True,
             enable_cache=not cache_disabled,
-            enable_multi_agent=selected_profile["multi_agent"],
+            # The demo runs the single-pass art-director brain (preview_reasoning),
+            # NOT the multi-agent orchestrator. The orchestrator is currently broken
+            # (its reasoning_chain agent sends `temperature`, which the Anthropic
+            # model behind the gateway rejects with a 400) and it bypasses our
+            # authored-copy + composition prompt. Single-pass gives clean, on-brand
+            # copy and the composition spec the premium renderer needs.
+            enable_multi_agent=False,
             enable_ui_element_extraction=selected_profile["ui_extraction"],
             quality_threshold=selected_profile["threshold"],
             max_quality_iterations=selected_profile["iterations"],
@@ -201,7 +207,7 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
             # block proves the new worker build is live; the fields show which
             # reasoning path ran and whether the premium card renderer succeeded.
             "_debug": {
-                "engine_build": "premium-v3",
+                "engine_build": "premium-v4",
                 "reasoning_path": getattr(engine, "_reasoning_path", "unset"),
                 "premium_note": getattr(engine, "_premium_note", "unset"),
                 "composited_url": result.composited_preview_image_url,

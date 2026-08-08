@@ -1577,8 +1577,9 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
                 },
             ],
             max_tokens=2000,
-            temperature=0.0,
-            seed=42,
+            # NOTE: no temperature/seed — the gateway routes to an Anthropic model
+            # that 400s on `temperature` ("deprecated for this model"), which would
+            # crash this call and drop us to mojibaked HTML-only extraction.
         )
         circuit_breaker.record_success()
     except Exception as e:

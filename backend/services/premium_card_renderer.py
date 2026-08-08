@@ -387,24 +387,42 @@ def render_premium_card(
 
 
 def _rasterize(doc: str) -> bytes:
-    """Render HTML to a 2× PNG via the warm browser pool (fresh browser fallback)."""
+    """Render HTML to a 2× PNG on a dedicated thread that owns its Playwright.
+
+    The screenshot pipeline's shared BrowserPool binds its Playwright to whichever
+    thread created it — usually a ThreadPoolExecutor worker from the parallel
+    capture/extraction stage, which has already exited by the time we composite.
+    Reusing that browser from the main thread raises
+    ``greenlet.error: cannot switch to a different thread (which happens to have
+    exited)``. To be bulletproof we do the entire launch → shoot → close on one
+    fresh thread with its own ``sync_playwright`` instance, so every Playwright
+    call happens on the thread that created it.
+    """
     from backend.services.playwright_screenshot import BrowserPool
+    import threading
 
-    pool = BrowserPool.get_instance()
-    browser = pool.acquire()
-    if browser:
-        try:
-            return _shoot(browser, doc)
-        finally:
-            pool.release()
+    box: Dict[str, Any] = {}
 
-    from playwright.sync_api import sync_playwright
-    with sync_playwright() as p:
-        browser = p.chromium.launch(args=BrowserPool.BROWSER_ARGS, headless=True)
+    def _run() -> None:
         try:
-            return _shoot(browser, doc)
-        finally:
-            browser.close()
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                browser = p.chromium.launch(args=BrowserPool.BROWSER_ARGS, headless=True)
+                try:
+                    box["png"] = _shoot(browser, doc)
+                finally:
+                    browser.close()
+        except Exception as exc:  # re-raised on the caller thread below
+            box["err"] = exc
+
+    t = threading.Thread(target=_run, name="premium-card-render", daemon=True)
+    t.start()
+    t.join(timeout=60)
+    if "png" in box:
+        return box["png"]
+    if "err" in box:
+        raise box["err"]
+    raise RuntimeError("premium card render timed out after 60s")
 
 
 def _shoot(browser, doc: str) -> bytes:
