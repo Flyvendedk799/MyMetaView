@@ -195,7 +195,17 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
             # Metadata
             "is_demo": True,
             "message": f"{result.message} [quality_mode={quality_mode}]",
-            "trace_url": result.trace_url
+            "trace_url": result.trace_url,
+
+            # Temporary diagnostics (premium renderer rollout). Presence of this
+            # block proves the new worker build is live; the fields show which
+            # reasoning path ran and whether the premium card renderer succeeded.
+            "_debug": {
+                "engine_build": "premium-v3",
+                "reasoning_path": getattr(engine, "_reasoning_path", "unset"),
+                "premium_note": getattr(engine, "_premium_note", "unset"),
+                "composited_url": result.composited_preview_image_url,
+            },
         }
         
         # Add quality scores and warnings from pipeline

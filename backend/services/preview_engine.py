@@ -1799,6 +1799,7 @@ class PreviewEngine:
                 f"Fidelity: {reasoned.design_fidelity_score:.2f}"
             )
 
+            self._reasoning_path = "reasoned"
             return result
 
         except Exception as e:
@@ -2032,8 +2033,10 @@ class PreviewEngine:
         """
         from urllib.parse import urlparse
 
+        if getattr(self, "_reasoning_path", None) != "reasoned":
+            self._reasoning_path = "html_only"
         self.logger.info("Extracting preview from HTML (enhanced fallback)")
-        
+
         metadata = extract_metadata_from_html(html_content)
         semantic = extract_semantic_structure(html_content)
         parsed_url = urlparse(url)
@@ -2311,9 +2314,14 @@ class PreviewEngine:
                         "image/png",
                     )
                     if premium_url:
+                        self._premium_note = f"ok ({len(premium_png)}B)"
                         self.logger.info(f"✅ Premium card rendered: {premium_url}")
                         return premium_url
+                    self._premium_note = "upload-returned-none"
+                else:
+                    self._premium_note = "render-returned-empty"
             except Exception as premium_err:
+                self._premium_note = f"{type(premium_err).__name__}: {str(premium_err)[:240]}"
                 self.logger.warning(
                     f"Premium renderer failed, falling back to legacy generators: {premium_err}",
                     exc_info=True,
