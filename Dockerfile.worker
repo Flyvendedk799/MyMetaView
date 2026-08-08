@@ -1,0 +1,36 @@
+# RQ worker image for background jobs (the `preview_generation` queue).
+#
+# Same build as the backend Dockerfile — the jobs take Playwright/Chromium
+# screenshots and call the AI service, so the worker needs the full runtime —
+# but it runs the RQ worker instead of the web server.
+#
+# Deliberately NO `EXPOSE` and NO `HEALTHCHECK`: this is a background process
+# that doesn't listen on a port. ServerHoster disables the container healthcheck
+# when there's no exposed port and treats "container running" as healthy, so the
+# worker deploys cleanly as its own auto-redeploying service.
+FROM python:3.11-slim as builder
+WORKDIR /app
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY backend/ ./backend/
+COPY alembic.ini ./
+ENV PATH=/root/.local/bin:$PATH
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
+    fonts-liberation \
+    fontconfig \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -f -v
+RUN pip install playwright
+RUN playwright install --with-deps chromium
+
+# Background worker — no port, no healthcheck.
+CMD ["python", "-m", "backend.queue.worker"]
