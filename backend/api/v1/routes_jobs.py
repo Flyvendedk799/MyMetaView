@@ -1,4 +1,6 @@
 """Job queue routes for async preview generation."""
+from uuid import uuid4
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from rq import Queue
@@ -12,6 +14,8 @@ from backend.core.paid_user import get_paid_user
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
 from backend.jobs.preview_pipeline import generate_preview_job
+from backend.jobs.bulk_preview_job import generate_bulk_preview_job, get_bulk_batch_data
+from backend.services.sitemap_discovery import discover_sitemap_urls
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.activity_logger import log_activity
 from backend.services.rate_limiter import check_rate_limit, get_rate_limit_key_for_org
@@ -21,11 +25,27 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
+# Cap on how many URLs one bulk run will accept, before quota trimming.
+MAX_BULK_URLS = 50
+
 
 class PreviewJobRequest(BaseModel):
     """Schema for preview generation job request."""
     url: str
     domain: str
+    force: bool = False  # bypass cache to regenerate / re-roll an existing preview
+
+
+class DiscoverUrlsRequest(BaseModel):
+    """Request to discover a verified domain's page URLs from its sitemap."""
+    domain: str
+
+
+class BulkPreviewJobRequest(BaseModel):
+    """Request to generate previews for many URLs on one verified domain."""
+    domain: str
+    urls: List[str]
+    force: bool = False
 
 
 class JobStatusResponse(BaseModel):
@@ -111,6 +131,7 @@ def create_preview_job(
             current_org.id,  # Pass organization_id
             sanitized_url,
             request.domain,
+            request.force,  # force_regenerate: bypass cache on re-roll
             job_timeout='10m'  # 10 minute timeout for AI generation
         )
         
@@ -129,6 +150,175 @@ def create_preview_job(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create job: {str(e)}"
         )
+
+
+@router.post("/preview/discover")
+def discover_domain_urls(
+    request: DiscoverUrlsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
+):
+    """Discover a verified domain's page URLs from its sitemap (for bulk coverage).
+
+    Read-only — just reads the public sitemap. The URLs are returned for the user
+    to review/trim before kicking off a bulk generation.
+    """
+    domain = db.query(DomainModel).filter(
+        DomainModel.name == request.domain,
+        DomainModel.organization_id == current_org.id,
+    ).first()
+    if not domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domain not found or not owned by this organization.",
+        )
+    if domain.status != "verified":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domain must be verified before generating previews.",
+        )
+    try:
+        urls = discover_sitemap_urls(request.domain, max_urls=200)
+    except Exception as e:
+        logger.error(f"Sitemap discovery failed for {request.domain}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not read the site's sitemap.",
+        )
+    return {"domain": request.domain, "count": len(urls), "urls": urls}
+
+
+@router.post("/preview/bulk", status_code=status.HTTP_202_ACCEPTED)
+def create_bulk_preview_job(
+    request: BulkPreviewJobRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_paid_user),
+    current_org: Organization = Depends(get_current_org),
+    current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
+):
+    """Generate previews for many URLs on one verified domain (owner/admin/editor).
+
+    Sanitises + de-dupes the URLs, trims to the plan's remaining monthly quota, and
+    enqueues one background job that persists each preview. Returns a batch_id to poll.
+    """
+    rate_limit_key = get_rate_limit_key_for_org(current_org.id)
+    if not check_rate_limit(rate_limit_key, limit=100, window_seconds=3600):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Please try again later.",
+        )
+
+    domain = db.query(DomainModel).filter(
+        DomainModel.name == request.domain,
+        DomainModel.organization_id == current_org.id,
+    ).first()
+    if not domain:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domain not found or not owned by this organization.",
+        )
+    if domain.status != "verified":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domain must be verified before generating previews.",
+        )
+
+    # Sanitise + de-dupe; drop URLs that don't belong to this domain; cap the batch.
+    seen: set[str] = set()
+    clean_urls: List[str] = []
+    for raw in request.urls:
+        if not raw or not raw.strip():
+            continue
+        try:
+            sanitized = sanitize_url(raw.strip(), request.domain)
+        except ValueError:
+            continue
+        if sanitized in seen:
+            continue
+        seen.add(sanitized)
+        clean_urls.append(sanitized)
+        if len(clean_urls) >= MAX_BULK_URLS:
+            break
+
+    if not clean_urls:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid URLs for this domain. Make sure the URLs are on the selected domain.",
+        )
+
+    # Trim to remaining monthly quota
+    skipped_quota = 0
+    from backend.core.plans import plan_limit
+    from backend.models.preview import Preview as PreviewModel
+    from datetime import datetime
+    pv_limit = plan_limit(current_org, "previews_month")
+    if pv_limit is not None:
+        month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        used = db.query(PreviewModel).filter(
+            PreviewModel.organization_id == current_org.id,
+            PreviewModel.created_at >= month_start,
+        ).count()
+        remaining = max(0, pv_limit - used)
+        if remaining <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"You've reached your plan's monthly limit of {pv_limit} previews. Upgrade for more.",
+            )
+        if len(clean_urls) > remaining:
+            skipped_quota = len(clean_urls) - remaining
+            clean_urls = clean_urls[:remaining]
+
+    batch_id = str(uuid4())
+    try:
+        redis_conn = get_rq_redis_connection()
+        queue = Queue("preview_generation", connection=redis_conn)
+        queue.enqueue(
+            generate_bulk_preview_job,
+            batch_id,
+            current_user.id,
+            current_org.id,
+            request.domain,
+            clean_urls,
+            request.force,
+            job_timeout='2h',  # bulk runs many URLs sequentially-ish
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create bulk job: {str(e)}",
+        )
+
+    log_activity(
+        db,
+        user_id=current_user.id,
+        action="preview.bulk_job.queued",
+        metadata={"batch_id": batch_id, "domain": request.domain, "count": len(clean_urls)},
+        request=http_request,
+    )
+
+    return {
+        "batch_id": batch_id,
+        "queued": len(clean_urls),
+        "skipped_quota": skipped_quota,
+        "domain": request.domain,
+    }
+
+
+@router.get("/bulk/{batch_id}/status")
+def get_bulk_job_status(
+    batch_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Poll a bulk generation batch. Returns total/completed/failed + per-URL results."""
+    data = get_bulk_batch_data(batch_id)
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bulk job not found or expired.",
+        )
+    return data
 
 
 @router.get("/{job_id}/status", response_model=JobStatusResponse)

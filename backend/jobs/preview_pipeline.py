@@ -30,18 +30,20 @@ def _derive_brand_tone_hint(brand_schema):
         return "neutral"
 
 
-def generate_preview_job(user_id: int, organization_id: int, url: str, domain: str) -> Dict:
+def generate_preview_job(user_id: int, organization_id: int, url: str, domain: str, force_regenerate: bool = False) -> Dict:
     """
     Main background job to generate preview for a URL.
-    
+
     This is the entry point called by RQ worker.
-    
+
     Args:
         user_id: ID of the user requesting the preview
         organization_id: ID of the organization
         url: URL to generate preview for
         domain: Domain name
-        
+        force_regenerate: If True, bypass the engine cache so a fresh preview is
+            produced (used by the "regenerate / re-roll" action and bulk re-runs).
+
     Returns:
         Dictionary with preview_id and preview data
     """
@@ -98,7 +100,7 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             enable_brand_extraction=True,
             enable_ai_reasoning=True,
             enable_composited_image=True,
-            enable_cache=True,
+            enable_cache=not force_regenerate,
             brand_settings={
                 "primary_color": brand_schema.primary_color,
                 "secondary_color": brand_schema.secondary_color,
