@@ -575,7 +575,8 @@ def create_batch_job(
 
     try:
         redis_conn = get_rq_redis_connection()
-        queue = Queue("preview_generation", connection=redis_conn)
+        # Long-running batch → dedicated bulk queue so it can't block interactive previews.
+        queue = Queue("bulk_generation", connection=redis_conn)
         queue.enqueue(
             generate_demo_batch_job,
             batch_id,

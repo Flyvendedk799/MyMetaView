@@ -14,7 +14,12 @@ from backend.core.paid_user import get_paid_user
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
 from backend.jobs.preview_pipeline import generate_preview_job
-from backend.jobs.bulk_preview_job import generate_bulk_preview_job, get_bulk_batch_data
+from backend.jobs.bulk_preview_job import (
+    generate_bulk_preview_job,
+    get_bulk_batch_data,
+    seed_batch,
+    list_org_batches,
+)
 from backend.services.sitemap_discovery import discover_sitemap_urls
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.activity_logger import log_activity
@@ -270,10 +275,16 @@ def create_bulk_preview_job(
             skipped_quota = len(clean_urls) - remaining
             clean_urls = clean_urls[:remaining]
 
+    from datetime import datetime as _dt
     batch_id = str(uuid4())
+    created_at = _dt.utcnow().isoformat()
+    # Seed a 'queued' record + index it so the run is visible immediately (survives
+    # tab close / reload) even before a bulk worker picks it up.
+    seed_batch(batch_id, current_org.id, request.domain, len(clean_urls), created_at)
     try:
         redis_conn = get_rq_redis_connection()
-        queue = Queue("preview_generation", connection=redis_conn)
+        # Dedicated queue so a long bulk run can't block interactive previews.
+        queue = Queue("bulk_generation", connection=redis_conn)
         queue.enqueue(
             generate_bulk_preview_job,
             batch_id,
@@ -282,7 +293,8 @@ def create_bulk_preview_job(
             request.domain,
             clean_urls,
             request.force,
-            job_timeout='2h',  # bulk runs many URLs sequentially-ish
+            created_at,
+            job_timeout='2h',  # bulk runs many URLs sequentially
         )
     except Exception as e:
         raise HTTPException(
@@ -304,6 +316,16 @@ def create_bulk_preview_job(
         "skipped_quota": skipped_quota,
         "domain": request.domain,
     }
+
+
+@router.get("/bulk/recent")
+def list_recent_bulk_jobs(
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
+):
+    """Recent bulk runs for the org (newest first) — powers a jobs view that works
+    without keeping a tab open (resume in-progress runs, see recent ones)."""
+    return {"batches": list_org_batches(current_org.id)}
 
 
 @router.get("/bulk/{batch_id}/status")

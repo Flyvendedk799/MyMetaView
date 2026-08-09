@@ -2,7 +2,8 @@
 
 Generates previews for many URLs in one background job and persists each as a real
 ``Preview`` row on the account (unlike the demo batch, which is ephemeral). Progress
-is streamed to Redis so the dashboard can show a live per-URL status list.
+is streamed to Redis so the dashboard can show a live per-URL status list — and a
+per-org index of recent batches lets that view survive a page reload / tab close.
 
 Each URL is run through the exact same proven path as a single generation
 (``generate_preview_job``), so bulk gets brand settings, plan gating, a/b/c
@@ -13,6 +14,8 @@ context a normal single-URL job uses. This is deliberate: the screenshot stage
 drives Playwright's *sync* API, whose objects are greenlet/thread-bound, so
 capturing from several worker threads at once raises "cannot switch to a
 different thread". Sequential keeps each capture in one thread and correct.
+(Concurrency across DIFFERENT bulk runs / users comes from running multiple
+worker processes — see backend/queue/worker.py — not from threads in here.)
 """
 import json
 import logging
@@ -24,11 +27,18 @@ from backend.jobs.preview_pipeline import generate_preview_job
 logger = logging.getLogger("bulk_preview_worker")
 
 BATCH_PREFIX = "saas:batch:"
-BATCH_TTL = 86400  # 24 hours
+BATCH_TTL = 172800  # 48 hours
+ORG_INDEX_PREFIX = "saas:batches:org:"
+ORG_INDEX_TTL = 172800  # 48 hours
+ORG_INDEX_MAX = 20  # keep the last N batches per org
 
 
 def _batch_key(batch_id: str) -> str:
     return f"{BATCH_PREFIX}{batch_id}"
+
+
+def _org_index_key(organization_id: int) -> str:
+    return f"{ORG_INDEX_PREFIX}{organization_id}"
 
 
 def get_bulk_batch_data(batch_id: str) -> Optional[Dict[str, Any]]:
@@ -47,6 +57,45 @@ def get_bulk_batch_data(batch_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def record_batch_for_org(organization_id: int, batch_id: str) -> None:
+    """Add a batch id to the org's recent-batches index (newest first)."""
+    try:
+        redis_client = get_redis_connection()
+        key = _org_index_key(organization_id)
+        redis_client.lrem(key, 0, batch_id)  # avoid dupes
+        redis_client.lpush(key, batch_id)
+        redis_client.ltrim(key, 0, ORG_INDEX_MAX - 1)
+        redis_client.expire(key, ORG_INDEX_TTL)
+    except Exception as e:
+        logger.warning("failed to index batch %s for org %s: %s", batch_id, organization_id, e)
+
+
+def list_org_batches(organization_id: int, limit: int = ORG_INDEX_MAX) -> List[Dict[str, Any]]:
+    """Return recent batch summaries for an org (newest first), skipping expired ones."""
+    try:
+        redis_client = get_redis_connection()
+        ids = redis_client.lrange(_org_index_key(organization_id), 0, limit - 1)
+    except Exception as e:
+        logger.warning("failed to list batches for org %s: %s", organization_id, e)
+        return []
+    out: List[Dict[str, Any]] = []
+    for bid in ids or []:
+        data = get_bulk_batch_data(bid)
+        if not data:
+            continue
+        # Summary only — omit the (potentially large) per-URL results list here.
+        out.append({
+            "batch_id": data.get("batch_id", bid),
+            "status": data.get("status"),
+            "domain": data.get("domain"),
+            "total": data.get("total", 0),
+            "completed": data.get("completed", 0),
+            "failed": data.get("failed", 0),
+            "created_at": data.get("created_at"),
+        })
+    return out
+
+
 def _write_status(
     redis_client,
     batch_id: str,
@@ -55,16 +104,37 @@ def _write_status(
     completed: int,
     failed: int,
     results: List[Dict[str, Any]],
+    domain: Optional[str] = None,
+    created_at: Optional[str] = None,
 ) -> None:
     payload = {
         "batch_id": batch_id,
         "status": status,
+        "domain": domain,
+        "created_at": created_at,
         "total": total,
         "completed": completed,
         "failed": failed,
         "results": results,
     }
     redis_client.setex(_batch_key(batch_id), BATCH_TTL, json.dumps(payload))
+
+
+def seed_batch(
+    batch_id: str,
+    organization_id: int,
+    domain: str,
+    total: int,
+    created_at: str,
+) -> None:
+    """Write an initial 'queued' record + index it so the run is visible at once,
+    even before a worker picks it up (e.g. while all bulk workers are busy)."""
+    try:
+        redis_client = get_redis_connection()
+        _write_status(redis_client, batch_id, "queued", total, 0, 0, [], domain, created_at)
+        record_batch_for_org(organization_id, batch_id)
+    except Exception as e:
+        logger.warning("failed to seed batch %s: %s", batch_id, e)
 
 
 def generate_bulk_preview_job(
@@ -74,6 +144,7 @@ def generate_bulk_preview_job(
     domain: str,
     urls: List[str],
     force_regenerate: bool = False,
+    created_at: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Background job: generate + persist previews for ``urls`` under ``domain``."""
     redis_client = get_redis_connection()
@@ -82,7 +153,7 @@ def generate_bulk_preview_job(
     failed = 0
     results: List[Dict[str, Any]] = []
 
-    _write_status(redis_client, batch_id, "running", total, 0, 0, [])
+    _write_status(redis_client, batch_id, "running", total, 0, 0, [], domain, created_at)
     logger.info("bulk %s: starting %d urls for org %s / %s", batch_id, total, organization_id, domain)
 
     for url in urls:
@@ -114,10 +185,10 @@ def generate_bulk_preview_job(
 
         results.append(item)
         # Stream progress after each URL so the dashboard updates live.
-        _write_status(redis_client, batch_id, "running", total, completed, failed, results)
+        _write_status(redis_client, batch_id, "running", total, completed, failed, results, domain, created_at)
 
     final_status = "completed" if completed > 0 else "failed"
-    _write_status(redis_client, batch_id, final_status, total, completed, failed, results)
+    _write_status(redis_client, batch_id, final_status, total, completed, failed, results, domain, created_at)
     logger.info("bulk %s: done. completed=%d failed=%d", batch_id, completed, failed)
 
     return {
