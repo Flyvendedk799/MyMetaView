@@ -234,13 +234,13 @@ export default function GenerationProgress({
   if (failureReason) {
     return (
       <div className="w-full max-w-lg mx-auto">
-        <div className="rounded-2xl border border-error-200 bg-error-50/70 p-5 text-error-900">
-          <h3 className="text-base font-semibold mb-1">
+        <div className="rounded-2xl border border-error-500/30 bg-error-500/10 p-5 text-paper">
+          <h3 className="text-base font-semibold mb-1 text-paper">
             We couldn't finish your preview
           </h3>
-          <p className="text-sm">{FAILURE_REASON_COPY[failureReason]}</p>
+          <p className="text-sm text-paper/80">{FAILURE_REASON_COPY[failureReason]}</p>
           {failureDetail ? (
-            <p className="text-xs text-error-700/80 mt-2 break-words">
+            <p className="text-xs text-paper/50 mt-2 break-words">
               {failureDetail}
             </p>
           ) : null}
@@ -248,7 +248,7 @@ export default function GenerationProgress({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-3 inline-flex items-center px-3 py-1.5 rounded-lg bg-error-600 text-white text-sm font-medium hover:bg-error-700"
+              className="mt-3 inline-flex items-center px-3 py-1.5 rounded-lg bg-accent-500 text-white text-sm font-medium hover:bg-accent-600"
             >
               Try again
             </button>
@@ -260,40 +260,41 @@ export default function GenerationProgress({
 
   return (
     <div className="w-full max-w-lg mx-auto">
-      {/* Main Progress Card */}
-      <div className="bg-white rounded-2xl shadow-2xl border border-secondary-200/80 overflow-hidden">
+      {/* Main Progress Card — dark to match the demo identity, compact so all
+          eight stages fit within a normal viewport. */}
+      <div className="bg-paper/5 rounded-2xl shadow-overlay border border-paper/10 overflow-hidden">
         {/* Header */}
         <div className="bg-primary-500 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                  <SparklesIcon className="w-6 h-6 text-white animate-pulse" />
+                <div className="w-10 h-10 bg-paper/15 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <SparklesIcon className="w-6 h-6 text-paper animate-pulse" />
                 </div>
                 {/* Spinning ring */}
-                <div className="absolute inset-0 rounded-xl border-2 border-white/30 border-t-white animate-spin" style={{ animationDuration: '2s' }} />
+                <div className="absolute inset-0 rounded-xl border-2 border-paper/30 border-t-paper animate-spin" style={{ animationDuration: '2s' }} />
               </div>
               <div>
-                <h3 className="text-white font-bold text-lg">AI Working</h3>
-                <p className="text-white/80 text-sm">{statusMessage || 'Analyzing your page...'}</p>
+                <h3 className="text-paper font-semibold text-lg">AI Working</h3>
+                <p className="text-paper/80 text-sm">{statusMessage || 'Analyzing your page...'}</p>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-white font-bold text-2xl">{Math.round(progressPercent)}%</div>
+              <div className="text-paper font-semibold text-2xl">{Math.round(progressPercent)}%</div>
               {isFinalizing ? (
-                <div className="text-white/85 text-xs font-semibold">Finalizing…</div>
+                <div className="text-paper/85 text-xs font-semibold">Finalizing…</div>
               ) : estimatedTimeRemaining && estimatedTimeRemaining > 0 && progressPercent < 92 ? (
-                <div className="text-white/70 text-xs">~{Math.ceil(estimatedTimeRemaining)}s left</div>
+                <div className="text-paper/70 text-xs">~{Math.ceil(estimatedTimeRemaining)}s left</div>
               ) : progressPercent >= 92 && progressPercent < 100 ? (
-                <div className="text-white/70 text-xs">Finalizing…</div>
+                <div className="text-paper/70 text-xs">Finalizing…</div>
               ) : null}
             </div>
           </div>
-          
+
           {/* Progress Bar */}
-          <div className="mt-4 h-2 bg-white/20 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-white rounded-full transition-all duration-500 ease-out relative overflow-hidden"
+          <div className="mt-4 h-2 bg-paper/20 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-paper rounded-full transition-all duration-500 ease-out relative overflow-hidden"
               style={{ width: `${progressPercent}%` }}
             >
               {/* Shimmer effect */}
@@ -303,35 +304,35 @@ export default function GenerationProgress({
         </div>
 
         {/* Stages List */}
-        <div className="p-4 space-y-1">
+        <div className="p-3 space-y-0.5">
           {stages.map((stage, index) => {
             const StageIcon = stage.icon
             const isActive = stage.status === 'active'
             const isCompleted = stage.status === 'completed'
             const isPending = stage.status === 'pending'
-            
+
             return (
               <div
                 key={stage.id}
                 className={`
-                  relative flex items-center space-x-3 p-3 rounded-xl transition-all duration-300
-                  ${isActive ? 'bg-accent-50 border border-accent-200' : ''}
-                  ${isCompleted ? 'opacity-60' : ''}
-                  ${isPending ? 'opacity-40' : ''}
+                  relative flex items-center space-x-3 p-2.5 rounded-xl transition-all duration-300
+                  ${isActive ? 'bg-accent-500/10 border border-accent-500/30' : ''}
+                  ${isCompleted ? 'opacity-70' : ''}
+                  ${isPending ? 'opacity-45' : ''}
                 `}
                 onMouseEnter={() => setShowDetail(stage.id)}
                 onMouseLeave={() => setShowDetail(null)}
               >
                 {/* Stage Number / Icon */}
                 <div className={`
-                  relative w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                  relative w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
                   transition-all duration-300
                   ${isCompleted ? 'bg-success-500' : ''}
                   ${isActive ? 'bg-accent-500' : ''}
-                  ${isPending ? 'bg-secondary-200' : ''}
+                  ${isPending ? 'bg-paper/10' : ''}
                 `}>
                   {isCompleted ? (
-                    <CheckCircleSolidIcon className="w-6 h-6 text-white" />
+                    <CheckCircleSolidIcon className="w-5 h-5 text-white" />
                   ) : isActive ? (
                     <>
                       <StageIcon className="w-5 h-5 text-white" />
@@ -339,18 +340,18 @@ export default function GenerationProgress({
                       <div className="absolute inset-0 rounded-full bg-accent-500 animate-ping opacity-30" />
                     </>
                   ) : (
-                    <span className="text-secondary-500 font-semibold text-sm">{index + 1}</span>
+                    <span className="text-paper/50 font-semibold text-sm">{index + 1}</span>
                   )}
                 </div>
 
                 {/* Stage Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <span className={`font-semibold text-sm ${isActive ? 'text-accent-700' : isCompleted ? 'text-secondary-600' : 'text-secondary-500'}`}>
+                    <span className={`font-semibold text-sm ${isActive ? 'text-accent-400' : isCompleted ? 'text-paper/70' : 'text-paper/50'}`}>
                       {stage.name}
                     </span>
                     {isActive && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-100 text-accent-700">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-500/15 text-accent-300">
                         In Progress
                       </span>
                     )}
@@ -358,7 +359,7 @@ export default function GenerationProgress({
                       <CheckCircleIcon className="w-4 h-4 text-success-500" />
                     )}
                   </div>
-                  <p className={`text-xs mt-0.5 ${isActive ? 'text-accent-600' : 'text-secondary-400'}`}>
+                  <p className={`text-xs mt-0.5 ${isActive ? 'text-accent-300/90' : 'text-paper/40'}`}>
                     {stage.description}
                   </p>
                 </div>
@@ -366,8 +367,8 @@ export default function GenerationProgress({
                 {/* Connecting Line */}
                 {index < stages.length - 1 && (
                   <div className={`
-                    absolute left-7 top-14 w-0.5 h-4 -mt-1
-                    ${isCompleted ? 'bg-success-300' : 'bg-secondary-200'}
+                    absolute left-[26px] top-[46px] w-0.5 h-3 -mt-1
+                    ${isCompleted ? 'bg-success-500/40' : 'bg-paper/10'}
                   `} />
                 )}
               </div>
@@ -376,13 +377,13 @@ export default function GenerationProgress({
         </div>
 
         {/* Footer Tips */}
-        <div className="px-4 pb-4">
-          <div className="bg-secondary-50 rounded-xl p-3 border border-secondary-100">
+        <div className="px-3 pb-3">
+          <div className="bg-paper/5 rounded-xl p-3 border border-paper/10">
             <div className="flex items-start space-x-2">
-              <SparklesIcon className="w-4 h-4 text-warning-500 flex-shrink-0 mt-0.5" />
+              <SparklesIcon className="w-4 h-4 text-accent-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs text-secondary-600">
-                  <span className="font-semibold text-secondary-700">AI Insight:</span>
+                <p className="text-xs text-paper/60">
+                  <span className="font-semibold text-paper/80">AI Insight:</span>
                   {' '}Our multi-stage reasoning framework analyzes your page like a senior designer, identifying what matters most for social sharing.
                 </p>
               </div>

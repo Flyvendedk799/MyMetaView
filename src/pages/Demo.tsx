@@ -1049,9 +1049,9 @@ export default function Demo() {
               {/* Reasoning Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Quality Scores */}
-                <div className="bg-brand-50 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-primary-200">
-                  <h4 className="font-bold text-primary-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
-                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-paper/5 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-paper/10">
+                  <h4 className="font-display font-semibold text-paper mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                    <svg className="w-5 h-5 mr-2 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     Quality Scores
@@ -1059,54 +1059,54 @@ export default function Demo() {
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-secondary-600">Coherence</span>
-                        <span className="font-semibold text-primary-700">{Math.round(preview.blueprint.coherence_score * 100)}%</span>
+                        <span className="text-paper/60">Coherence</span>
+                        <span className="font-semibold text-paper">{Math.round(preview.blueprint.coherence_score * 100)}%</span>
                       </div>
-                      <div className="h-2 bg-primary-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-500 rounded-full" style={{ width: `${preview.blueprint.coherence_score * 100}%` }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-secondary-600">Balance</span>
-                        <span className="font-semibold text-primary-700">{Math.round(preview.blueprint.balance_score * 100)}%</span>
-                      </div>
-                      <div className="h-2 bg-primary-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-500 rounded-full" style={{ width: `${preview.blueprint.balance_score * 100}%` }} />
+                      <div className="h-2 bg-paper/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-accent-500 rounded-full" style={{ width: `${preview.blueprint.coherence_score * 100}%` }} />
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-secondary-600">Clarity</span>
-                        <span className="font-semibold text-primary-700">{Math.round(preview.blueprint.clarity_score * 100)}%</span>
+                        <span className="text-paper/60">Balance</span>
+                        <span className="font-semibold text-paper">{Math.round(preview.blueprint.balance_score * 100)}%</span>
                       </div>
-                      <div className="h-2 bg-primary-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-500 rounded-full" style={{ width: `${preview.blueprint.clarity_score * 100}%` }} />
+                      <div className="h-2 bg-paper/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-accent-500 rounded-full" style={{ width: `${preview.blueprint.balance_score * 100}%` }} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-paper/60">Clarity</span>
+                        <span className="font-semibold text-paper">{Math.round(preview.blueprint.clarity_score * 100)}%</span>
+                      </div>
+                      <div className="h-2 bg-paper/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-accent-500 rounded-full" style={{ width: `${preview.blueprint.clarity_score * 100}%` }} />
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Layout Template */}
-                <div className="bg-brand-50 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-primary-200">
-                  <h4 className="font-bold text-primary-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
-                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-paper/5 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-paper/10">
+                  <h4 className="font-display font-semibold text-paper mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                    <svg className="w-5 h-5 mr-2 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                     </svg>
                     Layout Template
                   </h4>
                   <div className="space-y-2">
-                    <div className="text-lg font-bold text-primary-700 capitalize">
+                    <div className="text-lg font-display font-semibold text-paper capitalize">
                       {preview.blueprint.template_type.replace('_', ' ')}
                     </div>
                     <div className="flex items-center space-x-2 mt-2">
-                      <div className="w-6 h-6 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: preview.blueprint.primary_color }} title="Primary" />
-                      <div className="w-6 h-6 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: preview.blueprint.secondary_color }} title="Secondary" />
-                      <div className="w-6 h-6 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: preview.blueprint.accent_color }} title="Accent" />
+                      <div className="w-6 h-6 rounded-full border-2 border-paper/20 shadow-sm" style={{ backgroundColor: preview.blueprint.primary_color }} title="Primary" />
+                      <div className="w-6 h-6 rounded-full border-2 border-paper/20 shadow-sm" style={{ backgroundColor: preview.blueprint.secondary_color }} title="Secondary" />
+                      <div className="w-6 h-6 rounded-full border-2 border-paper/20 shadow-sm" style={{ backgroundColor: preview.blueprint.accent_color }} title="Accent" />
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {preview.tags.slice(0, 3).map((tag, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded-full">
+                        <span key={i} className="px-2 py-0.5 bg-paper/10 text-paper/80 text-xs rounded-full">
                           {tag}
                         </span>
                       ))}
@@ -1115,28 +1115,28 @@ export default function Demo() {
                 </div>
 
                 {/* Processing Info */}
-                <div className="bg-accent-50 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-warning-200">
-                  <h4 className="font-bold text-warning-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
-                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-paper/5 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-paper/10">
+                  <h4 className="font-display font-semibold text-paper mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                    <svg className="w-5 h-5 mr-2 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                     AI Processing
                   </h4>
                   <div className="space-y-2">
-                    <div className="text-sm text-secondary-600 flex items-center gap-2">
-                      Processing Time: <span className="font-bold text-warning-700">{(preview.processing_time_ms / 1000).toFixed(1)}s</span>
+                    <div className="text-sm text-paper/60 flex items-center gap-2">
+                      Processing Time: <span className="font-bold text-paper">{(preview.processing_time_ms / 1000).toFixed(1)}s</span>
                       {preview.processing_time_ms < 35000 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-success-50 border border-success-200 rounded-full text-xs font-medium text-success-700">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-success-500/15 border border-success-500/30 rounded-full text-xs font-medium text-success-500">
                           âš¡ Fast
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-secondary-600">
-                      Title: <span className="font-medium text-secondary-800">{preview.title || 'N/A'}</span>
+                    <div className="text-sm text-paper/60">
+                      Title: <span className="font-medium text-paper/90">{preview.title || 'N/A'}</span>
                     </div>
                     {preview.cta_text && (
-                      <div className="text-sm text-secondary-600">
-                        CTA: <span className="font-semibold text-accent-600">{preview.cta_text}</span>
+                      <div className="text-sm text-paper/60">
+                        CTA: <span className="font-semibold text-accent-500">{preview.cta_text}</span>
                       </div>
                     )}
                   </div>
@@ -1145,19 +1145,19 @@ export default function Demo() {
 
               {/* AI Reasoning Summary - Always Visible */}
               {preview.blueprint.layout_reasoning && (
-                <div className="bg-brand-50 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-primary-200">
+                <div className="bg-paper/5 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-paper/10">
                   <div className="flex items-start space-x-2 sm:space-x-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-accent-500 rounded-lg flex items-center justify-center flex-shrink-0">
                       <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-secondary-900 mb-2 flex items-center text-sm sm:text-base">
+                      <h4 className="font-display font-semibold text-paper mb-2 flex items-center text-sm sm:text-base">
                         AI Analysis Summary
-                        <span className="ml-2 text-xs font-normal text-secondary-500 hidden sm:inline">(always visible)</span>
+                        <span className="ml-2 text-xs font-normal text-paper/40 hidden sm:inline">(always visible)</span>
                       </h4>
-                      <p className="text-xs sm:text-sm text-secondary-700 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-paper/70 leading-relaxed">
                         {(() => {
                           // Extract a concise summary from the full reasoning
                           const fullReasoning = preview.blueprint.layout_reasoning || ''
@@ -1221,7 +1221,7 @@ export default function Demo() {
                             }
                           }
                         }}
-                        className="mt-3 text-xs text-primary-600 hover:text-primary-700 font-semibold transition-colors"
+                        className="mt-3 text-xs text-accent-500 hover:text-accent-400 font-semibold transition-colors"
                       >
                         View full reasoning chain â†’
                       </button>
@@ -1235,18 +1235,18 @@ export default function Demo() {
                 <div className="absolute -inset-1 hidden" />
                 <div className="relative">
                   <div className="text-center mb-6">
-                    <h3 className="text-2xl font-display font-semibold text-secondary-900 mb-2">Generated Preview</h3>
-                    <p className="text-secondary-600">Your og:image â€” optimised for every social platform</p>
+                    <h3 className="text-2xl font-display font-semibold text-paper mb-2">Generated Preview</h3>
+                    <p className="text-paper/60">Your og:image â€” optimised for every social platform</p>
                   </div>
 
                   {/* Brand Elements Showcase */}
                   {preview.brand && (preview.brand.logo_base64 || preview.brand.brand_name) && (
-                    <div className="mb-8 p-6 bg-brand-50 rounded-2xl border border-primary-100">
+                    <div className="mb-8 p-6 bg-paper/5 rounded-2xl border border-paper/10">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-white rounded-lg">
-                          <SparklesIcon className="w-5 h-5 text-primary-600" />
+                        <div className="p-2 bg-paper/10 rounded-lg">
+                          <SparklesIcon className="w-5 h-5 text-accent-500" />
                         </div>
-                        <h4 className="text-lg font-semibold text-secondary-900">
+                        <h4 className="text-lg font-display font-semibold text-paper">
                           Brand Elements Detected
                         </h4>
                       </div>
@@ -1254,7 +1254,7 @@ export default function Demo() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                         {/* Logo */}
                         {preview.brand.logo_base64 && (
-                          <div className="flex flex-col items-center p-4 bg-white rounded-xl shadow-sm">
+                          <div className="flex flex-col items-center p-4 bg-paper/5 border border-paper/10 rounded-xl">
                             <img
                               src={`data:image/png;base64,${preview.brand.logo_base64}`}
                               alt={preview.brand.brand_name || 'Brand logo'}
@@ -1263,39 +1263,39 @@ export default function Demo() {
                                 e.currentTarget.style.display = 'none'
                               }}
                             />
-                            <span className="text-xs text-secondary-600">Logo</span>
+                            <span className="text-xs text-paper/60">Logo</span>
                           </div>
                         )}
 
                         {/* Brand Colors */}
-                        <div className="flex flex-col items-center p-4 bg-white rounded-xl shadow-sm">
+                        <div className="flex flex-col items-center p-4 bg-paper/5 border border-paper/10 rounded-xl">
                           <div className="flex gap-2 mb-2">
                             <div
-                              className="w-8 h-8 rounded-full shadow-sm border-2 border-white"
+                              className="w-8 h-8 rounded-full shadow-sm border-2 border-paper/20"
                               style={{ background: preview.blueprint.primary_color }}
                               title={`Primary: ${preview.blueprint.primary_color}`}
                             />
                             <div
-                              className="w-8 h-8 rounded-full shadow-sm border-2 border-white"
+                              className="w-8 h-8 rounded-full shadow-sm border-2 border-paper/20"
                               style={{ background: preview.blueprint.secondary_color }}
                               title={`Secondary: ${preview.blueprint.secondary_color}`}
                             />
                             <div
-                              className="w-8 h-8 rounded-full shadow-sm border-2 border-white"
+                              className="w-8 h-8 rounded-full shadow-sm border-2 border-paper/20"
                               style={{ background: preview.blueprint.accent_color }}
                               title={`Accent: ${preview.blueprint.accent_color}`}
                             />
                           </div>
-                          <span className="text-xs text-secondary-600">Brand Colors</span>
+                          <span className="text-xs text-paper/60">Brand Colors</span>
                         </div>
 
                         {/* Brand Name */}
                         {preview.brand.brand_name && (
-                          <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm">
-                            <span className="text-lg font-semibold text-secondary-900 mb-1 text-center">
+                          <div className="flex flex-col items-center justify-center p-4 bg-paper/5 border border-paper/10 rounded-xl">
+                            <span className="text-lg font-display font-semibold text-paper mb-1 text-center">
                               {preview.brand.brand_name}
                             </span>
-                            <span className="text-xs text-secondary-600">Brand Name</span>
+                            <span className="text-xs text-paper/60">Brand Name</span>
                           </div>
                         )}
                       </div>
@@ -1322,26 +1322,26 @@ export default function Demo() {
                   {preview.composited_preview_image_url && (
                     <div className="mt-6 sm:mt-8">
                       <div className="text-center mb-3 sm:mb-4">
-                        <h4 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1 flex items-center justify-center gap-2">
-                          <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <h4 className="text-base sm:text-lg font-display font-semibold text-paper mb-1 flex items-center justify-center gap-2">
+                          <svg className="w-5 h-5 text-accent-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                           </svg>
                           Social Media Preview
                         </h4>
-                        <p className="text-xs sm:text-sm text-secondary-600 mb-2 px-2">
+                        <p className="text-xs sm:text-sm text-paper/60 mb-2 px-2">
                           This is how your link appears when shared on social platforms
                         </p>
-                        <p className="text-xs text-secondary-500 italic px-2 hidden sm:block">
+                        <p className="text-xs text-paper/40 italic px-2 hidden sm:block">
                           Preview images are non-interactive â€” this is exactly how platforms render your link. Images are optimized for maximum readability and brand recognition.
                         </p>
-                        <p className="text-xs text-secondary-400 mt-2 px-2">
-                          ðŸ’¡ Tip: The preview image is automatically set as <code className="px-1 py-0.5 bg-secondary-100 rounded text-xs font-mono">og:image</code> for social sharing
+                        <p className="text-xs text-paper/40 mt-2 px-2">
+                          ðŸ’¡ Tip: The preview image is automatically set as <code className="px-1 py-0.5 bg-paper/10 text-paper/70 rounded text-xs font-mono">og:image</code> for social sharing
                         </p>
                       </div>
                       <div className="max-w-full sm:max-w-2xl mx-auto px-2 sm:px-0">
                         <div className="relative group">
                           <div className="absolute -inset-1 hidden" />
-                          <div className="relative bg-white p-2 rounded-xl shadow-card border border-secondary-200">
+                          <div className="relative bg-paper/5 p-2 rounded-xl shadow-card border border-paper/10">
                             <div className="relative">
                               <img
                                 src={preview.composited_preview_image_url}
@@ -1400,11 +1400,11 @@ export default function Demo() {
                               </div>
                             </div>
                             <div className="mt-3 px-3 pb-2">
-                              <p className="text-xs text-secondary-500 flex items-center gap-1">
+                              <p className="text-xs text-paper/50 flex items-center gap-1">
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>
-                                This image is automatically set as <code className="px-1 py-0.5 bg-secondary-100 rounded text-xs font-mono">og:image</code> for social sharing
+                                This image is automatically set as <code className="px-1 py-0.5 bg-paper/10 text-paper/70 rounded text-xs font-mono">og:image</code> for social sharing
                               </p>
                             </div>
                           </div>
@@ -1416,17 +1416,17 @@ export default function Demo() {
                   {/* Comparison toggle */}
                   <div className="mt-6 text-center">
                     <details className="inline-block">
-                      <summary className="cursor-pointer text-sm text-secondary-500 hover:text-secondary-700 transition-colors">
+                      <summary className="cursor-pointer text-sm text-paper/50 hover:text-paper/80 transition-colors">
                         View original screenshot
                       </summary>
                       {preview.screenshot_url && (
                         <div className="mt-4 max-w-2xl mx-auto">
-                          <img 
-                            src={preview.screenshot_url} 
+                          <img
+                            src={preview.screenshot_url}
                             alt="Original screenshot"
-                            className="w-full rounded-lg shadow-card border border-secondary-200"
+                            className="w-full rounded-lg shadow-card border border-paper/10"
                           />
-                          <p className="text-xs text-secondary-500 mt-2">Original page screenshot (before reconstruction)</p>
+                          <p className="text-xs text-paper/50 mt-2">Original page screenshot (before reconstruction)</p>
                         </div>
                       )}
                     </details>
@@ -1436,29 +1436,29 @@ export default function Demo() {
 
               {/* Content Summary */}
               {(preview.description || preview.context_items.length > 0 || preview.credibility_items.length > 0) && (
-                <details className="bg-secondary-50 rounded-xl border border-secondary-200 overflow-hidden">
-                  <summary className="px-6 py-4 cursor-pointer hover:bg-secondary-100 transition-colors flex items-center justify-between">
-                    <span className="font-bold text-secondary-900 flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-secondary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <details className="bg-paper/5 rounded-xl border border-paper/10 overflow-hidden">
+                  <summary className="px-6 py-4 cursor-pointer hover:bg-paper/10 transition-colors flex items-center justify-between">
+                    <span className="font-display font-semibold text-paper flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-paper/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                       </svg>
                       Extracted Content
                     </span>
-                    <svg className="w-5 h-5 text-secondary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 text-paper/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </summary>
-                  <div className="px-6 py-4 border-t border-secondary-200 bg-white space-y-4">
+                  <div className="px-6 py-4 border-t border-paper/10 space-y-4">
                     {preview.description && (
-                      <div className="p-3 bg-secondary-50 rounded-lg border border-secondary-200">
-                        <span className="text-xs font-bold text-secondary-700 block mb-1">Description</span>
-                        <p className="text-sm text-secondary-600">{preview.description}</p>
+                      <div className="p-3 bg-paper/5 rounded-lg border border-paper/10">
+                        <span className="text-xs font-bold text-paper/70 block mb-1">Description</span>
+                        <p className="text-sm text-paper/60">{preview.description}</p>
                       </div>
                     )}
                     {preview.context_items.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {preview.context_items.map((item, i) => (
-                          <span key={i} className="px-3 py-1 bg-secondary-100 text-secondary-700 text-xs rounded-full flex items-center gap-1">
+                          <span key={i} className="px-3 py-1 bg-paper/10 text-paper/70 text-xs rounded-full flex items-center gap-1">
                             {item.icon === 'location' && (
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -1472,7 +1472,7 @@ export default function Demo() {
                     {preview.credibility_items.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {preview.credibility_items.map((item, i) => (
-                          <span key={i} className="px-3 py-1 bg-warning-50 text-warning-700 text-xs rounded-full">
+                          <span key={i} className="px-3 py-1 bg-accent-500/15 text-accent-500 text-xs rounded-full">
                             {item.value}
                           </span>
                         ))}
@@ -1483,23 +1483,23 @@ export default function Demo() {
               )}
 
               {/* Layout Reasoning - Always show with meaningful content */}
-              <details className="bg-secondary-50 rounded-xl border border-secondary-200 overflow-hidden">
-                <summary className="px-6 py-4 cursor-pointer hover:bg-secondary-100 transition-colors flex items-center justify-between">
-                  <span className="font-bold text-secondary-900 flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-secondary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <details className="bg-paper/5 rounded-xl border border-paper/10 overflow-hidden">
+                <summary className="px-6 py-4 cursor-pointer hover:bg-paper/10 transition-colors flex items-center justify-between">
+                  <span className="font-display font-semibold text-paper flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-paper/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                     AI Reasoning Chain
                   </span>
-                  <svg className="w-5 h-5 text-secondary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5 text-paper/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
-                <div className="px-6 py-4 border-t border-secondary-200 bg-white space-y-4">
+                <div className="px-6 py-4 border-t border-paper/10 space-y-4">
                   {/* Template Decision */}
-                  <div className="p-3 bg-primary-50 rounded-lg border border-primary-100">
-                    <h5 className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-2">Template Decision</h5>
-                    <p className="text-sm text-primary-900 leading-relaxed">
+                  <div className="p-3 bg-paper/5 rounded-lg border border-paper/10">
+                    <h5 className="text-xs font-bold text-accent-500 uppercase tracking-wide mb-2">Template Decision</h5>
+                    <p className="text-sm text-paper/80 leading-relaxed">
                       Selected <span className="font-semibold capitalize">{preview.blueprint.template_type}</span> template based on page structure and content analysis.
                       {preview.blueprint.template_type === 'landing' && " Landing pages work best with bold headlines and gradient backgrounds."}
                       {preview.blueprint.template_type === 'product' && " Product pages highlight features and pricing information."}
@@ -1510,47 +1510,47 @@ export default function Demo() {
 
                   {/* Layout Strategy */}
                   <div>
-                    <h5 className="text-xs font-bold text-secondary-500 uppercase tracking-wide mb-2">Layout Strategy</h5>
-                    <p className="text-sm text-secondary-700 leading-relaxed">
-                      {preview.blueprint.layout_reasoning || 
+                    <h5 className="text-xs font-bold text-paper/50 uppercase tracking-wide mb-2">Layout Strategy</h5>
+                    <p className="text-sm text-paper/70 leading-relaxed">
+                      {preview.blueprint.layout_reasoning ||
                         `Multi-stage AI analyzed ${preview.url} to extract the most impactful content. The preview was optimized for maximum engagement on social platforms with ${preview.blueprint.template_type} layout.`}
                     </p>
                   </div>
 
                   {/* Brand Colors */}
                   <div>
-                    <h5 className="text-xs font-bold text-secondary-500 uppercase tracking-wide mb-2">Brand Colors Extracted</h5>
+                    <h5 className="text-xs font-bold text-paper/50 uppercase tracking-wide mb-2">Brand Colors Extracted</h5>
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-8 h-8 rounded-lg border-2 border-white shadow-sm" 
+                      <div
+                        className="w-8 h-8 rounded-lg border-2 border-paper/20 shadow-sm"
                         style={{ backgroundColor: preview.blueprint.primary_color }}
                         title={`Primary: ${preview.blueprint.primary_color}`}
                       />
-                      <div 
-                        className="w-8 h-8 rounded-lg border-2 border-white shadow-sm" 
+                      <div
+                        className="w-8 h-8 rounded-lg border-2 border-paper/20 shadow-sm"
                         style={{ backgroundColor: preview.blueprint.secondary_color }}
                         title={`Secondary: ${preview.blueprint.secondary_color}`}
                       />
-                      <div 
-                        className="w-8 h-8 rounded-lg border-2 border-white shadow-sm" 
+                      <div
+                        className="w-8 h-8 rounded-lg border-2 border-paper/20 shadow-sm"
                         style={{ backgroundColor: preview.blueprint.accent_color }}
                         title={`Accent: ${preview.blueprint.accent_color}`}
                       />
-                      <span className="text-xs text-secondary-500 ml-2">Extracted from page design</span>
+                      <span className="text-xs text-paper/50 ml-2">Extracted from page design</span>
                     </div>
                   </div>
 
                   {/* Composition Notes */}
                   {preview.blueprint.composition_notes && !preview.blueprint.composition_notes.includes('metadata') && (
                     <div>
-                      <h5 className="text-xs font-bold text-secondary-500 uppercase tracking-wide mb-2">Composition Notes</h5>
-                      <p className="text-sm text-secondary-700 leading-relaxed">{preview.blueprint.composition_notes}</p>
+                      <h5 className="text-xs font-bold text-paper/50 uppercase tracking-wide mb-2">Composition Notes</h5>
+                      <p className="text-sm text-paper/70 leading-relaxed">{preview.blueprint.composition_notes}</p>
                     </div>
                   )}
 
                   {/* Processing Stats */}
-                  <div className="pt-3 border-t border-secondary-200">
-                    <div className="flex flex-wrap gap-4 text-xs text-secondary-500">
+                  <div className="pt-3 border-t border-paper/10">
+                    <div className="flex flex-wrap gap-4 text-xs text-paper/50">
                       <span>â±ï¸ Generated in {(preview.processing_time_ms / 1000).toFixed(1)}s</span>
                       <span>ðŸŽ¯ Confidence: {Math.round(preview.reasoning_confidence * 100)}%</span>
                       <span>ðŸ“Š Quality: {preview.blueprint.overall_quality}</span>
@@ -1560,14 +1560,14 @@ export default function Demo() {
               </details>
 
               {/* Mobile Platform Showcase */}
-              <div className="bg-secondary-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 border border-secondary-200">
+              <div className="bg-paper/5 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 border border-paper/10">
                 <div className="text-center mb-6 sm:mb-8">
                   <h3 className="text-xl sm:text-2xl md:text-3xl font-display font-semibold text-paper mb-2">See It In Action</h3>
-                  <p className="text-sm sm:text-base text-secondary-600 mb-4 sm:mb-6">How your preview appears on social media platforms</p>
-                  
+                  <p className="text-sm sm:text-base text-paper/60 mb-4 sm:mb-6">How your preview appears on social media platforms</p>
+
                   {/* Platform Selector - Visual Tab Pills */}
                   <div className="flex flex-col items-center gap-4">
-                    <p className="text-xs font-semibold text-secondary-500 uppercase tracking-wide">
+                    <p className="text-xs font-semibold text-paper/50 uppercase tracking-wide">
                       Select Platform
                     </p>
                     <div
@@ -1584,7 +1584,7 @@ export default function Demo() {
                           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 select-none ${
                             selectedPlatform === platform.id
                               ? `${platform.color} text-white shadow-card scale-105 ring-2 ring-white ring-offset-1`
-                              : 'bg-white border-2 border-secondary-200 text-secondary-600 hover:border-secondary-300 hover:text-secondary-900 hover:shadow-md'
+                              : 'bg-paper/5 border-2 border-paper/15 text-paper/60 hover:border-paper/30 hover:text-paper'
                           }`}
                         >
                           <span aria-hidden="true">{platform.icon}</span>
@@ -1593,7 +1593,7 @@ export default function Demo() {
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs text-secondary-400 text-center max-w-xs">
+                    <p className="text-xs text-paper/40 text-center max-w-xs">
                       See how your preview adapts to each platform's design
                     </p>
                   </div>
@@ -1790,7 +1790,7 @@ export default function Demo() {
                             </div>
                           </div>
                         </div>
-                        <p className="mt-8 text-lg font-bold text-secondary-900 flex items-center gap-2">
+                        <p className="mt-8 text-lg font-display font-semibold text-paper flex items-center gap-2">
                           <span>{platform.icon}</span>
                           <span>{platform.name}</span>
                         </p>
@@ -1804,28 +1804,28 @@ export default function Demo() {
               <div className="bg-ink rounded-2xl p-10 text-center text-white relative overflow-hidden">
                 <div className="absolute inset-0 hidden" />
                 <div className="relative z-10 max-w-2xl mx-auto">
-                  <h3 className="text-3xl font-display font-semibold mb-3">Ready to Create Unlimited Previews?</h3>
-                  <p className="text-secondary-300 mb-2 text-lg font-semibold">
+                  <h3 className="text-3xl font-display font-semibold text-paper mb-3">Ready to Create Unlimited Previews?</h3>
+                  <p className="text-paper/70 mb-2 text-lg font-semibold">
                     Increase click-through rates with brand-aware social previews
                   </p>
-                  <p className="text-secondary-400 mb-6 text-sm">
+                  <p className="text-paper/50 mb-6 text-sm">
                     Used by marketers & founders to improve engagement
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-6 mb-6">
-                    <div className="flex items-center space-x-2 text-sm text-secondary-400">
-                      <CheckIcon className="w-5 h-5 text-success-400" />
+                    <div className="flex items-center space-x-2 text-sm text-paper/60">
+                      <CheckIcon className="w-5 h-5 text-success-500" />
                       <span>Unlimited previews</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-secondary-400">
-                      <CheckIcon className="w-5 h-5 text-success-400" />
+                    <div className="flex items-center space-x-2 text-sm text-paper/60">
+                      <CheckIcon className="w-5 h-5 text-success-500" />
                       <span>Custom branding</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-secondary-400">
-                      <CheckIcon className="w-5 h-5 text-success-400" />
+                    <div className="flex items-center space-x-2 text-sm text-paper/60">
+                      <CheckIcon className="w-5 h-5 text-success-500" />
                       <span>Analytics & insights</span>
                     </div>
                   </div>
-                  <div className="mb-6 text-sm text-secondary-400">
+                  <div className="mb-6 text-sm text-paper/50">
                     <span className="inline-flex items-center gap-1">
                       <ShieldCheckIcon className="w-4 h-4 text-success-400" />
                       Free trial Â· No credit card required
@@ -1856,7 +1856,7 @@ export default function Demo() {
                       Try Another URL
                     </button>
                   </div>
-                  <p className="mt-6 text-xs text-secondary-500">
+                  <p className="mt-6 text-xs text-paper/40">
                     Save or customize this preview by creating an account
                   </p>
                 </div>
