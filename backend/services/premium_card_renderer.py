@@ -258,7 +258,7 @@ ${font_head}
     position:relative; width:42%; height:100%; overflow:hidden;
     border-left:1px solid ${hline};
   }
-  .visual img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+  .visual img { width:100%; height:100%; object-fit:cover; object-position:center center; }
 </style></head>
 <body>
   <div class="card">
@@ -302,19 +302,22 @@ def _build_html(
         hsize = min(hsize, 58)  # narrower text column
 
     # The corner mark: a cropped logo if we have one, else a text wordmark —
-    # but only when the wordmark ADDS something. On profiles the brand_name is
-    # the person's name, which is already the headline, so showing it twice reads
-    # as a bug; suppress the wordmark when it's a substring of the title.
+    # but only when it ADDS something.
+    #  - On SPLIT cards the visual panel already shows the brand (often the logo
+    #    itself), so a corner logo would DUPLICATE it — suppress it entirely.
+    #  - On profiles the brand_name is the person's name = the headline, so
+    #    showing it twice reads as a bug; suppress the wordmark when it's a
+    #    substring of the title. Brand extraction also sometimes returns a
+    #    tagline as brand_name, so a wordmark must be short and name-like.
     _t = (title or "").strip().lower()
     _b = (brand_name or "").strip().lower()
-    # Only show a wordmark that is actually a NAME. Brand extraction sometimes
-    # returns a tagline/sentence as brand_name; a truncated sentence in the
-    # corner looks broken, so require it to be short and few-worded.
     show_wordmark = (
         bool(_b) and len(_b) <= 22 and len(_b.split()) <= 3
         and _b not in _t and _t not in _b
     )
-    if logo_data_uri:
+    if is_split:
+        logo_html = ""
+    elif logo_data_uri:
         logo_html = f'<img class="logo" src="{logo_data_uri}" alt="" />'
     elif show_wordmark:
         logo_html = f'<span class="wordmark">{_esc(brand_name)}</span>'
