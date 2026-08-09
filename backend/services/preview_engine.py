@@ -1396,6 +1396,29 @@ class PreviewEngine:
         while retries <= self.config.max_retries:
             try:
                 self.logger.info(f"📸 Capturing screenshot + HTML for: {url}")
+
+                # Optional remote-first capture via Cloudflare Browser Rendering.
+                # Behind a flag (default OFF); any failure falls through to the
+                # existing local Playwright path below.
+                from backend.services.cloudflare_browser import (
+                    browser_rendering_available,
+                    cloudflare_snapshot,
+                )
+                if browser_rendering_available():
+                    try:
+                        screenshot_bytes, html_content, dom_data = cloudflare_snapshot(url)
+                        if len(screenshot_bytes) < 1000:
+                            raise ValueError("Screenshot too small, likely failed")
+                        self.logger.info(
+                            f"✅ Screenshot captured via Cloudflare ({len(screenshot_bytes)} bytes)"
+                        )
+                        return screenshot_bytes, html_content, dom_data
+                    except Exception as e:
+                        logger.warning(
+                            f"Cloudflare screenshot failed, falling back to local capture: {e}"
+                        )
+                        # fall through to the existing local Playwright path
+
                 # Run capture with a hard timeout to prevent hanging on slow sites
                 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
                 with ThreadPoolExecutor(max_workers=1) as executor:

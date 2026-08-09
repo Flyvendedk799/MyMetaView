@@ -14,6 +14,7 @@ from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationMember, OrganizationRole
 from backend.services.activity_logger import log_activity, get_client_ip
 from backend.services.rate_limiter import check_rate_limit, get_rate_limit_key_for_ip
+from backend.services.email_service import send_welcome_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -71,7 +72,14 @@ def signup(user_in: UserCreate, request: Request, db: Session = Depends(get_db))
         metadata={"email": user.email, "organization_id": default_org.id},
         request=request
     )
-    
+
+    # Send welcome email (fire-and-forget; must never fail signup)
+    try:
+        send_welcome_email(user.email)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Failed to enqueue welcome email")
+
     return user
 
 

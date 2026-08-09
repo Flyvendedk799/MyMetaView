@@ -21,6 +21,7 @@ from backend.schemas.organization import (
     OrganizationJoinRequest,
 )
 from backend.services.activity_logger import log_activity
+from backend.services.email_service import send_org_invite_email
 from backend.core.config import settings
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
@@ -153,7 +154,27 @@ def create_invite(
     # Build invite URL
     base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
     invite_url = f"{base_url}/join?token={invite_token}"
-    
+
+    # Send invite email if the payload carried a recipient address. The current
+    # invite is a shareable link (no email field on OrganizationInviteCreate),
+    # so this only fires when an email is present. Fire-and-forget; must never
+    # fail invite creation.
+    try:
+        invitee_email = (
+            getattr(invite_in, 'email', None)
+            or getattr(invite_in, 'invitee_email', None)
+        )
+        if invitee_email:
+            send_org_invite_email(
+                to_email=invitee_email,
+                org_name=current_org.name,
+                invite_url=invite_url,
+                inviter_email=getattr(current_user, 'email', None),
+            )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Failed to enqueue org invite email")
+
     log_activity(
         db,
         user_id=current_user.id,

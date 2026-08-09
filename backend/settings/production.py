@@ -104,6 +104,23 @@ class ProductionSettings:
     # Maximum request body size (10MB)
     MAX_REQUEST_SIZE: int = int(os.getenv("MAX_REQUEST_SIZE", "10485760"))
 
+    # Email / SMTP (Cloudflare Email Service). Optional — EMAIL_ENABLED=false disables sending.
+    EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.mx.cloudflare.net")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "api_token")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@mymetaview.com")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "MyMetaView")
+
+    # Browser Rendering offload (Cloudflare). Optional — off keeps local Playwright capture.
+    BROWSER_RENDERING_ENABLED: bool = os.getenv("BROWSER_RENDERING_ENABLED", "false").lower() == "true"
+    CF_ACCOUNT_ID: str = os.getenv("CF_ACCOUNT_ID", "")
+    CF_BROWSER_RENDERING_TOKEN: str = os.getenv("CF_BROWSER_RENDERING_TOKEN", "")
+    # Safety cap: stop using remote rendering past this many browser-seconds/month
+    # (10h free = 36000s; default 34200 = 9.5h leaves headroom before overage).
+    BROWSER_RENDERING_MONTHLY_SECONDS_CAP: int = int(os.getenv("BROWSER_RENDERING_MONTHLY_SECONDS_CAP", "34200"))
+
 
 # Export settings instance
 production_settings = ProductionSettings()
