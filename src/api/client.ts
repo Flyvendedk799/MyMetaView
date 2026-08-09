@@ -378,6 +378,42 @@ export async function updateBrandSettings(
   })
 }
 
+/**
+ * Upload a brand logo (multipart). We use a raw fetch here so the browser sets
+ * the multipart Content-Type + boundary itself (fetchApi forces application/json).
+ */
+export async function uploadBrandLogo(file: File): Promise<BrandSettings> {
+  const baseUrl = getApiBaseUrl()
+  const form = new FormData()
+  form.append('file', file)
+
+  const headers: Record<string, string> = {}
+  const token = getAuthToken()
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const selectedOrgId = localStorage.getItem('selected_org_id')
+  if (selectedOrgId) headers['X-Organization-ID'] = selectedOrgId
+
+  const response = await fetch(`${baseUrl}/api/v1/brand/logo`, {
+    method: 'POST',
+    headers, // deliberately no Content-Type — the browser adds the boundary
+    body: form,
+  })
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    const detail = data?.detail
+    throw new Error(typeof detail === 'string' ? detail : `Logo upload failed (${response.status})`)
+  }
+  return response.json() as Promise<BrandSettings>
+}
+
+/** Render a live SAMPLE share-card from the org's currently-saved brand settings. */
+export async function renderBrandPreview(): Promise<{ image_url: string }> {
+  return fetchApi<{ image_url: string }>('/api/v1/brand/preview', {
+    method: 'POST',
+    timeout: 30000,
+  })
+}
+
 // Preview endpoints
 export async function fetchPreviews(type?: string): Promise<Preview[]> {
   const queryParam = type ? `?type=${encodeURIComponent(type)}` : ''

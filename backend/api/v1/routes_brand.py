@@ -81,24 +81,20 @@ def update_brand_settings(
         BrandSettingsModel.organization_id == current_org.id
     ).first()
     
-    # If no settings exist, create them first
+    # Create a defaulted row if none exists yet, then apply EVERY provided field
+    # (uniform path so the new preview-preference columns persist for new users too,
+    # not just the legacy colour/font fields).
     if not settings:
         settings = BrandSettingsModel(
-            primary_color=settings_update.primary_color or "#2979FF",
-            secondary_color=settings_update.secondary_color or "#0A1A3C",
-            accent_color=settings_update.accent_color or "#3FFFD3",
-            font_family=settings_update.font_family or "Inter",
-            logo_url=settings_update.logo_url,
-            user_id=current_user.id,
-            organization_id=current_org.id,
+            primary_color="#2979FF", secondary_color="#0A1A3C", accent_color="#3FFFD3",
+            font_family="Inter", user_id=current_user.id, organization_id=current_org.id,
         )
         db.add(settings)
-    else:
-        # Update existing settings
-        update_data = settings_update.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(settings, field, value)
-    
+
+    update_data = settings_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(settings, field, value)
+
     db.commit()
     db.refresh(settings)
     

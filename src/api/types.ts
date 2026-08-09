@@ -26,6 +26,12 @@ export interface BrandSettings {
   accent_color: string
   font_family: string
   logo_url?: string | null
+  // Preview-card controls ("auto" = let the AI decide)
+  preview_layout: string
+  preview_panel: string
+  preview_accent: string
+  force_brand_colors: boolean
+  hide_watermark: boolean
 }
 
 export interface BrandSettingsUpdate {
@@ -34,6 +40,11 @@ export interface BrandSettingsUpdate {
   accent_color?: string
   font_family?: string
   logo_url?: string | null
+  preview_layout?: string
+  preview_panel?: string
+  preview_accent?: string
+  force_brand_colors?: boolean
+  hide_watermark?: boolean
 }
 
 export interface Preview {
