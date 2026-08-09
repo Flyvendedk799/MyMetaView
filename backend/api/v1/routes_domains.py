@@ -38,11 +38,7 @@ def create_domain(
     current_org: Organization = Depends(get_current_org),
     current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
 ):
-    """
-    Create a new domain for the current organization (owner/admin/editor only).
-    
-    Optionally adds domain to Railway via API if RAILWAY_TOKEN (or RAILWAY_API_TOKEN) is configured.
-    """
+    """Create a new domain for the current organization (owner/admin/editor only)."""
     import logging
     logger = logging.getLogger(__name__)
     
@@ -70,35 +66,7 @@ def create_domain(
     db.add(db_domain)
     db.commit()
     db.refresh(db_domain)
-    
-    # Optionally add domain to Railway via API
-    # This allows automatic Railway domain configuration
-    # NOTE: Railway's GraphQL API may not be publicly accessible.
-    # If this fails, you'll need to add domains manually in Railway dashboard.
-    # Railway uses RAILWAY_TOKEN as the standard name, but we also check RAILWAY_API_TOKEN for compatibility
-    railway_token = os.getenv("RAILWAY_TOKEN") or os.getenv("RAILWAY_API_TOKEN")
-    railway_api_enabled = railway_token and os.getenv("RAILWAY_SERVICE_ID")
-    if railway_api_enabled:
-        try:
-            from backend.services.railway_domain_service import (
-                add_domain_to_railway,
-                check_domain_exists_in_railway
-            )
-            
-            # Check if domain already exists in Railway
-            if not check_domain_exists_in_railway(domain.name):
-                logger.info(f"Adding domain {domain.name} to Railway via API")
-                railway_domain = add_domain_to_railway(domain.name)
-                logger.info(f"Successfully added {domain.name} to Railway: {railway_domain}")
-            else:
-                logger.info(f"Domain {domain.name} already exists in Railway")
-        except Exception as e:
-            # Log error but don't fail domain creation
-            # Domain is still created in database, just not added to Railway
-            logger.warning(f"Failed to add domain to Railway via API: {e}")
-            logger.info("Domain created in database. You can add it manually in Railway dashboard.")
-            logger.info("To add domain manually: Railway Dashboard -> Backend Service -> Settings -> Networking -> Add Custom Domain")
-    
+
     # Invalidate cache (domain was just created, but invalidate to be safe)
     invalidate_domain(current_org.id, db_domain.name)
     

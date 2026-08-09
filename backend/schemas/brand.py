@@ -10,6 +10,12 @@ class BrandSettingsBase(BaseModel):
     accent_color: str = Field(..., description="Accent brand color (hex)")
     font_family: str = Field(default="Inter", description="Font family name")
     logo_url: Optional[str] = Field(None, description="URL to logo image")
+    # Preview-card controls ("auto" = let the AI decide)
+    preview_layout: str = Field(default="auto", description="auto | typographic | split")
+    preview_panel: str = Field(default="auto", description="auto | primary | secondary | dark | light")
+    preview_accent: str = Field(default="auto", description="auto | bar | dot | shape")
+    force_brand_colors: bool = Field(default=False, description="Always use these brand colours, ignore extracted")
+    hide_watermark: bool = Field(default=False, description="Drop the 'metaview preview' footer on cards")
 
 
 class BrandSettingsUpdate(BaseModel):
@@ -19,6 +25,11 @@ class BrandSettingsUpdate(BaseModel):
     accent_color: Optional[str] = None
     font_family: Optional[str] = None
     logo_url: Optional[str] = None
+    preview_layout: Optional[str] = None
+    preview_panel: Optional[str] = None
+    preview_accent: Optional[str] = None
+    force_brand_colors: Optional[bool] = None
+    hide_watermark: Optional[bool] = None
 
 
 class BrandSettings(BrandSettingsBase):

@@ -287,7 +287,7 @@ ${font_head}
         <div class="accent-bar"></div>
         ${subtitle_html}
       </div>
-      <div class="footer"><span class="dot"></span><span>metaview preview</span></div>
+      ${footer_html}
     </div>
     ${visual_html}
   </div>
@@ -309,6 +309,7 @@ def _build_html(
     layout: str,
     mood: str,
     accent_moment: str = "bar",
+    hide_watermark: bool = False,
 ) -> str:
     is_split = layout in {"split", "product", "editorial"} and bool(visual_data_uri)
     hsize = _headline_size(title)
@@ -378,6 +379,11 @@ def _build_html(
     else:  # "shape" (or anything else) → the soft corner circle
         accent_shape_html = '<div class="accent-shape"></div>'
 
+    footer_html = (
+        "" if hide_watermark
+        else '<div class="footer"><span class="dot"></span><span>metaview preview</span></div>'
+    )
+
     return _CARD_TEMPLATE.substitute(
         font_head=_font_head(),
         card_w=str(CARD_W),
@@ -399,6 +405,7 @@ def _build_html(
         subtitle_html=subtitle_html,
         visual_html=visual_html,
         accent_shape_html=accent_shape_html,
+        footer_html=footer_html,
     )
 
 
@@ -416,6 +423,7 @@ def render_premium_card(
     composition: Optional[Dict[str, Any]] = None,
     logo_data_uri: Optional[str] = None,
     visual_data_uri: Optional[str] = None,
+    hide_watermark: bool = False,
 ) -> bytes:
     """Render an on-identity premium share card to PNG bytes (1200×630).
 
@@ -458,6 +466,7 @@ def render_premium_card(
         layout=layout,
         mood=str(composition.get("mood", "confident")),
         accent_moment=str(composition.get("accent_moment", "bar")),
+        hide_watermark=hide_watermark,
     )
 
     png = _rasterize(doc)

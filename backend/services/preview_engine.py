@@ -2344,6 +2344,25 @@ class PreviewEngine:
                     "accent_moment": spec.get("accent_moment", "bar"),
                     "mood": spec.get("mood", "confident"),
                 }
+
+                # Apply the org's saved brand-card preferences (SaaS). "auto" lets
+                # the AI art director decide; any explicit value overrides it. The
+                # public demo has no prefs, so it is unaffected.
+                _p = self.config.brand_settings if isinstance(self.config.brand_settings, dict) else {}
+                if _p.get("preview_layout") and _p["preview_layout"] != "auto":
+                    composition["layout"] = _p["preview_layout"]
+                    composition["use_visual"] = (_p["preview_layout"] == "split")
+                if _p.get("preview_panel") and _p["preview_panel"] != "auto":
+                    composition["panel_color_role"] = _p["preview_panel"]
+                if _p.get("preview_accent") and _p["preview_accent"] != "auto":
+                    composition["accent_moment"] = _p["preview_accent"]
+                if _p.get("force_brand_colors"):
+                    blueprint_colors = {
+                        "primary_color": _p.get("primary_color") or blueprint_colors.get("primary_color"),
+                        "secondary_color": _p.get("secondary_color") or blueprint_colors.get("secondary_color"),
+                        "accent_color": _p.get("accent_color") or blueprint_colors.get("accent_color"),
+                    }
+                _hide_watermark = bool(_p.get("hide_watermark"))
                 logo_uri = None
                 if primary_image:
                     logo_uri = (
@@ -2372,6 +2391,7 @@ class PreviewEngine:
                     composition=composition,
                     logo_data_uri=logo_uri,
                     visual_data_uri=visual_uri,
+                    hide_watermark=_hide_watermark,
                 )
                 if premium_png:
                     premium_url = upload_file_to_r2(
