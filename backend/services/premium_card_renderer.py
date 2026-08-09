@@ -258,7 +258,14 @@ ${font_head}
     position:relative; width:42%; height:100%; overflow:hidden;
     border-left:1px solid ${hline};
   }
-  .visual-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center; }
+  .visual-bg {
+    position:absolute; inset:-40px; width:calc(100% + 80px); height:calc(100% + 80px);
+    object-fit:cover; object-position:center center;
+    /* Heavy blur turns the hero into abstract brand-coloured texture — keeps the
+       energy but removes any recognisable text/logo that would echo the centered
+       mark. Over-sized + clipped so the blurred edges never show the panel. */
+    filter:blur(24px); transform:scale(1.03);
+  }
   .visual-scrim { position:absolute; inset:0; background:${scrim}; }
   .visual-logo {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
@@ -313,7 +320,7 @@ def _build_html(
     # ties the visual panel to the card's colour, so the centered logo pops.
     _pr, _pg, _pb = _rgb(panel)
     scrim = (
-        f"linear-gradient(rgba({_pr},{_pg},{_pb},0.82), rgba({_pr},{_pg},{_pb},0.95))"
+        f"linear-gradient(rgba({_pr},{_pg},{_pb},0.55), rgba({_pr},{_pg},{_pb},0.8))"
     )
 
     # The corner mark: a cropped logo if we have one, else a text wordmark —
