@@ -258,7 +258,7 @@ ${font_head}
     position:relative; width:42%; height:100%; overflow:hidden;
     border-left:1px solid ${hline};
   }
-  .visual img { width:100%; height:100%; object-fit:cover; object-position:center center; }
+  .visual img { width:100%; height:100%; object-fit:cover; object-position:center top; }
 </style></head>
 <body>
   <div class="card">
