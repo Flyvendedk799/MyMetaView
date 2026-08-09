@@ -262,8 +262,8 @@ ${font_head}
   .visual-scrim { position:absolute; inset:0; background:${scrim}; }
   .visual-logo {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    max-width:70%; max-height:50%; width:auto; height:auto; object-fit:contain;
-    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.45));
+    max-width:76%; max-height:56%; width:auto; height:auto; object-fit:contain;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5));
   }
   .visual-solo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center; }
 </style></head>
@@ -313,7 +313,7 @@ def _build_html(
     # ties the visual panel to the card's colour, so the centered logo pops.
     _pr, _pg, _pb = _rgb(panel)
     scrim = (
-        f"linear-gradient(rgba({_pr},{_pg},{_pb},0.72), rgba({_pr},{_pg},{_pb},0.9))"
+        f"linear-gradient(rgba({_pr},{_pg},{_pb},0.82), rgba({_pr},{_pg},{_pb},0.95))"
     )
 
     # The corner mark: a cropped logo if we have one, else a text wordmark —
