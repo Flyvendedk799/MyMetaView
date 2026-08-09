@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { 
   PlusIcon, 
   TrashIcon, 
@@ -19,6 +19,7 @@ import EmptyState from '../components/ui/EmptyState'
 import Alert from '../components/ui/Alert'
 import { SkeletonList } from '../components/ui/Skeleton'
 import { useDomains } from '../hooks/useDomains'
+import { usePreviews } from '../hooks/usePreviews'
 import { startDomainVerification, checkDomainVerification, debugDomainVerification } from '../api/client'
 import type { Domain } from '../api/types'
 
@@ -34,6 +35,15 @@ interface DebugInfo {
 
 export default function Domains() {
   const { domains, loading, error: apiError, addDomain, removeDomain, refetch } = useDomains()
+  const { previews } = usePreviews()
+  // Real count of previews per domain (previews carry the domain name they belong to)
+  const previewCountByDomain = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const preview of previews) {
+      counts[preview.domain] = (counts[preview.domain] || 0) + 1
+    }
+    return counts
+  }, [previews])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
   const [verifyingDomain, setVerifyingDomain] = useState<Domain | null>(null)
@@ -312,7 +322,7 @@ export default function Domains() {
   }
 
   const getPreviewsCount = (domainName: string) => {
-    return Math.floor(Math.random() * 50)
+    return previewCountByDomain[domainName] || 0
   }
 
   const verificationMethods = [

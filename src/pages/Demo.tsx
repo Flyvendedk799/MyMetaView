@@ -82,7 +82,6 @@ export default function Demo() {
   const [consentChecked, setConsentChecked] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
   const [urlHistory, setUrlHistory] = useState<string[]>([])
-  const [previewsGeneratedCount, setPreviewsGeneratedCount] = useState<number>(0)
 
   const heroRef = useRef<HTMLDivElement>(null)
   const lastLoggedImageUrlRef = useRef<string | null>(null)
@@ -114,7 +113,7 @@ export default function Demo() {
     { url: 'https://openai.com', label: 'OpenAI' },
   ]
 
-  // Load URL history and preview count from localStorage on mount
+  // Load URL history from localStorage on mount
   useEffect(() => {
     const savedHistory = localStorage.getItem('demo_url_history')
     if (savedHistory) {
@@ -124,17 +123,6 @@ export default function Demo() {
         // Ignore parse errors
       }
     }
-    
-    // Load preview count (simulate with random number for demo)
-    const savedCount = localStorage.getItem('demo_previews_generated')
-    if (savedCount) {
-      setPreviewsGeneratedCount(parseInt(savedCount, 10))
-    } else {
-      // Initialize with a realistic number for social proof
-      const initialCount = Math.floor(Math.random() * 500) + 1000
-      setPreviewsGeneratedCount(initialCount)
-      localStorage.setItem('demo_previews_generated', initialCount.toString())
-    }
   }, [])
 
   // Save URL to history when preview is generated
@@ -143,11 +131,6 @@ export default function Demo() {
       const newHistory = [preview.url, ...urlHistory.filter(u => u !== preview.url)].slice(0, 5)
       setUrlHistory(newHistory)
       localStorage.setItem('demo_url_history', JSON.stringify(newHistory))
-      
-      // Increment preview count
-      const newCount = previewsGeneratedCount + 1
-      setPreviewsGeneratedCount(newCount)
-      localStorage.setItem('demo_previews_generated', newCount.toString())
     }
   }, [preview?.url])
 
@@ -636,14 +619,6 @@ export default function Demo() {
                 <RocketLaunchIcon className="w-3.5 h-3.5 text-accent-500" aria-hidden="true" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent-500">AI-Powered Preview Demo</span>
               </div>
-              {previewsGeneratedCount > 0 && (
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-paper/5 rounded-full border border-paper/10">
-                  <SparklesIcon className="w-4 h-4 text-accent-500" aria-hidden="true" />
-                  <span className="text-sm font-medium text-paper/70">
-                    <span className="text-paper font-semibold">{previewsGeneratedCount.toLocaleString()}</span> previews generated today
-                  </span>
-                </div>
-              )}
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-display font-semibold text-paper leading-[1.05] tracking-display-lg mb-3 sm:mb-4 px-2">
               See Your URLs{' '}

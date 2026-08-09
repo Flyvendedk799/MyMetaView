@@ -14,6 +14,8 @@ import {
 import Logo, { LogoMark } from '../components/ui/Logo'
 import Seo from '../components/Seo'
 import SiteNav from '../components/SiteNav'
+import { getPlans } from '../api/client'
+import { FALLBACK_PLANS, toDisplayPlan, type DisplayPlan } from '../lib/plans'
 
 // Animated counter hook for stats
 function useCountUp(target: number, duration: number = 2000, startOnView: boolean = true) {
@@ -119,60 +121,32 @@ const features = [
   },
 ]
 
-const plans = [
-  {
-    name: 'Starter',
-    price: '$19',
-    period: '/mo',
-    description: 'Perfect for small websites',
-    features: [
-      'Up to 5 domains',
-      'Unlimited previews',
-      'Basic analytics',
-      'Email support',
-    ],
-    cta: 'Start Free Trial',
-    highlighted: false,
-  },
-  {
-    name: 'Growth',
-    price: '$49',
-    period: '/mo',
-    description: 'For growing businesses',
-    features: [
-      'Up to 25 domains',
-      'Unlimited previews',
-      'Advanced analytics',
-      'Custom branding',
-      'Priority support',
-    ],
-    cta: 'Start Free Trial',
-    highlighted: true,
-  },
-  {
-    name: 'Agency',
-    price: '$149',
-    period: '/mo',
-    description: 'For agencies and teams',
-    features: [
-      'Unlimited domains',
-      'Unlimited previews',
-      'White-label options',
-      'API access',
-      'Dedicated support',
-      'Team collaboration',
-    ],
-    cta: 'Contact Sales',
-    highlighted: false,
-  },
-]
+// Rendered instantly from the plans.py mirror, then swapped for live /plans data.
+const FALLBACK_DISPLAY_PLANS: DisplayPlan[] = FALLBACK_PLANS.map(toDisplayPlan)
 
 const platforms = ['Slack', 'X', 'LinkedIn', 'iMessage']
 
 export default function Landing() {
   const navigate = useNavigate()
   const [heroDomain, setHeroDomain] = useState('')
+  const [plans, setPlans] = useState<DisplayPlan[]>(FALLBACK_DISPLAY_PLANS)
   const sectionRefs = useRef<(HTMLElement | null)[]>([])
+
+  // Pull live tiers from the backend (single source of truth). The fallback is
+  // already on screen, so this just corrects any drift without a loading flash.
+  useEffect(() => {
+    let active = true
+    getPlans()
+      .then((live) => {
+        if (active && live.length) setPlans(live.map(toDisplayPlan))
+      })
+      .catch(() => {
+        /* keep the fallback tiers */
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Animated counters for stats section
   const stat1 = useCountUp(2000, 2000)

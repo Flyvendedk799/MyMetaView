@@ -18,11 +18,12 @@ import { StatusBadge } from '../../components/ui/Badge'
 import { IllustratedEmptyState } from '../../components/ui/EmptyState'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { ConfirmDialog } from '../../components/ui/Modal'
-import { fetchSites, deleteSite, publishSite, unpublishSite, type PublishedSite } from '../../api/client'
+import { fetchSites, deleteSite, publishSite, unpublishSite, fetchSiteStats, type PublishedSite, type SiteStats } from '../../api/client'
 
 export default function SitesList() {
   const navigate = useNavigate()
   const [sites, setSites] = useState<PublishedSite[]>([])
+  const [siteStats, setSiteStats] = useState<Record<number, SiteStats>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<PublishedSite | null>(null)
@@ -39,11 +40,31 @@ export default function SitesList() {
       setError('')
       const data = await fetchSites()
       setSites(data)
+      // Load real per-site stats in the background (kept as "—" until/if they resolve)
+      loadSiteStats(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sites')
     } finally {
       setLoading(false)
     }
+  }
+
+  async function loadSiteStats(sitesData: PublishedSite[]) {
+    const entries = await Promise.all(
+      sitesData.map(async (site) => {
+        try {
+          const stats = await fetchSiteStats(site.id)
+          return [site.id, stats] as const
+        } catch {
+          return null
+        }
+      })
+    )
+    const statsMap: Record<number, SiteStats> = {}
+    for (const entry of entries) {
+      if (entry) statsMap[entry[0]] = entry[1]
+    }
+    setSiteStats(statsMap)
   }
 
   async function handleDelete() {
@@ -258,15 +279,21 @@ export default function SitesList() {
               {/* Stats preview */}
               <div className="grid grid-cols-3 gap-2 py-4 border-t border-secondary-100">
                 <div className="text-center">
-                  <p className="text-lg font-bold text-secondary-900">—</p>
+                  <p className="text-lg font-bold text-secondary-900">
+                    {siteStats[site.id] ? siteStats[site.id].total_posts.toLocaleString() : '—'}
+                  </p>
                   <p className="text-xs text-secondary-500">Posts</p>
                 </div>
                 <div className="text-center border-x border-secondary-100">
-                  <p className="text-lg font-bold text-secondary-900">—</p>
+                  <p className="text-lg font-bold text-secondary-900">
+                    {siteStats[site.id] ? siteStats[site.id].pages.toLocaleString() : '—'}
+                  </p>
                   <p className="text-xs text-secondary-500">Pages</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-secondary-900">—</p>
+                  <p className="text-lg font-bold text-secondary-900">
+                    {siteStats[site.id] ? siteStats[site.id].total_views.toLocaleString() : '—'}
+                  </p>
                   <p className="text-xs text-secondary-500">Views</p>
                 </div>
               </div>

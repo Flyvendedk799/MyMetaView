@@ -128,6 +128,36 @@ export interface Token {
   token_type: string
 }
 
+// Plans / billing tiers — shape mirrors backend/core/plans.py (the single
+// source of truth). `null` on a numeric limit means "unlimited".
+export interface PublicPlan {
+  key: string
+  name: string
+  price: number
+  domains: number | null
+  previews_month: number | null
+  team_seats: number | null
+  features: string[]
+}
+
+export interface MyPlan {
+  key: string
+  name: string
+  price: number
+  status: string | null
+  trial_ends_at: string | null
+  limits: {
+    domains: number | null
+    previews_month: number | null
+    team_seats: number | null
+  }
+  features: string[]
+  usage: {
+    domains: number
+    previews_month: number
+  }
+}
+
 // Admin types
 export interface AdminUserSummary {
   id: number

@@ -58,8 +58,8 @@ export default function Dashboard() {
     {
       name: 'Monthly clicks',
       value: summary?.total_clicks.toLocaleString() || '0',
-      description: '+12.5% from last month',
-      descriptionTone: 'text-success-500',
+      description: 'Last 30 days',
+      descriptionTone: 'text-secondary-600',
       icon: ArrowTrendingUpIcon,
     },
     {
@@ -79,7 +79,14 @@ export default function Dashboard() {
     {
       name: 'Brand score',
       value: summary?.brand_score.toString() || '0',
-      description: 'Excellent consistency',
+      description:
+        (summary?.brand_score ?? 0) >= 80
+          ? 'Excellent consistency'
+          : (summary?.brand_score ?? 0) >= 50
+          ? 'Good consistency'
+          : (summary?.brand_score ?? 0) > 0
+          ? 'Room to improve'
+          : 'Set up your brand',
       descriptionTone: 'text-secondary-600',
       icon: StarIcon,
     },

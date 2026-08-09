@@ -11,6 +11,8 @@ import type {
   AnalyticsSummary,
   User,
   Token,
+  PublicPlan,
+  MyPlan,
   AnalyticsOverview,
   DomainAnalyticsItem,
   PreviewAnalyticsItem,
@@ -76,6 +78,8 @@ export type {
   AnalyticsSummary,
   User,
   Token,
+  PublicPlan,
+  MyPlan,
   AnalyticsOverview,
   DomainAnalyticsItem,
   PreviewAnalyticsItem,
@@ -535,6 +539,16 @@ export async function changeSubscriptionPlan(priceId: string): Promise<{
     method: 'POST',
     body: JSON.stringify({ price_id: priceId }),
   })
+}
+
+// Plans (single source of truth: backend/core/plans.py)
+export async function getPlans(): Promise<PublicPlan[]> {
+  const res = await fetchApi<{ plans: PublicPlan[] }>('/api/v1/plans')
+  return res.plans
+}
+
+export async function getMyPlan(): Promise<MyPlan> {
+  return fetchApi<MyPlan>('/api/v1/plans/me')
 }
 
 // Admin endpoints

@@ -5,7 +5,6 @@ import {
   FolderIcon,
   DocumentIcon,
   EyeIcon,
-  ArrowTrendingUpIcon,
   PlusIcon,
   PencilSquareIcon,
   Cog6ToothIcon,
@@ -113,8 +112,6 @@ export default function SiteDashboard() {
       icon: DocumentTextIcon,
       color: 'text-primary-500',
       bgColor: 'bg-primary-50',
-      trend: '+12%',
-      trendUp: true,
       action: () => navigate(`/app/sites/${siteId}/posts`),
     },
     {
@@ -139,8 +136,6 @@ export default function SiteDashboard() {
       icon: EyeIcon,
       color: 'text-warning-500',
       bgColor: 'bg-warning-50',
-      trend: '+8%',
-      trendUp: true,
     },
   ]
 
@@ -246,12 +241,6 @@ export default function SiteDashboard() {
                   <p className="text-3xl font-bold text-secondary-900 tabular-nums">
                     {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
                   </p>
-                  {stat.trend && (
-                    <p className={`text-xs font-semibold mt-1 flex items-center gap-1 ${stat.trendUp ? 'text-success-600' : 'text-error-600'}`}>
-                      <ArrowTrendingUpIcon className={`w-3 h-3 ${stat.trendUp ? '' : 'rotate-180'}`} />
-                      {stat.trend}
-                    </p>
-                  )}
                 </div>
                 <div className={`p-3 rounded-xl ${stat.bgColor}`}>
                   <Icon className={`w-6 h-6 ${stat.color}`} />
