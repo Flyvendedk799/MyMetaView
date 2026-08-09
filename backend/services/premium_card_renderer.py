@@ -232,7 +232,7 @@ ${font_head}
     letter-spacing:0.14em; text-transform:uppercase; color:${dim};
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .logo { height:34px; max-width:200px; object-fit:contain; opacity:0.96; }
+  .logo { height:46px; max-width:250px; object-fit:contain; opacity:0.98; }
   .wordmark {
     font-family:'Bricolage Grotesque', sans-serif; font-weight:600; font-size:22px;
     letter-spacing:-0.01em; color:${ink};

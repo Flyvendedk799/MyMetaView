@@ -1437,6 +1437,8 @@ First, silently answer for yourself: What is this page? What does it want the vi
 
 === STEP 2: WRITE THE CARD ===
 
+**LANGUAGE (critical)** — Write the title, subtitle, and description in the PAGE'S OWN language — whatever language its visible copy is written in. A Danish page gets a Danish card, a German page a German card, a Japanese page a Japanese card. NEVER translate the page into English. (JSON keys stay English; only the human-readable copy matches the page's language.)
+
 **title** (REQUIRED) — the hook. The one line that makes someone stop scrolling.
    - Capture the page's core value, sharpened. You MAY rephrase, tighten, or lead with the benefit — you are writing a headline, not transcribing one. Aim for specific and concrete over vague and grand.
    - Ground every word in what the page actually offers. No invented features, no fake urgency, no clickbait.
@@ -1456,10 +1458,10 @@ First, silently answer for yourself: What is this page? What does it want the vi
 
 === STEP 3: READ THE VISUAL IDENTITY ===
 
-**colors** — the page's 3 real brand colors as hex:
-   - primary: dominant brand color (buttons/headers)
-   - secondary: background or secondary brand color
-   - accent: highlight/CTA color
+**colors** — the page's 3 REAL brand colors as hex, read from the LOGO, primary buttons/CTAs, links, and hero — the SATURATED signature colors, not the plain white/black of the page background:
+   - primary: the dominant saturated brand color (the logo/CTA/link color). For a colorful brand this MUST be that real vivid color (e.g. a vivid blue, purple, orange, green) — never a generic dark navy or gray stand-in.
+   - secondary: a supporting brand color.
+   - accent: the highlight/CTA/attention color (often the boldest, e.g. a bright yellow, orange, pink).
 
 **logo_bbox** — bounding box of the logo (or, for profiles, the avatar), as fractions 0.0-1.0 {"x","y","width","height"}, usually the top ~15% of the page. null if none is clearly visible.
 
@@ -1472,14 +1474,16 @@ First, silently answer for yourself: What is this page? What does it want the vi
    - brand_adjectives: 3 words for the brand personality
 
 === STEP 4: DIRECT THE COMPOSITION ===
-Decide how MetaView should lay out the card. MetaView's house style is confident and typographic: a brand-colored panel, a strong headline, ONE accent moment. Restraint reads as premium — a clean type-only card almost always beats a card cluttered with a screenshot.
+Match the composition to the BRAND'S energy — the card must feel like it belongs to THIS site.
+- Software / professional / editorial / luxury / finance brands: MetaView's restrained house style shines — a deep or brand-colored panel, a strong headline, ONE accent, usually typographic. Restraint reads premium here.
+- Vibrant CONSUMER brands (retail, events, food, hospitality, fitness, kids, creative — bold colors, playful logos, strong photography): do NOT flatten them into a somber dark card. Use the brand's REAL vivid color as the panel and keep the energy, and usually go "split" featuring the hero photo/product. A card that strips a colorful brand down to black text feels broken and off-brand.
 
 **composition**:
-   - layout: "typographic" (headline-led, no image — the default and usually best) OR "split" (headline on one side, a single clean visual on the other). Choose "split" ONLY when the page has ONE genuinely strong, self-contained hero visual (a product shot, a person's photo, a clean device mockup) that would make the card MORE compelling. Most SaaS/marketing pages are stronger typographic — when in doubt, "typographic".
+   - layout: "typographic" (headline-led, no image) OR "split" (headline on one side, a hero visual on the other). Choose "split" when the page leans on a strong hero photo/product/graphic that carries the brand — common for ecommerce, events, food, real estate, portfolios, agencies. Choose "typographic" for text-first software/professional pages. When the brand's identity is visual, prefer split.
    - use_visual: true only if layout is "split" and a clean visual exists; else false.
    - visual_source: "screenshot" (a crop of the page) | "logo" | "none".
    - visual_focus: ONLY when layout is "split" — the bounding box of that single best visual region, as fractions {"x","y","width","height"} 0-1 of the screenshot. Frame the hero product/graphic/photo tightly; EXCLUDE the top nav bar, cookie/consent banners, and text-only areas. Prefer a roughly square-to-portrait region (it fills a tall panel). null when layout is "typographic".
-   - panel_color_role: which brand color anchors the card background — "primary" | "secondary" | "dark" (a deep near-black tint of the brand) | "light" (a soft off-white). Pick for contrast and mood; "dark" and "primary" feel premium for most brands.
+   - panel_color_role: which brand color anchors the card background — "primary" (the brand's REAL signature color — USE THIS for any colorful/vibrant/playful brand) | "secondary" | "dark" (a deep near-black tint — ONLY for premium/somber/luxury/technical brands) | "light" (soft off-white — for airy/minimal/editorial brands). Never put a bright, playful brand on a "dark" panel; use "primary" so the real brand color shows.
    - accent_moment: where the single accent lands — "bar" (a short rule under the headline) | "dot" | "shape" (a soft corner shape).
    - mood: one word matching the brand (e.g. "confident", "warm", "precise", "bold", "calm").
    - reasoning: one short sentence on why this composition tells THIS page's story.
@@ -1522,7 +1526,8 @@ RULES:
 2. credibility is the ONE verbatim field — real numbers/names only, else null.
 3. NULL OVER FABRICATION everywhere.
 4. TITLE IS MANDATORY.
-5. Prefer restraint: a clean typographic card beats a busy one."""
+5. Match the brand's energy: restraint for software/luxury; the brand's REAL color + hero imagery for vibrant consumer brands. Never flatten a colorful brand into a somber dark card.
+6. Write the copy in the PAGE'S language — never translate it to English."""
 
 
 def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> ReasonedPreview:
