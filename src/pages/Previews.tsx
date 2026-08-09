@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -8,8 +8,16 @@ import Alert from '../components/ui/Alert'
 import { SkeletonGrid } from '../components/ui/Skeleton'
 import { usePreviews } from '../hooks/usePreviews'
 import { useDomains } from '../hooks/useDomains'
-import { fetchPreviewVariants, updatePreviewVariant } from '../api/client'
-import type { PreviewCreate, PreviewUpdate, PreviewVariant } from '../api/types'
+import {
+  fetchPreviewVariants,
+  updatePreviewVariant,
+  discoverSitemapUrls,
+  createBulkPreviewJob,
+  getBulkJobStatus,
+  createPreviewJob,
+  getJobStatus,
+} from '../api/client'
+import type { PreviewCreate, PreviewUpdate, PreviewVariant, BulkJobStatus } from '../api/types'
 
 const filters = ['All', 'Product', 'Blog', 'Landing Page'] as const
 type FilterType = typeof filters[number]
@@ -25,8 +33,28 @@ const filterToTypeMap: Record<string, string | undefined> = {
 export default function Previews() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('All')
   const filterType = filterToTypeMap[activeFilter]
-  const { previews, loading, error, createOrUpdatePreview, updatePreview, deletePreview, generatePreviewAsync } = usePreviews(filterType)
+  const { previews, loading, error, createOrUpdatePreview, updatePreview, deletePreview, generatePreviewAsync, refetch } = usePreviews(filterType)
   const { domains } = useDomains()
+  const verifiedDomains = useMemo(() => domains.filter((d) => d.status === 'verified'), [domains])
+
+  // Bulk "cover your site" generation
+  const [isBulkOpen, setIsBulkOpen] = useState(false)
+  const [bulkDomain, setBulkDomain] = useState('')
+  const [bulkUrlText, setBulkUrlText] = useState('')
+  const [bulkLoadingSitemap, setBulkLoadingSitemap] = useState(false)
+  const [bulkSitemapNote, setBulkSitemapNote] = useState<string | null>(null)
+  const [bulkError, setBulkError] = useState<string | null>(null)
+  const [bulkRunning, setBulkRunning] = useState(false)
+  const [bulkStatus, setBulkStatus] = useState<BulkJobStatus | null>(null)
+  const [bulkSkippedQuota, setBulkSkippedQuota] = useState(0)
+  const bulkUrls = useMemo(
+    () => bulkUrlText.split('\n').map((l) => l.trim()).filter(Boolean),
+    [bulkUrlText]
+  )
+
+  // Per-card regeneration
+  const [regeneratingIds, setRegeneratingIds] = useState<Record<number, boolean>>({})
+  const [regenError, setRegenError] = useState<string | null>(null)
   
   // Debounce filter changes
   const [debouncedFilter, setDebouncedFilter] = useState<FilterType>(activeFilter)
@@ -283,6 +311,116 @@ export default function Previews() {
     }
   }
 
+  // ---- Bulk generation ----
+  const openBulk = () => {
+    setBulkDomain(verifiedDomains.length > 0 ? verifiedDomains[0].name : '')
+    setBulkUrlText('')
+    setBulkSitemapNote(null)
+    setBulkError(null)
+    setBulkStatus(null)
+    setBulkSkippedQuota(0)
+    setBulkRunning(false)
+    setIsBulkOpen(true)
+  }
+
+  const closeBulk = () => {
+    if (bulkRunning) return // don't abandon a batch mid-run
+    setIsBulkOpen(false)
+  }
+
+  const handleLoadSitemap = async () => {
+    if (!bulkDomain) return
+    setBulkLoadingSitemap(true)
+    setBulkError(null)
+    setBulkSitemapNote(null)
+    try {
+      const res = await discoverSitemapUrls(bulkDomain)
+      if (res.count === 0) {
+        setBulkSitemapNote('No sitemap found — paste URLs manually below.')
+      } else {
+        setBulkUrlText(res.urls.join('\n'))
+        setBulkSitemapNote(`Found ${res.count} URL${res.count === 1 ? '' : 's'}.`)
+      }
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : 'Could not read the sitemap.')
+    } finally {
+      setBulkLoadingSitemap(false)
+    }
+  }
+
+  const handleBulkGenerate = async () => {
+    if (!bulkDomain || bulkUrls.length === 0) return
+    setBulkError(null)
+    setBulkStatus(null)
+    setBulkSkippedQuota(0)
+    setBulkRunning(true)
+    try {
+      const res = await createBulkPreviewJob(bulkDomain, bulkUrls, false)
+      setBulkSkippedQuota(res.skipped_quota || 0)
+      const batchId = res.batch_id
+      await new Promise<void>((resolve) => {
+        const poll = setInterval(async () => {
+          try {
+            const status = await getBulkJobStatus(batchId)
+            setBulkStatus(status)
+            if (status.status === 'completed' || status.status === 'failed') {
+              clearInterval(poll)
+              resolve()
+            }
+          } catch {
+            // batch may briefly be unreadable; keep polling
+          }
+        }, 2000)
+        // Safety stop after 30 minutes
+        setTimeout(() => {
+          clearInterval(poll)
+          resolve()
+        }, 1800000)
+      })
+      await refetch(filterType)
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : 'Bulk generation failed to start.')
+    } finally {
+      setBulkRunning(false)
+    }
+  }
+
+  // ---- Per-card regenerate (re-roll) ----
+  const handleRegenerate = async (preview: typeof previews[0]) => {
+    if (regeneratingIds[preview.id]) return
+    setRegenError(null)
+    setRegeneratingIds((prev) => ({ ...prev, [preview.id]: true }))
+    try {
+      const { job_id } = await createPreviewJob({ url: preview.url, domain: preview.domain, force: true })
+      await new Promise<void>((resolve, reject) => {
+        const poll = setInterval(async () => {
+          try {
+            const status = await getJobStatus(job_id)
+            if (status.status === 'finished') {
+              clearInterval(poll)
+              resolve()
+            } else if (status.status === 'failed') {
+              clearInterval(poll)
+              reject(new Error(status.error || 'Regeneration failed'))
+            }
+          } catch (err) {
+            clearInterval(poll)
+            reject(err)
+          }
+        }, 1500)
+        setTimeout(() => {
+          clearInterval(poll)
+          reject(new Error('Regeneration timed out'))
+        }, 180000)
+      })
+      await refetch(filterType)
+    } catch (err) {
+      setRegenError(err instanceof Error ? err.message : 'Regeneration failed')
+    } finally {
+      setRegeneratingIds((prev) => ({ ...prev, [preview.id]: false }))
+    }
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -294,17 +432,31 @@ export default function Previews() {
               : 'Browse and manage all your generated URL previews.'}
           </p>
         </div>
-        <Button variant="accent" onClick={handleOpenCreateModal} className="w-full sm:w-auto">
-          <div className="flex items-center justify-center sm:justify-start space-x-2">
-            <PlusIcon className="w-5 h-5" />
-            <span>Create Preview</span>
-          </div>
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button variant="secondary" onClick={openBulk} className="w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start space-x-2">
+              <RectangleStackIcon className="w-5 h-5" />
+              <span>Bulk generate</span>
+            </div>
+          </Button>
+          <Button variant="accent" onClick={handleOpenCreateModal} className="w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start space-x-2">
+              <PlusIcon className="w-5 h-5" />
+              <span>Create Preview</span>
+            </div>
+          </Button>
+        </div>
       </div>
 
       {error && (
         <Card className="mb-6" padding="md">
           <Alert variant="error">{error}</Alert>
+        </Card>
+      )}
+
+      {regenError && (
+        <Card className="mb-6" padding="md">
+          <Alert variant="error" onDismiss={() => setRegenError(null)}>{regenError}</Alert>
         </Card>
       )}
 
@@ -435,6 +587,14 @@ export default function Previews() {
                           )}
                         </div>
                         <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleRegenerate(preview)}
+                            disabled={!!regeneratingIds[preview.id]}
+                            className="text-primary-500 hover:text-accent-500 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Regenerate preview"
+                          >
+                            <ArrowPathIcon className={`w-4 h-4 ${regeneratingIds[preview.id] ? 'animate-spin' : ''}`} />
+                          </button>
                           <button
                             onClick={() => handleOpenEditModal(preview, activeVariants[preview.id] || 'main')}
                             className="text-primary-500 hover:text-accent-500 transition-colors p-1"
@@ -704,6 +864,146 @@ export default function Previews() {
               </>
             )}
           </div>
+        </div>
+      </Modal>
+
+      {/* Bulk generation modal */}
+      <Modal isOpen={isBulkOpen} onClose={closeBulk} title="Generate previews in bulk">
+        <div className="space-y-4">
+          {bulkError && <Alert variant="error">{bulkError}</Alert>}
+
+          {verifiedDomains.length === 0 ? (
+            <Alert variant="warning">
+              Add and verify a domain first on the Domains page, then you can generate previews for its pages in bulk.
+            </Alert>
+          ) : (
+            <>
+              <p className="text-[13px] text-secondary-600">
+                Cover your whole site at once — load your URLs from the site's sitemap or paste them in,
+                then generate an on-brand preview for each.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Domain</label>
+                <select
+                  value={bulkDomain}
+                  onChange={(e) => setBulkDomain(e.target.value)}
+                  disabled={bulkRunning}
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all disabled:bg-secondary-50"
+                >
+                  {verifiedDomains.map((d) => (
+                    <option key={d.id} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={handleLoadSitemap}
+                  disabled={bulkLoadingSitemap || bulkRunning || !bulkDomain}
+                >
+                  {bulkLoadingSitemap ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-secondary-400 border-t-transparent rounded-full animate-spin" />
+                      <span>Reading sitemap…</span>
+                    </div>
+                  ) : (
+                    'Load from sitemap'
+                  )}
+                </Button>
+                {bulkSitemapNote && <span className="text-xs text-secondary-500">{bulkSitemapNote}</span>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">
+                  URLs <span className="text-secondary-400 font-normal">(one per line)</span>
+                </label>
+                <textarea
+                  value={bulkUrlText}
+                  onChange={(e) => setBulkUrlText(e.target.value)}
+                  disabled={bulkRunning}
+                  rows={8}
+                  placeholder={`https://${bulkDomain || 'example.com'}/\nhttps://${bulkDomain || 'example.com'}/pricing`}
+                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all disabled:bg-secondary-50"
+                />
+                <p className="text-xs text-secondary-500 mt-1">
+                  {bulkUrls.length} URL{bulkUrls.length === 1 ? '' : 's'} · up to 50 per run
+                </p>
+              </div>
+
+              {bulkSkippedQuota > 0 && (
+                <Alert variant="warning">
+                  {bulkSkippedQuota} URL{bulkSkippedQuota === 1 ? '' : 's'} skipped — monthly quota reached.
+                </Alert>
+              )}
+
+              {bulkStatus && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-secondary-800">
+                      {bulkStatus.completed} of {bulkStatus.total} complete
+                      {bulkStatus.failed > 0 ? ` · ${bulkStatus.failed} failed` : ''}
+                    </span>
+                    <span className="text-xs text-secondary-500 capitalize">{bulkStatus.status}</span>
+                  </div>
+                  <div className="w-full h-2 bg-secondary-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary-500 transition-all"
+                      style={{
+                        width: `${
+                          bulkStatus.total
+                            ? Math.round(((bulkStatus.completed + bulkStatus.failed) / bulkStatus.total) * 100)
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  {bulkStatus.results.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border border-line rounded-lg divide-y divide-line">
+                      {bulkStatus.results.map((r, i) => (
+                        <div key={i} className="flex items-center gap-2 px-3 py-1.5">
+                          {r.status === 'finished' ? (
+                            <CheckIcon className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                          ) : (
+                            <XMarkIcon className="w-4 h-4 text-error-600 flex-shrink-0" />
+                          )}
+                          <span className="font-mono text-[11px] text-secondary-600 truncate flex-1" title={r.url}>
+                            {r.url}
+                          </span>
+                          {r.status === 'failed' && r.error && (
+                            <span className="text-[11px] text-error-600 truncate max-w-[40%]" title={r.error}>
+                              {r.error}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end space-x-3 pt-2">
+                <Button variant="secondary" onClick={closeBulk} disabled={bulkRunning}>
+                  {bulkStatus && !bulkRunning ? 'Close' : 'Cancel'}
+                </Button>
+                <Button
+                  variant="accent"
+                  onClick={handleBulkGenerate}
+                  disabled={bulkRunning || bulkUrls.length === 0}
+                >
+                  {bulkRunning ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-paper border-t-transparent rounded-full animate-spin" />
+                      <span>Generating…</span>
+                    </div>
+                  ) : (
+                    `Generate ${bulkUrls.length || ''} preview${bulkUrls.length === 1 ? '' : 's'}`.replace('  ', ' ').trim()
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

@@ -63,6 +63,38 @@ export interface Preview {
   monthly_clicks: number
 }
 
+// Bulk generation + sitemap discovery
+export interface SitemapDiscoverResponse {
+  domain: string
+  count: number
+  urls: string[]
+}
+
+export interface BulkJobCreateResponse {
+  batch_id: string
+  queued: number
+  skipped_quota: number
+  domain: string
+}
+
+export interface BulkResultItem {
+  url: string
+  status: 'finished' | 'failed'
+  preview_id: number | null
+  title: string | null
+  image_url: string | null
+  error: string | null
+}
+
+export interface BulkJobStatus {
+  batch_id: string
+  status: 'running' | 'completed' | 'failed'
+  total: number
+  completed: number
+  failed: number
+  results: BulkResultItem[]
+}
+
 export interface PreviewVariant {
   id: number
   preview_id: number

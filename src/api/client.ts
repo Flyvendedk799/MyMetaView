@@ -8,6 +8,9 @@ import type {
   PreviewCreate,
   PreviewUpdate,
   PreviewVariant,
+  SitemapDiscoverResponse,
+  BulkJobCreateResponse,
+  BulkJobStatus,
   AnalyticsSummary,
   User,
   Token,
@@ -75,6 +78,9 @@ export type {
   PreviewCreate,
   PreviewUpdate,
   PreviewVariant,
+  SitemapDiscoverResponse,
+  BulkJobCreateResponse,
+  BulkJobStatus,
   AnalyticsSummary,
   User,
   Token,
@@ -463,7 +469,7 @@ export interface JobStatus {
   error: string | null
 }
 
-export async function createPreviewJob(payload: { url: string; domain: string }): Promise<{ job_id: string }> {
+export async function createPreviewJob(payload: { url: string; domain: string; force?: boolean }): Promise<{ job_id: string }> {
   return fetchApi<{ job_id: string }>('/api/v1/jobs/preview', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -472,6 +478,30 @@ export async function createPreviewJob(payload: { url: string; domain: string })
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
   return fetchApi<JobStatus>(`/api/v1/jobs/${jobId}/status`)
+}
+
+// Bulk / whole-site generation + sitemap discovery
+export async function discoverSitemapUrls(domain: string): Promise<SitemapDiscoverResponse> {
+  return fetchApi<SitemapDiscoverResponse>('/api/v1/jobs/preview/discover', {
+    method: 'POST',
+    body: JSON.stringify({ domain }),
+    timeout: 45000, // reading a site's sitemap can take a moment
+  })
+}
+
+export async function createBulkPreviewJob(
+  domain: string,
+  urls: string[],
+  force = false
+): Promise<BulkJobCreateResponse> {
+  return fetchApi<BulkJobCreateResponse>('/api/v1/jobs/preview/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ domain, urls, force }),
+  })
+}
+
+export async function getBulkJobStatus(batchId: string): Promise<BulkJobStatus> {
+  return fetchApi<BulkJobStatus>(`/api/v1/jobs/bulk/${batchId}/status`)
 }
 
 // Analytics endpoints
