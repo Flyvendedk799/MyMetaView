@@ -2262,6 +2262,13 @@ class PreviewEngine:
             w = max(0.08, min(1.0 - x, float(focus.get("width", 0))))
             h = max(0.05, min(1.0 - y, float(focus.get("height", 0))))
             left, top, right, bottom = int(x * W), int(y * H), int((x + w) * W), int((y + h) * H)
+            # Drop the lowest slice of the region. Hero headlines/taglines tend to
+            # sit at the bottom of a hero crop, and the split panel is top-anchored
+            # (object-position: top), so trimming ~15% off the bottom removes any
+            # residual overlaid text without losing the featured subject up top.
+            box_h = bottom - top
+            if box_h > 120:
+                bottom = top + int(box_h * 0.85)
             if right - left < 40 or bottom - top < 40:
                 return None
             crop = img.crop((left, top, right, bottom))
