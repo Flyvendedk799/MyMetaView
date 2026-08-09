@@ -29,7 +29,7 @@ export default function DemoGenerating({
     // stages + header + footer) is taller than a laptop viewport, so a plain
     // `items-center` overlay clipped the top/bottom stages. Now it centers when
     // it fits and scrolls when it doesn't — every stage is reachable.
-    <div className="fixed inset-0 z-40 overflow-y-auto bg-ink/95 animate-fade-in">
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-ink/95 backdrop-blur-md animate-fade-in">
       {/* Cancel button — pinned to the viewport so it stays reachable while scrolling */}
       <button
         onClick={onCancel}
