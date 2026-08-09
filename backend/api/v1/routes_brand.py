@@ -170,7 +170,8 @@ def render_brand_preview(
     layout = getattr(s, "preview_layout", "auto") or "auto"
     panel = getattr(s, "preview_panel", "auto") or "auto"
     accent_moment = getattr(s, "preview_accent", "auto") or "auto"
-    hide_watermark = bool(getattr(s, "hide_watermark", False))
+    from backend.core.plans import has_feature, F_HIDE_WATERMARK
+    hide_watermark = bool(getattr(s, "hide_watermark", False)) and has_feature(current_org, F_HIDE_WATERMARK)
     logo_url = getattr(s, "logo_url", None)
 
     composition = {

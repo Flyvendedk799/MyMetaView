@@ -53,7 +53,20 @@ def create_domain(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Domain '{domain.name}' already exists for your account"
         )
-    
+
+    # Enforce the plan's domain cap
+    from backend.core.plans import plan_limit
+    _domain_limit = plan_limit(current_org, "domains")
+    if _domain_limit is not None:
+        _domain_count = db.query(DomainModel).filter(
+            DomainModel.organization_id == current_org.id
+        ).count()
+        if _domain_count >= _domain_limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"Your plan includes {_domain_limit} domain(s). Upgrade to add more."
+            )
+
     db_domain = DomainModel(
         name=domain.name,
         environment=domain.environment,

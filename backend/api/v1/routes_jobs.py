@@ -16,7 +16,9 @@ from backend.utils.url_sanitizer import sanitize_url
 from backend.services.activity_logger import log_activity
 from backend.services.rate_limiter import check_rate_limit, get_rate_limit_key_for_org
 from sqlalchemy.orm import Session
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 
@@ -72,7 +74,24 @@ def create_preview_job(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Domain must be verified before generating previews."
         )
-    
+
+    # Enforce the plan's monthly preview quota
+    from backend.core.plans import plan_limit
+    from backend.models.preview import Preview as PreviewModel
+    from datetime import datetime
+    _pv_limit = plan_limit(current_org, "previews_month")
+    if _pv_limit is not None:
+        _month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        _pv_count = db.query(PreviewModel).filter(
+            PreviewModel.organization_id == current_org.id,
+            PreviewModel.created_at >= _month_start,
+        ).count()
+        if _pv_count >= _pv_limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"You've reached your plan's monthly limit of {_pv_limit} previews. Upgrade for more."
+            )
+
     # Sanitize URL before enqueueing
     try:
         sanitized_url = sanitize_url(request.url, request.domain)

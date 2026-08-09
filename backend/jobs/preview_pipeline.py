@@ -82,6 +82,12 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         # Step 4: Convert to schema for brand rewriting
         brand_schema = BrandSettingsSchema.model_validate(brand_settings)
         
+        # White-label (hide the MetaView mark) is a gated feature.
+        from backend.models.organization import Organization as _OrgModel
+        from backend.core.plans import has_feature, F_HIDE_WATERMARK
+        _org = db.query(_OrgModel).filter(_OrgModel.id == organization_id).first()
+        _can_hide_watermark = bool(_org and has_feature(_org, F_HIDE_WATERMARK))
+
         # Step 5: Use unified preview engine for core generation
         logger.info(f"Using unified preview engine for: {sanitized_url}")
         config = PreviewEngineConfig(
@@ -95,6 +101,15 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
                 "secondary_color": brand_schema.secondary_color,
                 "accent_color": brand_schema.accent_color,
                 "font_family": brand_schema.font_family,
+                "logo_url": brand_schema.logo_url,
+                # User's preview-card preferences — honoured by the engine's
+                # compositing step (layout/panel/accent overrides, force-brand-
+                # colours, hide-watermark).
+                "preview_layout": getattr(brand_schema, "preview_layout", "auto"),
+                "preview_panel": getattr(brand_schema, "preview_panel", "auto"),
+                "preview_accent": getattr(brand_schema, "preview_accent", "auto"),
+                "force_brand_colors": bool(getattr(brand_schema, "force_brand_colors", False)),
+                "hide_watermark": bool(getattr(brand_schema, "hide_watermark", False)) and _can_hide_watermark,
             }
         )
         

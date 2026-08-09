@@ -40,10 +40,15 @@ def signup(user_in: UserCreate, request: Request, db: Session = Depends(get_db))
     # Create new user
     user = create_user(db, user_in)
     
-    # Create default organization for the user
+    # Create default organization for the user, on a 14-day (no-card) trial
+    from datetime import datetime, timedelta
+    from backend.core.plans import TRIAL_PLAN, TRIAL_DAYS
     default_org = Organization(
         name=f"{user.email}'s Organization",
-        owner_user_id=user.id
+        owner_user_id=user.id,
+        subscription_status="trialing",
+        subscription_plan=TRIAL_PLAN,
+        trial_ends_at=datetime.utcnow() + timedelta(days=TRIAL_DAYS),
     )
     db.add(default_org)
     db.commit()
