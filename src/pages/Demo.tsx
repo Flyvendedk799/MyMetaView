@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import Seo from '../components/Seo'
+import SiteNav from '../components/SiteNav'
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -468,35 +469,37 @@ export default function Demo() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-white overflow-x-hidden">
+      <div className="min-h-screen bg-ink text-paper overflow-x-hidden">
       <Seo title="Live Demo — Generate a Free URL Preview" description="Enter any URL and watch MetaView generate an on-brand share preview in about 20 seconds. No account needed." path="/demo" />
       {/* Premium Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div 
-          className="absolute -top-20 -left-20 w-[900px] h-[900px] bg-brand-50/60 rounded-full blur-3xl"
+          className="absolute -top-20 -left-20 w-[900px] h-[900px] bg-primary-500/15 rounded-full blur-3xl"
           style={{
             transform: `translate(${scrollY * 0.08}px, ${scrollY * 0.12}px)`,
             transition: 'transform 0.15s ease-out'
           }}
         />
         <div 
-          className="absolute top-1/4 -right-32 w-[700px] h-[700px] bg-brand-50/60 rounded-full blur-3xl"
+          className="absolute top-1/4 -right-32 w-[700px] h-[700px] bg-primary-500/15 rounded-full blur-3xl"
           style={{
             transform: `translate(${-scrollY * 0.06}px, ${scrollY * 0.1}px)`,
             transition: 'transform 0.15s ease-out'
           }}
         />
-        <div 
-          className="absolute inset-0 opacity-[0.015]"
+        <div
+          className="absolute inset-0 opacity-[0.05]"
           style={{
-            backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(0,0,0) 1px, transparent 0)',
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0)',
             backgroundSize: '48px 48px',
             transform: `translate(${scrollY * 0.03}px, ${scrollY * 0.03}px)`
           }}
         />
       </div>
 
-      {/* Premium Navigation */}
+      {/* Navigation (shared dark identity) */}
+      <SiteNav />
+      {false && (
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-b border-secondary-100/80 transition-all duration-300" style={{ boxShadow: scrollY > 10 ? '0 4px 20px rgba(0,0,0,0.06)' : 'none' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-12">
           <div className="flex items-center justify-between h-14 sm:h-16 md:h-18">
@@ -622,26 +625,27 @@ export default function Demo() {
           )}
         </div>
       </nav>
+      )}
 
       {/* Hero Section */}
       <section className="relative pt-20 sm:pt-24 md:pt-28 pb-8 sm:pb-12 md:pb-20 px-3 sm:px-4 md:px-6 lg:px-12">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8 sm:mb-10 md:mb-12">
             <div className="flex flex-col items-center gap-3 mb-6">
-              <div className="inline-flex items-center space-x-2 px-4 py-2 bg-accent-100 rounded-full border-2 border-accent-300/80 ">
-                <RocketLaunchIcon className="w-4 h-4 text-accent-600" aria-hidden="true" />
-                <span className="text-xs font-display font-semibold text-accent-800 tracking-wide">AI-Powered Preview Demo</span>
+              <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-accent-500/35">
+                <RocketLaunchIcon className="w-3.5 h-3.5 text-accent-500" aria-hidden="true" />
+                <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent-500">AI-Powered Preview Demo</span>
               </div>
               {previewsGeneratedCount > 0 && (
-                <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-secondary-200 shadow-sm">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-paper/5 rounded-full border border-paper/10">
                   <SparklesIcon className="w-4 h-4 text-accent-500" aria-hidden="true" />
-                  <span className="text-sm font-semibold text-secondary-700">
-                    <span className="text-accent-600 font-bold">{previewsGeneratedCount.toLocaleString()}</span> previews generated today
+                  <span className="text-sm font-medium text-paper/70">
+                    <span className="text-paper font-semibold">{previewsGeneratedCount.toLocaleString()}</span> previews generated today
                   </span>
                 </div>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-[3.25rem] font-display font-semibold text-secondary-900 leading-[1.1] tracking-[-0.03em] mb-3 sm:mb-4 px-2">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[52px] font-display font-semibold text-paper leading-[1.05] tracking-display-lg mb-3 sm:mb-4 px-2">
               See Your URLs{' '}
               <span className="relative inline-block">
                 <span className="text-accent-500">Come to Life</span>
@@ -656,7 +660,7 @@ export default function Demo() {
                 </svg>
               </span>
             </h1>
-            <p className="text-sm sm:text-base md:text-lg text-secondary-600 leading-relaxed max-w-2xl mx-auto px-2">
+            <p className="text-sm sm:text-base md:text-lg text-paper/70 leading-relaxed max-w-2xl mx-auto px-2">
               Experience our AI-powered preview generation. Enter any URL and see how it transforms into beautiful preview cards across all platforms.
             </p>
           </div>
@@ -664,19 +668,19 @@ export default function Demo() {
           {/* Input Step */}
           {step === 'input' && (
             <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-xl sm:rounded-2xl shadow-overlay border border-secondary-200/80 overflow-hidden relative">
-                <div className="absolute inset-0 bg-brand-50/50" />
+              <div className="bg-paper/5 rounded-xl sm:rounded-2xl border border-paper/10 overflow-hidden relative">
+                <div className="absolute inset-0 bg-paper/[0.02]" />
                 
                 <div className="relative p-4 sm:p-6 md:p-8 lg:p-10">
                   {/* Success overlay */}
                   {showEmailSuccess && (
                     <div className="absolute inset-0 bg-success-500/10 backdrop-blur-sm z-10 flex items-center justify-center animate-fade-in">
-                      <div className="bg-white rounded-2xl p-8 shadow-overlay border-2 border-success-200 animate-scale-in">
+                      <div className="bg-ink rounded-2xl p-8 shadow-overlay border border-success-500/40 animate-scale-in">
                         <div className="w-16 h-16 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
                           <CheckIcon className="w-8 h-8 text-white" />
                         </div>
-                        <h3 className="text-xl font-bold text-secondary-900 mb-2 text-center">Subscribed!</h3>
-                        <p className="text-secondary-600 text-center">You'll receive updates from MetaView</p>
+                        <h3 className="text-xl font-display font-semibold text-paper mb-2 text-center">Subscribed!</h3>
+                        <p className="text-paper/70 text-center">You'll receive updates from MetaView</p>
                       </div>
                     </div>
                   )}
@@ -684,12 +688,12 @@ export default function Demo() {
                   <form onSubmit={handleUrlSubmit} className="space-y-6" noValidate>
                     {/* URL Input - Primary */}
                     <div>
-                      <label htmlFor="url" className="block text-sm font-bold text-secondary-900 mb-2">
+                      <label htmlFor="url" className="block text-sm font-semibold text-paper mb-2">
                         Enter a URL to Preview
                       </label>
                       <div className="relative">
                         <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                          <GlobeAltIcon className={`w-5 h-5 ${url ? 'text-accent-500' : 'text-secondary-400'} transition-colors`} aria-hidden="true" />
+                          <GlobeAltIcon className={`w-5 h-5 ${url ? 'text-accent-500' : 'text-paper/40'} transition-colors`} aria-hidden="true" />
                         </div>
                         <input
                           id="url"
@@ -714,12 +718,12 @@ export default function Demo() {
                             }
                           }}
                           placeholder="https://example.com/article"
-                          className={`w-full pl-11 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 text-base sm:text-lg ${
+                          className={`w-full pl-11 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border bg-paper/5 text-paper placeholder-paper/30 transition-all duration-200 focus:outline-none focus:ring-2 text-base sm:text-lg ${
                             urlError || previewError
-                              ? 'border-error-300 focus:border-error-500 focus:ring-error-200'
+                              ? 'border-error-500/60 focus:border-error-500 focus:ring-error-500/20'
                               : url
-                              ? 'border-accent-300 focus:border-accent-500 focus:ring-accent-200'
-                              : 'border-secondary-200 focus:border-accent-500 focus:ring-accent-200'
+                              ? 'border-accent-500/60 focus:border-accent-500 focus:ring-accent-500/20'
+                              : 'border-paper/15 focus:border-accent-500 focus:ring-accent-500/20'
                           }`}
                           disabled={isGeneratingPreview}
                           aria-describedby={urlError || previewError ? 'url-error' : undefined}
@@ -739,7 +743,7 @@ export default function Demo() {
                       
                       {/* Example URLs */}
                       <div className="mt-3">
-                        <p className="text-xs text-secondary-500 mb-2">Try an example:</p>
+                        <p className="text-xs text-paper/40 mb-2">Try an example:</p>
                         <div className="flex flex-wrap gap-2">
                           {EXAMPLE_URLS.map((example, index) => (
                             <button
@@ -747,7 +751,7 @@ export default function Demo() {
                               type="button"
                               onClick={() => handleExampleUrlClickWithGenerate(example.url)}
                               disabled={isGeneratingPreview}
-                              className="px-3 py-1.5 text-xs font-medium text-secondary-700 bg-secondary-100 hover:bg-accent-100 hover:text-accent-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-3 py-1.5 text-xs font-medium text-paper/70 bg-paper/5 border border-paper/10 hover:bg-paper/10 hover:text-paper rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               aria-label={`Try example URL: ${example.label}`}
                             >
                               {example.label}
@@ -755,7 +759,7 @@ export default function Demo() {
                           ))}
                           {urlHistory.length > 0 && (
                             <>
-                              <span className="px-2 py-1.5 text-xs text-secondary-400">â€¢</span>
+                              <span className="px-2 py-1.5 text-xs text-paper/30">â€¢</span>
                               {urlHistory.slice(0, 2).map((historyUrl, index) => {
                                 try {
                                   const domain = new URL(historyUrl).hostname.replace('www.', '')
@@ -765,7 +769,7 @@ export default function Demo() {
                                       type="button"
                                       onClick={() => handleExampleUrlClickWithGenerate(historyUrl)}
                                       disabled={isGeneratingPreview}
-                                      className="px-3 py-1.5 text-xs font-medium text-secondary-600 bg-secondary-50 hover:bg-accent-50 hover:text-accent-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="px-3 py-1.5 text-xs font-medium text-paper/60 bg-paper/5 border border-paper/10 hover:bg-paper/10 hover:text-paper rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                       aria-label={`Try previous URL: ${domain}`}
                                     >
                                       {domain}
@@ -854,7 +858,7 @@ export default function Demo() {
                   </form>
 
                   {/* Trust Indicators */}
-                  <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-secondary-500">
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-paper/50">
                     <div className="flex items-center space-x-1">
                       <CheckIcon className="w-4 h-4 text-success-500" />
                       <span>No credit card</span>
@@ -888,7 +892,7 @@ export default function Demo() {
           {/* Optional Email Subscription Modal - Only shown after preview generation */}
           {showEmailPopup && preview && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-              <div className="bg-white rounded-2xl shadow-overlay max-w-md w-full p-8 relative animate-scale-in">
+              <div className="bg-ink border border-paper/10 rounded-2xl shadow-overlay max-w-md w-full p-8 relative animate-scale-in">
                 {/* Close button */}
                 <button
                   onClick={() => {
@@ -897,7 +901,7 @@ export default function Demo() {
                     setConsentChecked(false)
                     setEmailError(null)
                   }}
-                  className="absolute top-4 right-4 p-2 text-secondary-400 hover:text-secondary-600 transition-colors"
+                  className="absolute top-4 right-4 p-2 text-paper/40 hover:text-paper/70 transition-colors"
                   aria-label="Close email subscription popup"
                 >
                   <XMarkIcon className="w-6 h-6" />
@@ -907,15 +911,15 @@ export default function Demo() {
                   <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4 ">
                     <EnvelopeIcon className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-display font-semibold text-secondary-900 mb-2">Stay Updated</h3>
-                  <p className="text-secondary-600 text-sm">Get notified about new features and preview optimization tips (optional)</p>
+                  <h3 className="text-2xl font-display font-semibold text-paper mb-2">Stay Updated</h3>
+                  <p className="text-paper/70 text-sm">Get notified about new features and preview optimization tips (optional)</p>
                 </div>
 
                 <form onSubmit={handleEmailSubmit} className="space-y-4">
                   {/* Email Input */}
                   <div>
-                    <label htmlFor="popup-email" className="block text-sm font-semibold text-secondary-900 mb-2">
-                      Email Address <span className="text-secondary-400 font-normal">(optional)</span>
+                    <label htmlFor="popup-email" className="block text-sm font-semibold text-paper mb-2">
+                      Email Address <span className="text-paper/40 font-normal">(optional)</span>
                     </label>
                     <input
                       id="popup-email"
@@ -926,10 +930,10 @@ export default function Demo() {
                         setEmailError(null)
                       }}
                       placeholder="your@email.com"
-                      className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 text-base ${
+                      className={`w-full px-4 py-3 rounded-xl border bg-paper/5 text-paper placeholder-paper/30 transition-all duration-200 focus:outline-none focus:ring-2 text-base ${
                         emailError
-                          ? 'border-error-300 focus:border-error-500 focus:ring-error-200'
-                          : 'border-secondary-200 focus:border-accent-500 focus:ring-accent-200'
+                          ? 'border-error-500/60 focus:border-error-500 focus:ring-error-500/20'
+                          : 'border-paper/15 focus:border-accent-500 focus:ring-accent-500/20'
                       }`}
                       disabled={isSubmittingEmail}
                       autoFocus
@@ -950,7 +954,7 @@ export default function Demo() {
                         className="mt-1 w-5 h-5 rounded border-secondary-300 text-accent-500 focus:ring-accent-500 focus:ring-2 cursor-pointer"
                         disabled={isSubmittingEmail}
                       />
-                      <label htmlFor="popup-consent" className="flex-1 text-sm text-secondary-700 cursor-pointer">
+                      <label htmlFor="popup-consent" className="flex-1 text-sm text-paper/70 cursor-pointer">
                         I agree to receive newsletter updates and marketing emails from MetaView
                       </label>
                     </div>
@@ -973,7 +977,7 @@ export default function Demo() {
                         setConsentChecked(false)
                         setEmailError(null)
                       }}
-                      className="flex-1 px-4 py-3 bg-secondary-100 text-secondary-700 rounded-xl font-semibold text-sm transition-all duration-300 hover:bg-secondary-200"
+                      className="flex-1 px-4 py-3 bg-paper/5 text-paper/70 border border-paper/10 rounded-xl font-semibold text-sm transition-all duration-300 hover:bg-paper/10"
                     >
                       Skip
                     </button>
@@ -1006,35 +1010,35 @@ export default function Demo() {
           {step === 'preview' && preview && (
             <div className="space-y-12">
               {/* Success Banner */}
-              <div className="bg-success-50 border-2 border-success-200 rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8 text-center relative overflow-hidden animate-fade-in">
+              <div className="bg-success-500/10 border border-success-500/25 rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8 text-center relative overflow-hidden animate-fade-in">
                 <div className="absolute inset-0 hidden" />
                 <div className="relative z-10">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4  animate-bounce">
                     <CheckIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-display font-semibold text-secondary-900 mb-2">Preview Reconstructed!</h3>
-                  <p className="text-sm sm:text-base text-secondary-600 mb-3 sm:mb-4 px-2">Multi-stage AI reasoning extracted and optimized your content</p>
-                  
+                  <h3 className="text-xl sm:text-2xl font-display font-semibold text-paper mb-2">Preview Reconstructed!</h3>
+                  <p className="text-sm sm:text-base text-paper/70 mb-3 sm:mb-4 px-2">Multi-stage AI reasoning extracted and optimized your content</p>
+
                   {/* Quality Indicators */}
                   <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                    <div className="flex items-center space-x-2 bg-white/80 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                    <div className="flex items-center space-x-2 bg-paper/5 border border-paper/10 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
                       <div className={`w-2 h-2 rounded-full ${
                         preview.blueprint.overall_quality === 'excellent' ? 'bg-success-500' :
                         preview.blueprint.overall_quality === 'good' ? 'bg-success-500' :
                         preview.blueprint.overall_quality === 'fair' ? 'bg-warning-500' :
-                        'bg-secondary-400'
+                        'bg-paper/40'
                       } animate-pulse`} />
-                      <span className="text-xs sm:text-sm font-semibold text-secondary-700 capitalize">
+                      <span className="text-xs sm:text-sm font-semibold text-paper/70 capitalize">
                         Quality: {preview.blueprint.overall_quality}
                       </span>
                     </div>
-                    <div className="bg-white/80 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
-                      <span className="text-xs sm:text-sm font-semibold text-secondary-700">
+                    <div className="bg-paper/5 border border-paper/10 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                      <span className="text-xs sm:text-sm font-semibold text-paper/70">
                         Confidence: {Math.round(preview.reasoning_confidence * 100)}%
                       </span>
                     </div>
-                    <div className="bg-white/80 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
-                      <span className="text-xs sm:text-sm font-semibold text-secondary-700 capitalize">
+                    <div className="bg-paper/5 border border-paper/10 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                      <span className="text-xs sm:text-sm font-semibold text-paper/70 capitalize">
                         Type: {preview.blueprint.template_type}
                       </span>
                     </div>
@@ -1558,7 +1562,7 @@ export default function Demo() {
               {/* Mobile Platform Showcase */}
               <div className="bg-secondary-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 border border-secondary-200">
                 <div className="text-center mb-6 sm:mb-8">
-                  <h3 className="text-xl sm:text-2xl md:text-3xl font-display font-semibold text-secondary-900 mb-2">See It In Action</h3>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-display font-semibold text-paper mb-2">See It In Action</h3>
                   <p className="text-sm sm:text-base text-secondary-600 mb-4 sm:mb-6">How your preview appears on social media platforms</p>
                   
                   {/* Platform Selector - Visual Tab Pills */}
