@@ -9,6 +9,19 @@
  */
 import type { PublicPlan } from '../api/types'
 
+// Gated feature keys — mirror backend/core/plans.py exactly. Use these when
+// checking a plan's `features` array so the strings never drift.
+export const FEATURES = {
+  BRAND: 'brand_customization',
+  CARD_CONTROLS: 'card_controls',
+  HIDE_WATERMARK: 'hide_watermark',
+  VARIANTS: 'variants',
+  ADV_ANALYTICS: 'advanced_analytics',
+  API: 'api_access',
+  TEAM: 'team_seats',
+  WHITE_LABEL: 'white_label',
+} as const
+
 // Backend feature keys → human labels. Keys must match plans.py exactly.
 export const FEATURE_LABELS: Record<string, string> = {
   brand_customization: 'Custom colors, logo & fonts',

@@ -167,10 +167,13 @@ def render_brand_preview(
     primary = getattr(s, "primary_color", None) or "#0B3B2E"
     secondary = getattr(s, "secondary_color", None) or "#12523F"
     accent = getattr(s, "accent_color", None) or "#E8622C"
-    layout = getattr(s, "preview_layout", "auto") or "auto"
-    panel = getattr(s, "preview_panel", "auto") or "auto"
-    accent_moment = getattr(s, "preview_accent", "auto") or "auto"
-    from backend.core.plans import has_feature, F_HIDE_WATERMARK
+    from backend.core.plans import has_feature, F_HIDE_WATERMARK, F_CARD_CONTROLS
+    # Layout/panel/accent are Growth+ (F_CARD_CONTROLS); collapse to "auto" otherwise
+    # so the sample matches what previews will actually render for this plan.
+    _can_card_controls = has_feature(current_org, F_CARD_CONTROLS)
+    layout = (getattr(s, "preview_layout", "auto") or "auto") if _can_card_controls else "auto"
+    panel = (getattr(s, "preview_panel", "auto") or "auto") if _can_card_controls else "auto"
+    accent_moment = (getattr(s, "preview_accent", "auto") or "auto") if _can_card_controls else "auto"
     hide_watermark = bool(getattr(s, "hide_watermark", False)) and has_feature(current_org, F_HIDE_WATERMARK)
     logo_url = getattr(s, "logo_url", None)
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { PhotoIcon, ArrowPathIcon, TrashIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
+import { PhotoIcon, ArrowPathIcon, TrashIcon, ArrowUpTrayIcon, LockClosedIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import {
@@ -7,8 +8,10 @@ import {
   updateBrandSettings,
   uploadBrandLogo,
   renderBrandPreview,
+  getMyPlan,
 } from '../api/client'
 import type { BrandSettings, BrandSettingsUpdate } from '../api/types'
+import { FEATURES } from '../lib/plans'
 
 const FONT_OPTIONS = ['Inter', 'Bricolage Grotesque', 'IBM Plex Sans', 'System']
 const LAYOUT_OPTIONS: [string, string][] = [
@@ -38,14 +41,16 @@ function Toggle({
   onChange,
   label,
   hint,
+  disabled,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
   label: string
   hint?: string
+  disabled?: boolean
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className={`flex items-start justify-between gap-4 ${disabled ? 'opacity-60' : ''}`}>
       <div>
         <span className="text-sm font-medium text-secondary-800">{label}</span>
         {hint && <p className="text-xs text-secondary-500 mt-0.5">{hint}</p>}
@@ -55,10 +60,11 @@ function Toggle({
         role="switch"
         aria-checked={checked}
         aria-label={label}
-        onClick={() => onChange(!checked)}
+        disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
         className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-          checked ? 'bg-primary-500' : 'bg-secondary-300'
-        }`}
+          disabled ? 'cursor-not-allowed' : ''
+        } ${checked && !disabled ? 'bg-primary-500' : 'bg-secondary-300'}`}
       >
         <span
           className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
@@ -66,6 +72,21 @@ function Toggle({
           }`}
         />
       </button>
+    </div>
+  )
+}
+
+function UpgradeNote({ feature }: { feature: string }) {
+  return (
+    <div className="mb-4 flex items-center gap-2 rounded-lg border border-accent-200 bg-accent-50 px-3 py-2 text-xs text-accent-800">
+      <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
+      <span>
+        {feature} is a <span className="font-semibold">Growth</span> feature.{' '}
+        <Link to="/app/billing" className="font-semibold underline hover:no-underline">
+          Upgrade to unlock
+        </Link>
+        .
+      </span>
     </div>
   )
 }
@@ -109,17 +130,24 @@ function Select({
   options,
   onChange,
   hint,
+  disabled,
 }: {
   label: string
   value: string
   options: [string, string][]
   onChange: (v: string) => void
   hint?: string
+  disabled?: boolean
 }) {
   return (
     <div>
       <label className="block text-sm font-medium text-secondary-700 mb-1.5">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className={`${inputClass} ${disabled ? 'opacity-60 cursor-not-allowed bg-secondary-50' : ''}`}
+      >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
             {l}
@@ -143,7 +171,11 @@ export default function Brand() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
+  const [features, setFeatures] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const canCardControls = features.includes(FEATURES.CARD_CONTROLS)
+  const canHideWatermark = features.includes(FEATURES.HIDE_WATERMARK)
 
   const refreshPreview = useCallback(async () => {
     setPreviewLoading(true)
@@ -171,6 +203,13 @@ export default function Brand() {
         if (active) setLoadError(e instanceof Error ? e.message : 'Failed to load brand settings')
       } finally {
         if (active) setLoading(false)
+      }
+      // Which card features this plan is entitled to (drives the locks below).
+      try {
+        const plan = await getMyPlan()
+        if (active) setFeatures(plan.features || [])
+      } catch {
+        /* leave features empty → controls lock closed, which is the safe default */
       }
       refreshPreview()
     })()
@@ -379,24 +418,29 @@ export default function Brand() {
                 “Auto” lets our art director choose per page. Override any of these to lock the look.
               </p>
 
+              {!canCardControls && <UpgradeNote feature="Card layout & style controls" />}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <Select
                   label="Layout"
                   value={form.preview_layout}
                   options={LAYOUT_OPTIONS}
                   onChange={(v) => set({ preview_layout: v })}
+                  disabled={!canCardControls}
                 />
                 <Select
                   label="Panel colour"
                   value={form.preview_panel}
                   options={PANEL_OPTIONS}
                   onChange={(v) => set({ preview_panel: v })}
+                  disabled={!canCardControls}
                 />
                 <Select
                   label="Accent style"
                   value={form.preview_accent}
                   options={ACCENT_OPTIONS}
                   onChange={(v) => set({ preview_accent: v })}
+                  disabled={!canCardControls}
                 />
               </div>
 
@@ -409,9 +453,14 @@ export default function Brand() {
                 />
                 <Toggle
                   label="Hide the MetaView mark"
-                  hint="Remove the “metaview preview” footer from your cards."
-                  checked={form.hide_watermark}
+                  hint={
+                    canHideWatermark
+                      ? 'Remove the “metaview preview” footer from your cards.'
+                      : 'Growth feature — remove the “metaview preview” footer.'
+                  }
+                  checked={form.hide_watermark && canHideWatermark}
                   onChange={(v) => set({ hide_watermark: v })}
+                  disabled={!canHideWatermark}
                 />
               </div>
             </Card>
