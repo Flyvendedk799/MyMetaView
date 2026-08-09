@@ -11,6 +11,7 @@ import type {
   SitemapDiscoverResponse,
   BulkJobCreateResponse,
   BulkJobStatus,
+  RecentBulkJobs,
   AnalyticsSummary,
   User,
   Token,
@@ -81,6 +82,7 @@ export type {
   SitemapDiscoverResponse,
   BulkJobCreateResponse,
   BulkJobStatus,
+  RecentBulkJobs,
   AnalyticsSummary,
   User,
   Token,
@@ -502,6 +504,10 @@ export async function createBulkPreviewJob(
 
 export async function getBulkJobStatus(batchId: string): Promise<BulkJobStatus> {
   return fetchApi<BulkJobStatus>(`/api/v1/jobs/bulk/${batchId}/status`)
+}
+
+export async function getRecentBulkJobs(): Promise<RecentBulkJobs> {
+  return fetchApi<RecentBulkJobs>('/api/v1/jobs/bulk/recent')
 }
 
 // Analytics endpoints

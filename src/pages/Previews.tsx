@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -14,10 +14,11 @@ import {
   discoverSitemapUrls,
   createBulkPreviewJob,
   getBulkJobStatus,
+  getRecentBulkJobs,
   createPreviewJob,
   getJobStatus,
 } from '../api/client'
-import type { PreviewCreate, PreviewUpdate, PreviewVariant, BulkJobStatus } from '../api/types'
+import type { PreviewCreate, PreviewUpdate, PreviewVariant, BulkJobStatus, BulkJobSummary } from '../api/types'
 
 const filters = ['All', 'Product', 'Blog', 'Landing Page'] as const
 type FilterType = typeof filters[number]
@@ -28,6 +29,21 @@ const filterToTypeMap: Record<string, string | undefined> = {
   'Product': 'product',
   'Blog': 'blog',
   'Landing Page': 'landing',
+}
+
+// Compact relative timestamp for generation-activity rows. created_at is UTC ISO.
+function relativeTime(iso: string | null): string {
+  if (!iso) return ''
+  const then = Date.parse(iso.endsWith('Z') || iso.includes('+') ? iso : `${iso}Z`)
+  if (Number.isNaN(then)) return ''
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000))
+  if (secs < 45) return 'just now'
+  const mins = Math.round(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.round(hrs / 24)
+  return `${days}d ago`
 }
 
 export default function Previews() {
@@ -55,7 +71,54 @@ export default function Previews() {
   // Per-card regeneration
   const [regeneratingIds, setRegeneratingIds] = useState<Record<number, boolean>>({})
   const [regenError, setRegenError] = useState<string | null>(null)
-  
+
+  // Generation activity — bulk runs, visible/resumable even after a tab close.
+  const [activityBatches, setActivityBatches] = useState<BulkJobSummary[]>([])
+  const activityPrevStatus = useRef<Record<string, string>>({})
+
+  const loadActivity = useCallback(async () => {
+    try {
+      const res = await getRecentBulkJobs()
+      const batches = res.batches || []
+      // Refetch previews when a run has just finished so new cards appear.
+      let justFinished = false
+      for (const b of batches) {
+        const prev = activityPrevStatus.current[b.batch_id]
+        if (prev && (prev === 'queued' || prev === 'running') && (b.status === 'completed' || b.status === 'failed')) {
+          justFinished = true
+        }
+        activityPrevStatus.current[b.batch_id] = b.status
+      }
+      setActivityBatches(batches)
+      if (justFinished) {
+        refetch(filterType)
+      }
+    } catch {
+      // transient — keep whatever we had
+    }
+  }, [refetch, filterType])
+
+  const hasActiveBatch = useMemo(
+    () => activityBatches.some((b) => b.status === 'queued' || b.status === 'running'),
+    [activityBatches]
+  )
+
+  // Initial load once on mount.
+  useEffect(() => {
+    loadActivity()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Poll only while a run is active; pause when the tab is hidden.
+  useEffect(() => {
+    if (!hasActiveBatch) return
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      loadActivity()
+    }, 3000)
+    return () => clearInterval(id)
+  }, [hasActiveBatch, loadActivity])
+
   // Debounce filter changes
   const [debouncedFilter, setDebouncedFilter] = useState<FilterType>(activeFilter)
   
@@ -358,6 +421,8 @@ export default function Previews() {
       const res = await createBulkPreviewJob(bulkDomain, bulkUrls, false)
       setBulkSkippedQuota(res.skipped_quota || 0)
       const batchId = res.batch_id
+      // Surface the run in the activity panel right away (and kick off its polling).
+      loadActivity()
       await new Promise<void>((resolve) => {
         const poll = setInterval(async () => {
           try {
@@ -457,6 +522,66 @@ export default function Previews() {
       {regenError && (
         <Card className="mb-6" padding="md">
           <Alert variant="error" onDismiss={() => setRegenError(null)}>{regenError}</Alert>
+        </Card>
+      )}
+
+      {/* Generation activity — persistent, tab-independent view of bulk runs */}
+      {activityBatches.length > 0 && (
+        <Card className="mb-6" padding="md">
+          <div className="flex items-center gap-2 mb-3">
+            <RectangleStackIcon className="w-4 h-4 text-secondary-500" />
+            <h2 className="text-sm font-semibold text-secondary-800">Generation activity</h2>
+            {hasActiveBatch && (
+              <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" title="A run is in progress" />
+            )}
+          </div>
+          <div className="divide-y divide-line">
+            {activityBatches.slice(0, 6).map((b) => {
+              const pct = b.total ? Math.round(((b.completed + b.failed) / b.total) * 100) : 0
+              const active = b.status === 'queued' || b.status === 'running'
+              return (
+                <div key={b.batch_id} className="py-2.5 flex items-center gap-3">
+                  <span className="flex-shrink-0">
+                    {b.status === 'completed' && (
+                      <span className="pill bg-primary-500 text-paper inline-flex items-center gap-1">
+                        <CheckIcon className="w-3 h-3" /> Done
+                      </span>
+                    )}
+                    {b.status === 'failed' && (
+                      <span className="pill bg-error-50 text-error-700 inline-flex items-center gap-1">
+                        <XMarkIcon className="w-3 h-3" /> Failed
+                      </span>
+                    )}
+                    {b.status === 'running' && (
+                      <span className="pill bg-secondary-100 text-secondary-700 inline-flex items-center gap-1">
+                        <span className="w-3 h-3 border-2 border-secondary-400 border-t-transparent rounded-full animate-spin" /> Running
+                      </span>
+                    )}
+                    {b.status === 'queued' && (
+                      <span className="pill bg-secondary-100 text-secondary-500">Queued</span>
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-secondary-700 truncate">{b.domain || '—'}</span>
+                      <span className="text-xs text-secondary-400">·</span>
+                      <span className="text-xs text-secondary-500 whitespace-nowrap">
+                        {b.completed + b.failed} / {b.total}{b.failed > 0 ? ` · ${b.failed} failed` : ''}
+                      </span>
+                    </div>
+                    {active && (
+                      <div className="mt-1.5 w-full h-1.5 bg-secondary-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-secondary-400 whitespace-nowrap flex-shrink-0">
+                    {relativeTime(b.created_at)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </Card>
       )}
 

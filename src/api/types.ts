@@ -95,6 +95,20 @@ export interface BulkJobStatus {
   results: BulkResultItem[]
 }
 
+export interface BulkJobSummary {
+  batch_id: string
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  domain: string | null
+  total: number
+  completed: number
+  failed: number
+  created_at: string | null
+}
+
+export interface RecentBulkJobs {
+  batches: BulkJobSummary[]
+}
+
 export interface PreviewVariant {
   id: number
   preview_id: number
