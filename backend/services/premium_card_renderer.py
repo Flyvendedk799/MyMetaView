@@ -258,7 +258,14 @@ ${font_head}
     position:relative; width:42%; height:100%; overflow:hidden;
     border-left:1px solid ${hline};
   }
-  .visual img { width:100%; height:100%; object-fit:cover; object-position:center center; }
+  .visual-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center; }
+  .visual-scrim { position:absolute; inset:0; background:${scrim}; }
+  .visual-logo {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    max-width:70%; max-height:50%; width:auto; height:auto; object-fit:contain;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.45));
+  }
+  .visual-solo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center center; }
 </style></head>
 <body>
   <div class="card">
@@ -301,6 +308,14 @@ def _build_html(
     if is_split:
         hsize = min(hsize, 58)  # narrower text column
 
+    # Scrim = the panel colour at ~0.66 opacity: it dims the hero photo into a
+    # cohesive, subdued backdrop (muting any of the site's own overlaid text) and
+    # ties the visual panel to the card's colour, so the centered logo pops.
+    _pr, _pg, _pb = _rgb(panel)
+    scrim = (
+        f"linear-gradient(rgba({_pr},{_pg},{_pb},0.72), rgba({_pr},{_pg},{_pb},0.9))"
+    )
+
     # The corner mark: a cropped logo if we have one, else a text wordmark —
     # but only when it ADDS something.
     #  - On SPLIT cards the visual panel already shows the brand (often the logo
@@ -324,10 +339,22 @@ def _build_html(
     else:
         logo_html = ""
     subtitle_html = f'<div class="subtitle">{_esc(subtitle)}</div>' if subtitle else ""
-    visual_html = (
-        f'<div class="visual"><img src="{_esc(visual_data_uri)}" alt="" /></div>'
-        if is_split and visual_data_uri else ""
-    )
+    if is_split and visual_data_uri:
+        if logo_data_uri:
+            # Hero photo as a DIMMED BACKDROP + the clean logo centered on top:
+            # one centered, unclipped brand mark with the photo's energy behind it
+            # (avoids the side-clipping you get cover-cropping a wide screenshot).
+            visual_html = (
+                '<div class="visual">'
+                f'<img class="visual-bg" src="{_esc(visual_data_uri)}" alt="" />'
+                '<div class="visual-scrim"></div>'
+                f'<img class="visual-logo" src="{_esc(logo_data_uri)}" alt="" />'
+                '</div>'
+            )
+        else:
+            visual_html = f'<div class="visual"><img class="visual-solo" src="{_esc(visual_data_uri)}" alt="" /></div>'
+    else:
+        visual_html = ""
 
     # The corner accent is the one variable "signal". When the director asks for
     # a "bar", the headline rule carries the accent alone (cleanest). A "shape"
@@ -353,6 +380,8 @@ def _build_html(
         accent=accent,
         dim=_mix(ink, panel, 0.42),      # muted on-panel text
         hline=_mix(ink, panel, 0.80),    # faint hairline
+        scrim=scrim,                     # panel-tinted dim over the hero photo
+
         hsize=str(hsize),
         text_col_w="58%" if is_split else "100%",
         headline_mw="16ch" if is_split else "20ch",
