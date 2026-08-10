@@ -23,6 +23,21 @@ logger = logging.getLogger(__name__)
 # ensuring stale months eventually self-expire.
 _USAGE_TTL_SECONDS = 40 * 24 * 60 * 60
 
+# Injected into the page before the screenshot so cookie/consent banners don't
+# pollute the capture. Local Playwright actively dismisses these; the remote path
+# can't, so we hide the common CMP surfaces + undo any scroll-lock they set.
+# Best-effort and heuristic — covers OneTrust, Cookiebot, Osano, Termly, Iubenda,
+# Quantcast, Usercentrics, TrustArc, Google Funding Choices, and generic classes.
+_COOKIE_HIDE_CSS = (
+    '[id*="cookie" i],[class*="cookie" i],[id*="consent" i],[class*="consent" i],'
+    '[id*="gdpr" i],[class*="gdpr" i],[class*="cmp-" i],[aria-label*="cookie" i],'
+    '[aria-label*="consent" i],#onetrust-banner-sdk,#onetrust-consent-sdk,#onetrust-pc-sdk,'
+    '.onetrust-pc-dark-filter,#CybotCookiebotDialog,.cc-window,.cookie-banner,.cookie-notice,'
+    '.osano-cm-window,.termly-consent-banner,#iubenda-cs-banner,.qc-cmp2-container,'
+    '#usercentrics-root,.fc-consent-root,.truste_overlay,.truste_box_overlay'
+    '{display:none!important}html,body{overflow:auto!important}'
+)
+
 
 def _usage_key() -> str:
     """Redis key for the current UTC month's browser-seconds counter."""
@@ -88,6 +103,7 @@ def cloudflare_snapshot(url: str, timeout: int = 45) -> tuple:
         "url": url,
         "viewport": {"width": 1200, "height": 630, "deviceScaleFactor": 2},
         "gotoOptions": {"waitUntil": "networkidle0", "timeout": 30000},
+        "addStyleTag": [{"content": _COOKIE_HIDE_CSS}],
     }
 
     started = time.monotonic()
