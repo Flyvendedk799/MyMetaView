@@ -33,6 +33,16 @@ const ACCENT_OPTIONS: [string, string][] = [
   ['shape', 'Shape'],
 ]
 
+// Curated one-click looks. Each maps to the existing layout/panel/accent fields,
+// so presets are just a friendly starting point over the fine-grained controls.
+const CARD_PRESETS: { name: string; layout: string; panel: string; accent: string }[] = [
+  { name: 'Auto', layout: 'auto', panel: 'auto', accent: 'auto' },
+  { name: 'Bold', layout: 'split', panel: 'primary', accent: 'bar' },
+  { name: 'Minimal', layout: 'typographic', panel: 'light', accent: 'dot' },
+  { name: 'Dark', layout: 'typographic', panel: 'dark', accent: 'bar' },
+  { name: 'Editorial', layout: 'split', panel: 'secondary', accent: 'shape' },
+]
+
 const inputClass =
   'w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm'
 
@@ -419,6 +429,38 @@ export default function Brand() {
               </p>
 
               {!canCardControls && <UpgradeNote feature="Card layout & style controls" />}
+
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Style presets</label>
+                <div className="flex flex-wrap gap-2">
+                  {CARD_PRESETS.map((p) => {
+                    const active =
+                      form.preview_layout === p.layout &&
+                      form.preview_panel === p.panel &&
+                      form.preview_accent === p.accent
+                    return (
+                      <button
+                        key={p.name}
+                        type="button"
+                        disabled={!canCardControls}
+                        onClick={() =>
+                          set({ preview_layout: p.layout, preview_panel: p.panel, preview_accent: p.accent })
+                        }
+                        className={`px-3.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                          active
+                            ? 'bg-primary-500 text-paper border-primary-500'
+                            : 'bg-surface text-secondary-700 border-line hover:border-primary-500 hover:text-secondary-900'
+                        } ${!canCardControls ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      >
+                        {p.name}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-secondary-500 mt-2">
+                  One-click starting points — fine-tune with the controls below, then Save.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <Select
