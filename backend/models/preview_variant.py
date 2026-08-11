@@ -16,7 +16,12 @@ class PreviewVariant(Base):
     description = Column(String, nullable=True)
     tone = Column(String, nullable=True)
     keywords = Column(String, nullable=True)  # Comma-separated
-    image_url = Column(String, nullable=True)  # Reuses highlight_image_url by default
+    image_url = Column(String, nullable=True)  # This variant's own rendered card
+    # Which argument this variant makes — "benefit", "proof", "curiosity", or
+    # "alternate". The whole point of an A/B test is that the angles differ, so
+    # naming the angle is what makes a winner interpretable.
+    angle = Column(String, nullable=True)
+    subtitle = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

@@ -16,6 +16,11 @@ interface UsePreviewsReturn {
   createOrUpdatePreview: (input: PreviewCreate) => Promise<Preview>
   updatePreview: (id: number, input: PreviewUpdate) => Promise<void>
   deletePreview: (id: number) => Promise<void>
+  /**
+   * Swap one already-updated preview into local state. For endpoints that
+   * return the full updated row (restyle), which makes a refetch pure waste.
+   */
+  replacePreview: (preview: Preview) => void
   refetch: (type?: string) => Promise<void>
 }
 
@@ -87,6 +92,10 @@ export function usePreviews(type?: string): UsePreviewsReturn {
     []
   )
 
+  const replacePreview = useCallback((updated: Preview) => {
+    setPreviews((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+  }, [])
+
   return {
     previews,
     loading,
@@ -94,6 +103,7 @@ export function usePreviews(type?: string): UsePreviewsReturn {
     createOrUpdatePreview: handleCreateOrUpdate,
     updatePreview: handleUpdate,
     deletePreview: handleDelete,
+    replacePreview,
     refetch: loadPreviews,
   }
 }

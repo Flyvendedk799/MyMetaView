@@ -55,6 +55,18 @@ class Preview(PreviewBase):
                     "or 'template' (built from the page's metadata, past the "
                     "plan's monthly AI allowance)",
     )
+    layout: Optional[str] = Field(
+        None,
+        description="Card layout that rendered: typographic, split, stat, "
+                    "profile, editorial or product. Null for older previews.",
+    )
+    # Read off Preview.can_rerender. The spec it derives from is deliberately
+    # not exposed: it is large and carries internal crop URLs.
+    can_rerender: bool = Field(
+        False,
+        description="Whether this card can be re-rendered at a new size or "
+                    "layout without spending an AI generation",
+    )
 
     class Config:
         from_attributes = True

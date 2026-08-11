@@ -9,6 +9,7 @@ from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig, 
 from backend.services.preview_type_predictor import predict_preview_type
 from backend.services.quality_profiles import get_quality_profile
 from backend.services.generation_lane import LaneDecision, record_ai_generation, resolve_lane
+from backend.services.card_rerender import rerender_card
 from backend.jobs.preview_upsert import upsert_preview
 from backend.services.brand_rewriter import rewrite_to_brand_voice
 from backend.models.preview_variant import PreviewVariant as PreviewVariantModel
@@ -30,6 +31,70 @@ def _derive_brand_tone_hint(brand_schema):
         return "professional"
     else:
         return "neutral"
+
+
+def _replace_variants(
+    db,
+    *,
+    preview,
+    main_title: str,
+    main_description: str,
+    main_image_url: str,
+    keywords: str,
+    variants: list,
+    render_spec: Dict,
+    url: str,
+) -> None:
+    """Rewrite this preview's variants to match the current generation.
+
+    Replace rather than append: a regeneration produces a new set of angles, and
+    leaving the old ones behind would show the user variants whose copy no longer
+    matches any card.
+
+    Variant A mirrors the main card. B and C each get their own rendered image so
+    an A/B test compares the actual artefacts that will be shared — rendering is
+    a pure rasterize off the stored spec, so the extra cards cost no AI.
+    """
+    db.query(PreviewVariantModel).filter(
+        PreviewVariantModel.preview_id == preview.id
+    ).delete(synchronize_session=False)
+
+    rows = [PreviewVariantModel(
+        preview_id=preview.id,
+        variant_key="a",
+        angle="main",
+        title=main_title[:200],
+        subtitle=None,
+        description=main_description[:500] if main_description else None,
+        keywords=keywords,
+        image_url=main_image_url,
+    )]
+
+    for key, variant in zip(("b", "c"), variants or []):
+        title = str(variant.get("title") or "").strip()
+        if not title:
+            continue
+        subtitle = variant.get("subtitle")
+        image_url, _ = rerender_card(
+            render_spec or {}, url=url, title=title, subtitle=subtitle,
+        )
+        rows.append(PreviewVariantModel(
+            preview_id=preview.id,
+            variant_key=key,
+            angle=str(variant.get("angle") or "alternate"),
+            title=title[:200],
+            subtitle=(subtitle or None) and str(subtitle)[:300],
+            # The variant's own hook is a better description of it than the
+            # main card's copy, which is what the old duplicate code stored.
+            description=(subtitle or title)[:500],
+            keywords=keywords,
+            # A failed re-render falls back to the main card rather than a
+            # broken image; the copy is still a real alternative to test.
+            image_url=image_url or main_image_url,
+        ))
+
+    for row in rows:
+        db.add(row)
 
 
 def generate_preview_job(user_id: int, organization_id: int, url: str, domain: str, force_regenerate: bool = False) -> Dict:
@@ -81,10 +146,13 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         # layout/panel/accent overrides only take effect on plans that include them;
         # otherwise the prefs fall back to "auto" (our art director decides).
         from backend.models.organization import Organization as _OrgModel
-        from backend.core.plans import has_feature, F_HIDE_WATERMARK, F_CARD_CONTROLS
+        from backend.core.plans import has_feature, F_HIDE_WATERMARK, F_CARD_CONTROLS, F_VARIANTS
         _org = db.query(_OrgModel).filter(_OrgModel.id == organization_id).first()
         _can_hide_watermark = bool(_org and has_feature(_org, F_HIDE_WATERMARK))
         _can_card_controls = bool(_org and has_feature(_org, F_CARD_CONTROLS))
+        # A/B variants are a paid feature. Plans without it get variant A only —
+        # the main card — rather than three tabs showing the same thing.
+        _can_variants = bool(_org and has_feature(_org, F_VARIANTS))
 
         # Step 4.5: AI lane or template lane?
         # The AI lane is the product — the art director reads this page and
@@ -211,41 +279,28 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             keywords=keywords_str,
             tone=None,  # Can be extracted from blueprint if needed
             ai_reasoning=engine_result.blueprint.get("layout_reasoning") or engine_result.message,
-            generation_mode=lane.lane
+            generation_mode=lane.lane,
+            layout=engine_result.rendered_layout,
+            render_spec=engine_result.render_spec or None,
         )
-        
-        # Step 10: Create preview variants from engine result
-        # For SaaS, we create variants based on engine's context items and credibility items
-        # This is a simplified variant generation - can be enhanced later
-        variant_titles = [
-            engine_result.title,
-            engine_result.subtitle or engine_result.title,  # Use subtitle if available
-            engine_result.title  # Third variant same as first for now
-        ]
-        
-        variant_descriptions = [
-            rewritten_description,
-            rewritten_description[:150] + "..." if len(rewritten_description) > 150 else rewritten_description,
-            rewritten_description
-        ]
-        
-        for idx, (variant_key, variant_title, variant_desc) in enumerate(zip(
-            ["a", "b", "c"],
-            variant_titles,
-            variant_descriptions
-        )):
-            if variant_title:
-                variant = PreviewVariantModel(
-                    preview_id=preview.id,
-                    variant_key=variant_key,
-                    title=variant_title[:200],
-                    description=variant_desc[:500] if variant_desc else None,
-                    tone=None,
-                    keywords=keywords_str,
-                    image_url=highlight_image_url,
-                )
-                db.add(variant)
-        
+
+        # Step 10: Variants — one card per distinct angle the art director found.
+        # Variant A is always the main card (same copy, same image), so the tabs
+        # compare like with like. B and C only exist when the page supported a
+        # genuinely different argument; the director returns fewer rather than
+        # padding with paraphrases, and we render exactly what it returned.
+        _replace_variants(
+            db,
+            preview=preview,
+            main_title=engine_result.title,
+            main_description=rewritten_description,
+            main_image_url=main_image_url,
+            keywords=keywords_str,
+            variants=engine_result.variants if _can_variants else [],
+            render_spec=engine_result.render_spec,
+            url=sanitized_url,
+        )
+
         db.commit()
         db.refresh(preview)
         

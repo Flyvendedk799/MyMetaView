@@ -441,9 +441,24 @@ class PreviewEngineResult:
     # Quality metrics
     quality_scores: Dict[str, float] = field(default_factory=dict)
     design_fidelity_score: Optional[float] = None
-    
+
     # Warnings (non-fatal issues)
     warnings: List[str] = field(default_factory=list)
+
+    # Alternative hooks the art director authored alongside the main copy —
+    # [{angle, title, subtitle}]. The caller renders a card per angle.
+    variants: List[Dict[str, Any]] = field(default_factory=list)
+
+    # Everything needed to re-render this card without capturing the page or
+    # calling the model again: the composition spec, the resolved palette, the
+    # brand name, the proof line, and the focal crop the panel uses. Persisted
+    # by the pipeline so a directed re-roll and the per-platform sizes are a
+    # pure render, not a full regeneration.
+    render_spec: Dict[str, Any] = field(default_factory=dict)
+
+    # The layout that actually rendered. The art director's pick and what
+    # survives asset resolution differ whenever a crop or a proof went missing.
+    rendered_layout: Optional[str] = None
 
 
 class PreviewEngine:
@@ -1853,7 +1868,8 @@ class PreviewEngine:
                 "reasoning_confidence": reasoned.reasoning_confidence,
                 "design_fidelity_score": reasoned.design_fidelity_score,
                 "design_dna": reasoned.design_dna or {},
-                "composition": reasoned.composition or {}
+                "composition": reasoned.composition or {},
+                "variants": reasoned.variants or [],
             }
 
             self.logger.info(
@@ -1877,6 +1893,43 @@ class PreviewEngine:
             # Fallback to HTML-only extraction
             return self._extract_from_html_only(html_content, url, screenshot_bytes=getattr(self, '_last_screenshot_bytes', None))
     
+    def _stash_crop(self, data_uri: Optional[str], kind: str) -> Optional[str]:
+        """Park a crop on R2 and return its URL, for later re-renders.
+
+        Best effort: losing a crop costs a re-roll its imagery (the layout then
+        degrades, exactly as it does when the crop never existed), which is not
+        worth failing a generation over.
+        """
+        if not data_uri or not str(data_uri).startswith("data:"):
+            return None
+        try:
+            import base64
+            payload = base64.b64decode(str(data_uri).split(",", 1)[1])
+            return upload_file_to_r2(
+                payload,
+                f"crops/{'demo' if self.config.is_demo else 'saas'}/{kind}-{uuid4()}.png",
+                "image/png",
+            )
+        except Exception as e:
+            self.logger.debug(f"Could not stash {kind} crop for re-render: {e}")
+            return None
+
+    @staticmethod
+    def _primary_proof(ai_result: Dict[str, Any]) -> Optional[str]:
+        """The single strongest trust signal, for layouts that build around one.
+
+        Credibility items arrive as {type, value} dicts; the art director is told
+        to return the strongest first, so first-with-a-value wins.
+        """
+        for item in (ai_result.get("credibility_items") or []):
+            if isinstance(item, dict):
+                value = str(item.get("value") or "").strip()
+                if value:
+                    return value
+            elif isinstance(item, str) and item.strip():
+                return item.strip()
+        return None
+
     @staticmethod
     def _orchestrator_result_is_usable(result: Dict[str, Any]) -> bool:
         """Is this multi-agent result good enough to skip the art director?
@@ -2365,9 +2418,14 @@ class PreviewEngine:
         """
         if not self.config.enable_composited_image:
             return None
-        
+
         self._update_progress(0.80, "Generating final preview image...")
         composited_image_url = None
+        # The quality loop can re-composite. Clear last attempt's spec so a
+        # render that fails this time cannot ship the previous one's inputs,
+        # which would describe a card that is not the one on screen.
+        self._render_spec = {}
+        self._rendered_layout = None
         
         try:
             self.logger.info("🎨 Generating brand-aligned preview image")
@@ -2396,7 +2454,7 @@ class PreviewEngine:
             # story + composition. Any failure falls through to the legacy
             # generators below, so a render hiccup never fails the whole preview.
             try:
-                from backend.services.premium_card_renderer import render_premium_card
+                from backend.services.premium_card_renderer import render_premium_card_detailed
 
                 spec = ai_result.get("composition") or {}
                 composition = {
@@ -2414,7 +2472,9 @@ class PreviewEngine:
                 _p = self.config.brand_settings if isinstance(self.config.brand_settings, dict) else {}
                 if _p.get("preview_layout") and _p["preview_layout"] != "auto":
                     composition["layout"] = _p["preview_layout"]
-                    composition["use_visual"] = (_p["preview_layout"] == "split")
+                    # Only the panel layouts consume a visual; forcing one on any
+                    # other layout would reserve a panel the renderer never fills.
+                    composition["use_visual"] = _p["preview_layout"] in ("split", "product")
                 if _p.get("preview_panel") and _p["preview_panel"] != "auto":
                     composition["panel_color_role"] = _p["preview_panel"]
                 if _p.get("preview_accent") and _p["preview_accent"] != "auto":
@@ -2452,7 +2512,11 @@ class PreviewEngine:
                 _brand_name = _p.get("brand_name") or (brand_elements or {}).get("brand_name")
                 _subtitle = ai_result.get("subtitle") or _p.get("tagline")
 
-                premium_png = render_premium_card(
+                # The strongest proof line drives the "stat" layout's hero number
+                # and the "editorial" kicker.
+                _proof = self._primary_proof(ai_result)
+
+                premium_png, _rendered_layout = render_premium_card_detailed(
                     title=ai_result.get("title") or "",
                     subtitle=_subtitle,
                     url=url,
@@ -2462,7 +2526,27 @@ class PreviewEngine:
                     logo_data_uri=logo_uri,
                     visual_data_uri=visual_uri,
                     hide_watermark=_hide_watermark,
+                    proof=_proof,
+                    cta_text=ai_result.get("cta_text"),
                 )
+                self._rendered_layout = _rendered_layout
+                # Everything a later render needs, minus the page itself, so a
+                # directed re-roll or a per-platform size is a pure render.
+                # The two crops go to R2 and the spec holds their URLs: this
+                # object is JSON-cached in Redis and persisted per preview, and
+                # inlining base64 would bloat both by hundreds of KB per row.
+                self._render_spec = {
+                    "composition": {**composition, "visual_focus": vfocus},
+                    "colors": blueprint_colors,
+                    "brand_name": _brand_name,
+                    "subtitle": _subtitle,
+                    "proof": _proof,
+                    "cta_text": ai_result.get("cta_text"),
+                    "hide_watermark": _hide_watermark,
+                    "logo_url": self._stash_crop(logo_uri, "logo"),
+                    "visual_url": self._stash_crop(visual_uri, "visual"),
+                    "rendered_layout": _rendered_layout,
+                }
                 if premium_png:
                     premium_url = upload_file_to_r2(
                         premium_png,
@@ -2925,9 +3009,15 @@ class PreviewEngine:
                 "clarity": blueprint.get("clarity_score", 0.0),
                 "overall": blueprint.get("overall_quality", 0.0)
             },
-            design_fidelity_score=blueprint.get("design_fidelity_score")
+            design_fidelity_score=blueprint.get("design_fidelity_score"),
+            variants=ai_result.get("variants", []),
+            # Set during compositing. Absent whenever the premium renderer did
+            # not run (legacy fallback path), which is exactly when a re-render
+            # would not be reproducible anyway.
+            render_spec=getattr(self, "_render_spec", {}) or {},
+            rendered_layout=getattr(self, "_rendered_layout", None),
         )
-    
+
     def _build_fallback_result(
         self,
         url: str,

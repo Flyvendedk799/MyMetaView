@@ -229,6 +229,11 @@ class ReasonedPreview:
     # premium HTML renderer. See SINGLE_PASS_PROMPT "composition" block.
     composition: Optional[Dict[str, Any]] = None
 
+    # Alternative hooks for A/B testing — [{angle, title, subtitle}]. Authored in
+    # the same vision call as the main copy (Step 5), so three angles cost the
+    # same as one. Empty when the page only supports a single honest argument.
+    variants: List[Dict[str, Any]] = field(default_factory=list)
+
     # Processing metadata
     processing_time_ms: int = 0
     reasoning_confidence: float = 0.0
@@ -248,6 +253,7 @@ class ReasonedPreview:
             "has_primary_image": self.primary_image_base64 is not None,
             "design_dna": self.design_dna,
             "composition": self.composition,
+            "variants": self.variants,
             "processing_time_ms": self.processing_time_ms,
             "reasoning_confidence": self.reasoning_confidence,
             "design_fidelity_score": self.design_fidelity_score
@@ -1479,14 +1485,31 @@ Match the composition to the BRAND'S energy — the card must feel like it belon
 - Vibrant CONSUMER brands (retail, events, food, hospitality, fitness, kids, creative — bold colors, playful logos, strong photography): do NOT flatten them into a somber dark card. Use the brand's REAL vivid color as the panel and keep the energy, and usually go "split" featuring the hero photo/product. A card that strips a colorful brand down to black text feels broken and off-brand.
 
 **composition**:
-   - layout: "typographic" (headline-led, no image) OR "split" (headline on one side, a hero visual on the other). Choose "split" when the page leans on a strong hero photo/product/graphic that carries the brand — common for ecommerce, events, food, real estate, portfolios, agencies. Choose "typographic" for text-first software/professional pages. When the brand's identity is visual, prefer split.
-   - use_visual: true only if layout is "split" and a clean visual exists; else false.
+   - layout: pick the ONE shape that tells this page's story. Do not default to "typographic" out of caution — a card whose shape matches the page is the whole product.
+     * "typographic" — headline-led, no imagery. Text-first software/professional/service pages with no single hero visual worth showing.
+     * "split" — headline beside the hero imagery, brand mark centred on it. For brands whose identity IS visual: events, food, hospitality, travel, real estate, retail, portfolios, agencies.
+     * "stat" — the page's proof number set huge as the hero. ONLY when `credibility` contains a real leading quantity ("50,000+ teams", "4.9★ from 2,847 reviews", "$2.4B processed"). This is the strongest card there is when the number is real — prefer it over "typographic" whenever you have one. Never pick it without a number.
+     * "profile" — a person's avatar beside their name. ONLY when is_individual_profile is true AND logo_bbox is their face/photo.
+     * "editorial" — kicker, hairline rule, long headline, deck. For articles, essays, blog posts, case studies, docs, news — anything written rather than sold.
+     * "product" — the product shot with a price/action chip. For a single item for sale, where the thing itself and its price are the message.
+   - use_visual: true only if the layout is "split" or "product" AND a clean visual exists; else false.
    - visual_source: "screenshot" (a crop of the page) | "logo" | "none".
-   - visual_focus: ONLY when layout is "split" — the box of the best clean IMAGERY to use as a dimmed BACKDROP behind the brand logo: representative photos of the products / scene / environment / people (e.g. the party gear and inflatables, the food, the room, the device in use). The renderer dims this region and places the brand's own logo centered on top of it, so: do NOT pick the logo/wordmark itself (it is shown separately — picking it would double it), and AVOID areas dominated by the site's big overlaid headline/marketing text. A broad, vivid hero image region (the pictures, not the words) works best; it cover-fills a tall panel. Exclude nav bars and cookie banners. null when layout is "typographic".
+   - visual_focus: ONLY when layout is "split" or "product" — the box of the best clean IMAGERY. On "split" the renderer DIMS this region and centres the brand's own logo on top, so pick representative photos of the products / scene / environment / people (the party gear, the food, the room, the device in use) — do NOT pick the logo/wordmark itself (it is shown separately; picking it would double it) and AVOID areas dominated by the site's big overlaid headline text. On "product" the region is shown CLEAN and undimmed, so pick the product itself, tightly framed, with nothing overlapping it. Exclude nav bars and cookie banners. null for every other layout.
    - panel_color_role: which brand color anchors the card background — "primary" (the brand's REAL signature color — USE THIS for any colorful/vibrant/playful brand) | "secondary" | "dark" (a deep near-black tint — ONLY for premium/somber/luxury/technical brands) | "light" (soft off-white — for airy/minimal/editorial brands). Never put a bright, playful brand on a "dark" panel; use "primary" so the real brand color shows.
    - accent_moment: where the single accent lands — "bar" (a short rule under the headline) | "dot" | "shape" (a soft corner shape).
    - mood: one word matching the brand (e.g. "confident", "warm", "precise", "bold", "calm").
    - reasoning: one short sentence on why this composition tells THIS page's story.
+
+=== STEP 5: WRITE TWO ALTERNATIVE ANGLES ===
+The same page, pitched three different ways, so the owner can A/B test which hook earns more clicks. The main title/subtitle above is angle A. Now write B and C.
+
+Each angle must be a GENUINELY DIFFERENT argument for the same page — not a reword, not a truncation, not a synonym swap. If you cannot find a real second or third angle in the page, return fewer entries rather than padding with near-duplicates.
+
+   - "benefit" — what the visitor GETS. Outcome-first. ("Ship features in hours, not sprints")
+   - "proof" — who already trusts it, using a real number/name visible on the page. Omit this angle entirely if the page shows no concrete proof. ("Trusted by 50,000 engineering teams")
+   - "curiosity" — the tension or question the page answers. Honest, never clickbait. ("Why your test suite gets slower every sprint")
+
+Pick the two angles that the page actually supports and that differ MOST from angle A. Same language as the page, same length rules as the main title/subtitle, same no-fabrication rule.
 
 === EXCLUSIONS ===
 Ignore cookie banners, nav menus, footers, popups, breadcrumbs, "Skip to content".
@@ -1509,7 +1532,7 @@ Ignore cookie banners, nav menus, footers, popups, breadcrumbs, "Skip to content
         "brand_adjectives": ["<w1>", "<w2>", "<w3>"]
     },
     "composition": {
-        "layout": "typographic|split",
+        "layout": "typographic|split|stat|profile|editorial|product",
         "use_visual": <true|false>,
         "visual_source": "screenshot|logo|none",
         "visual_focus": {"x": <0-1>, "y": <0-1>, "width": <0-1>, "height": <0-1>} or null,
@@ -1518,6 +1541,9 @@ Ignore cookie banners, nav menus, footers, popups, breadcrumbs, "Skip to content
         "mood": "<one word>",
         "reasoning": "<one sentence>"
     },
+    "variants": [
+        {"angle": "benefit|proof|curiosity", "title": "<a different hook>", "subtitle": "<supporting line or null>"}
+    ],
     "confidence": <0.0-1.0>
 }
 
@@ -1527,7 +1553,62 @@ RULES:
 3. NULL OVER FABRICATION everywhere.
 4. TITLE IS MANDATORY.
 5. Match the brand's energy: restraint for software/luxury; the brand's REAL color + hero imagery for vibrant consumer brands. Never flatten a colorful brand into a somber dark card.
-6. Write the copy in the PAGE'S language — never translate it to English."""
+6. Write the copy in the PAGE'S language — never translate it to English.
+7. Pick the layout the page earns. "stat" whenever there is a real number, "editorial" for written content, "product" for a single item for sale, "profile" for a person. "typographic" is the fallback, not the default.
+8. Variants are different ARGUMENTS, not different wordings. Two strong angles beat three where one is a paraphrase — return fewer instead."""
+
+
+# Kept in step with premium_card_renderer.LAYOUTS / _PANEL_LAYOUTS. Imported
+# lazily inside the check so this module never hard-depends on the renderer.
+_KNOWN_LAYOUTS = {"typographic", "split", "stat", "profile", "editorial", "product"}
+_VISUAL_PANEL_LAYOUTS = {"split", "product"}
+
+_VARIANT_ANGLES = ("benefit", "proof", "curiosity")
+
+
+def _normalize_for_compare(text: Optional[str]) -> str:
+    """Loose key for 'is this the same hook?' — case, spacing and punctuation out."""
+    return re.sub(r"[^a-z0-9]+", "", (text or "").lower())
+
+
+def _parse_variants(raw: Any, *, main_title: str) -> List[Dict[str, Any]]:
+    """Validate the alternative angles, dropping anything that isn't one.
+
+    The point of a variant is to be a DIFFERENT argument — a paraphrase of the
+    main hook teaches nothing from an A/B test and is exactly what the old
+    duplicate-variant code produced. So anything that collapses to the main
+    title, or to an angle already kept, is discarded rather than shown.
+    """
+    if not isinstance(raw, list):
+        return []
+
+    seen = {_normalize_for_compare(main_title)}
+    out: List[Dict[str, Any]] = []
+
+    for item in raw:
+        if not isinstance(item, dict) or len(out) >= 2:
+            continue
+        title = str(item.get("title") or "").strip()
+        if len(title) < 8 or len(title) > 90:
+            continue
+        key = _normalize_for_compare(title)
+        if key in seen:
+            continue
+        # A hook that is merely the main title cut short is not a second angle.
+        main_key = _normalize_for_compare(main_title)
+        if key and main_key and (key.startswith(main_key[:24]) or main_key.startswith(key[:24])):
+            continue
+        seen.add(key)
+
+        angle = str(item.get("angle") or "").strip().lower()
+        subtitle = str(item.get("subtitle") or "").strip() or None
+        out.append({
+            "angle": angle if angle in _VARIANT_ANGLES else "alternate",
+            "title": title,
+            "subtitle": subtitle[:120] if subtitle else None,
+        })
+
+    return out
 
 
 def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> ReasonedPreview:
@@ -1583,7 +1664,10 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
                     ],
                 },
             ],
-            max_tokens=2000,
+            # Step 5 (the two alternative angles) adds a few hundred tokens of
+            # output. Truncating the JSON mid-object would fail the whole parse,
+            # not just lose the variants, so leave clear headroom.
+            max_tokens=2600,
             # NOTE: no temperature/seed — the gateway routes to an Anthropic model
             # that 400s on `temperature` ("deprecated for this model"), which would
             # crash this call and drop us to mojibaked HTML-only extraction.
@@ -1661,11 +1745,22 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
             composition["visual_focus"] = None
     else:
         composition["visual_focus"] = None
-    # Guard: a visual only makes sense on a split layout with a valid focus box.
-    if composition.get("layout") != "split" or not composition.get("visual_focus"):
+
+    # Only layouts that actually place imagery may claim a visual, and only with
+    # a valid focus box to crop from. Anything else gets the visual stripped so
+    # the renderer does not reserve a panel it cannot fill.
+    if str(composition.get("layout", "")).lower() not in _VISUAL_PANEL_LAYOUTS \
+            or not composition.get("visual_focus"):
         composition["use_visual"] = False
         composition["visual_source"] = "none"
         composition["visual_focus"] = None
+
+    # A layout the renderer does not know would silently become "typographic"
+    # there; normalising here keeps the stored spec honest about what shipped.
+    if str(composition.get("layout", "")).lower() not in _KNOWN_LAYOUTS:
+        composition["layout"] = "typographic"
+
+    variants = _parse_variants(data.get("variants"), main_title=title)
 
     palette = {
         "primary": colors.get("primary", "#3B82F6"),
@@ -1732,6 +1827,7 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
         primary_image_base64=primary_image_base64,
         design_dna=design_dna,
         composition=composition,
+        variants=variants,
         processing_time_ms=processing_time,
         reasoning_confidence=confidence,
         design_fidelity_score=confidence,
@@ -1740,7 +1836,8 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
     logger.info(
         f"[SinglePass] Done in {processing_time}ms: "
         f"template={template_type}, quality={blueprint.overall_quality}, "
-        f"layout={composition.get('layout')}, title='{title[:50]}'"
+        f"layout={composition.get('layout')}, variants={len(variants)}, "
+        f"title='{title[:50]}'"
     )
 
     return result

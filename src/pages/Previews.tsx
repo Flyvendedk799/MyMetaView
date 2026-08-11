@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon, SwatchIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -18,11 +18,55 @@ import {
   getBulkJobStatus,
   getRecentBulkJobs,
   createPreviewJob,
+  restylePreview,
 } from '../api/client'
-import type { PreviewCreate, PreviewUpdate, PreviewVariant, BulkJobStatus, BulkJobSummary } from '../api/types'
+import type {
+  PreviewCreate,
+  PreviewUpdate,
+  PreviewVariant,
+  BulkJobStatus,
+  BulkJobSummary,
+  PreviewRestyleRequest,
+  CardLayout,
+  CardPanel,
+} from '../api/types'
 
 const filters = ['All', 'Product', 'Blog', 'Landing Page'] as const
 type FilterType = typeof filters[number]
+
+/** What each variant tab is arguing. Keyed to PreviewVariant['angle']. */
+const ANGLE_LABEL: Record<string, string> = {
+  main: 'Main',
+  benefit: 'Benefit',
+  proof: 'Proof',
+  curiosity: 'Curiosity',
+  alternate: 'Alt',
+}
+
+const ANGLE_HELP: Record<string, string> = {
+  main: 'The primary card',
+  benefit: 'Leads with what the visitor gets',
+  proof: 'Leads with who already trusts it',
+  curiosity: 'Leads with the question the page answers',
+  alternate: 'An alternative hook',
+}
+
+/** Layouts a user can switch a card to, with plain-language names. */
+const LAYOUT_CHOICES: { value: CardLayout; label: string; hint: string }[] = [
+  { value: 'typographic', label: 'Headline', hint: 'Type only, no imagery' },
+  { value: 'split', label: 'Split', hint: 'Headline beside the hero image' },
+  { value: 'stat', label: 'Stat', hint: 'Your proof number as the hero' },
+  { value: 'editorial', label: 'Editorial', hint: 'Kicker, rule and deck' },
+  { value: 'product', label: 'Product', hint: 'Product shot with a price chip' },
+  { value: 'profile', label: 'Profile', hint: 'Avatar beside a name' },
+]
+
+const PANEL_CHOICES: { value: CardPanel; label: string }[] = [
+  { value: 'primary', label: 'Brand' },
+  { value: 'secondary', label: 'Secondary' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+]
 
 // Map filter display names to backend type values
 const filterToTypeMap: Record<string, string | undefined> = {
@@ -51,7 +95,7 @@ export default function Previews() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('All')
   const [searchParams, setSearchParams] = useSearchParams()
   const filterType = filterToTypeMap[activeFilter]
-  const { previews, loading, error, createOrUpdatePreview, updatePreview, deletePreview, refetch } = usePreviews(filterType)
+  const { previews, loading, error, createOrUpdatePreview, updatePreview, deletePreview, replacePreview, refetch } = usePreviews(filterType)
   const { domains } = useDomains()
   const toast = useToast()
   const verifiedDomains = useMemo(() => domains.filter((d) => d.status === 'verified'), [domains])
@@ -72,6 +116,10 @@ export default function Previews() {
   // Per-card regeneration — keyed by the run it started, so the spinner clears
   // when the server says that run is done (no client-side timeout to guess with).
   const [regeneratingIds, setRegeneratingIds] = useState<Record<number, string>>({})
+  // Restyle is synchronous, so this is a plain in-flight flag rather than a
+  // background-run id like regeneratingIds.
+  const [restylingIds, setRestylingIds] = useState<Record<number, boolean>>({})
+  const [openRestyleFor, setOpenRestyleFor] = useState<number | null>(null)
   const [regenError, setRegenError] = useState<string | null>(null)
 
   // Generation activity — every run (single + bulk), visible and resumable even
@@ -463,6 +511,35 @@ export default function Previews() {
     }
   }
 
+  /**
+   * Restyle is not regeneration: it re-renders the existing card from its stored
+   * spec, so it returns synchronously and costs no AI credit. That is why it
+   * updates the row in place instead of queueing a background run.
+   */
+  const handleRestyle = async (
+    preview: typeof previews[0],
+    direction: PreviewRestyleRequest
+  ) => {
+    if (restylingIds[preview.id]) return
+    setRestylingIds((prev) => ({ ...prev, [preview.id]: true }))
+    try {
+      const updated = await restylePreview(preview.id, direction)
+      replacePreview(updated)
+      toast.success('Card restyled', 'No AI credit was used.')
+    } catch (err) {
+      toast.error(
+        'Could not restyle',
+        err instanceof Error ? err.message : 'Your existing card is unchanged.'
+      )
+    } finally {
+      setRestylingIds((prev) => {
+        const next = { ...prev }
+        delete next[preview.id]
+        return next
+      })
+    }
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -706,8 +783,15 @@ export default function Previews() {
                                   ? 'text-primary-600 border-b-2 border-primary-500'
                                   : 'text-secondary-500 hover:text-secondary-700'
                               }`}
+                              title={ANGLE_HELP[variant.angle ?? 'alternate']}
                             >
-                              {variant.variant_key.toUpperCase()}
+                              {/* The angle is what the tab is actually for — a
+                                  bare "B" tells you nothing about what you are
+                                  testing. Fall back to the key for older rows
+                                  that predate angles. */}
+                              {variant.angle && variant.angle !== 'main'
+                                ? ANGLE_LABEL[variant.angle]
+                                : variant.variant_key.toUpperCase()}
                             </button>
                           ))}
                         </div>
@@ -759,11 +843,30 @@ export default function Previews() {
                           )}
                         </div>
                         <div className="flex items-center space-x-2">
+                          {/* Restyling only exists for cards that carry a render
+                              spec. Older ones have to be regenerated once first,
+                              so the control is hidden rather than shown broken. */}
+                          {preview.can_rerender && (
+                            <button
+                              onClick={() =>
+                                setOpenRestyleFor(openRestyleFor === preview.id ? null : preview.id)
+                              }
+                              disabled={!!restylingIds[preview.id]}
+                              className={`transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                openRestyleFor === preview.id
+                                  ? 'text-accent-500'
+                                  : 'text-primary-500 hover:text-accent-500'
+                              }`}
+                              title="Restyle this card — free, no AI credit used"
+                            >
+                              <SwatchIcon className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleRegenerate(preview)}
                             disabled={!!regeneratingIds[preview.id]}
                             className="text-primary-500 hover:text-accent-500 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Regenerate preview"
+                            title="Regenerate from the page — uses one AI preview"
                           >
                             <ArrowPathIcon className={`w-4 h-4 ${regeneratingIds[preview.id] ? 'animate-spin' : ''}`} />
                           </button>
@@ -783,6 +886,62 @@ export default function Previews() {
                           </button>
                         </div>
                       </div>
+
+                      {openRestyleFor === preview.id && (
+                        <div className="mt-3 pt-3 border-t border-secondary-200 space-y-3">
+                          <div>
+                            <p className="text-[11px] font-mono uppercase tracking-wider text-secondary-500 mb-1.5">
+                              Layout
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {LAYOUT_CHOICES.map((choice) => (
+                                <button
+                                  key={choice.value}
+                                  onClick={() => handleRestyle(preview, { layout: choice.value })}
+                                  disabled={!!restylingIds[preview.id]}
+                                  title={choice.hint}
+                                  className={`px-2 py-1 text-xs rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    preview.layout === choice.value
+                                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                                      : 'border-secondary-200 text-secondary-600 hover:border-primary-300'
+                                  }`}
+                                >
+                                  {choice.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-mono uppercase tracking-wider text-secondary-500 mb-1.5">
+                              Panel
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {PANEL_CHOICES.map((choice) => (
+                                <button
+                                  key={choice.value}
+                                  onClick={() => handleRestyle(preview, { panel: choice.value })}
+                                  disabled={!!restylingIds[preview.id]}
+                                  className="px-2 py-1 text-xs rounded-md border border-secondary-200 text-secondary-600 hover:border-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {choice.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-secondary-500">
+                            {restylingIds[preview.id]
+                              ? 'Rendering…'
+                              : 'Restyling re-renders the existing card. It never uses an AI preview from your plan.'}
+                          </p>
+                          {/* A layout the page cannot support (stat with no
+                              number, split with no image) falls back rather than
+                              failing, so say so instead of leaving the user to
+                              wonder why nothing changed. */}
+                          <p className="text-[11px] text-secondary-400">
+                            Layouts that need something this page doesn&rsquo;t have fall back to Headline.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </Card>
                 )
