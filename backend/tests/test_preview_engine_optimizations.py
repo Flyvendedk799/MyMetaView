@@ -77,3 +77,52 @@ class TestHasRichOgMetadata:
         engine = PreviewEngine(config)
         assert engine._has_rich_og_metadata("") is False
         assert engine._has_rich_og_metadata("<html></html>") is False
+
+
+class TestOrchestratorResultIsUsable:
+    """The multi-agent orchestrator may only skip the art director when it
+    actually replaces it.
+
+    The card is only page-specific because the art director hands the renderer a
+    composition — layout, whether to use a visual, which colour carries the
+    panel. A result without one renders from neutral defaults, which is the same
+    card for every site: the "it just looks like a template" bug.
+    """
+
+    def test_rejects_result_with_no_composition_spec(self):
+        assert PreviewEngine._orchestrator_result_is_usable({
+            "title": "Acme — Ship Faster",
+            "composition": {},
+        }) is False
+
+    def test_rejects_result_missing_composition_entirely(self):
+        assert PreviewEngine._orchestrator_result_is_usable({
+            "title": "Acme — Ship Faster",
+        }) is False
+
+    def test_rejects_composition_that_is_not_a_dict(self):
+        assert PreviewEngine._orchestrator_result_is_usable({
+            "title": "Acme — Ship Faster",
+            "composition": "split",
+        }) is False
+
+    def test_rejects_placeholder_title(self):
+        assert PreviewEngine._orchestrator_result_is_usable({
+            "title": "Untitled",
+            "composition": {"layout": "split", "use_visual": True},
+        }) is False
+
+    def test_accepts_a_complete_result(self):
+        assert PreviewEngine._orchestrator_result_is_usable({
+            "title": "Acme — Ship Faster",
+            "composition": {"layout": "split", "use_visual": True},
+        }) is True
+
+
+class TestMultiAgentIsOffByDefault:
+    def test_default_config_does_not_enable_the_orchestrator(self):
+        """Production reached it only by inheriting a True default."""
+        assert PreviewEngineConfig().enable_multi_agent is False
+
+    def test_default_config_keeps_ai_reasoning_on(self):
+        assert PreviewEngineConfig().enable_ai_reasoning is True

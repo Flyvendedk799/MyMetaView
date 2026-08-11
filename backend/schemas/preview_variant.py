@@ -12,6 +12,12 @@ class PreviewVariantBase(BaseModel):
     tone: Optional[str] = None
     keywords: Optional[str] = None
     image_url: Optional[str] = None
+    angle: Optional[str] = Field(
+        None,
+        description="Which argument this variant makes: 'main' (the primary "
+                    "card), 'benefit', 'proof', 'curiosity', or 'alternate'",
+    )
+    subtitle: Optional[str] = None
 
 
 class PreviewVariantCreate(PreviewVariantBase):

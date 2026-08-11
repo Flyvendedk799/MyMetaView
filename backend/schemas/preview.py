@@ -49,7 +49,25 @@ class Preview(PreviewBase):
     keywords: Optional[str] = None
     tone: Optional[str] = None
     ai_reasoning: Optional[str] = None
-    
+    generation_mode: str = Field(
+        "ai",
+        description="Lane that produced this card: 'ai' (designed for this page) "
+                    "or 'template' (built from the page's metadata, past the "
+                    "plan's monthly AI allowance)",
+    )
+    layout: Optional[str] = Field(
+        None,
+        description="Card layout that rendered: typographic, split, stat, "
+                    "profile, editorial or product. Null for older previews.",
+    )
+    # Read off Preview.can_rerender. The spec it derives from is deliberately
+    # not exposed: it is large and carries internal crop URLs.
+    can_rerender: bool = Field(
+        False,
+        description="Whether this card can be re-rendered at a new size or "
+                    "layout without spending an AI generation",
+    )
+
     class Config:
         from_attributes = True
         json_schema_extra = {
@@ -64,6 +82,7 @@ class Preview(PreviewBase):
                 "keywords": "product, ecommerce, shopping",
                 "tone": "professional",
                 "ai_reasoning": "Detected product page based on metadata signals",
+                "generation_mode": "ai",
                 "created_at": "2024-01-15T10:00:00",
                 "monthly_clicks": 1234,
             }

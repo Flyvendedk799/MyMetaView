@@ -77,8 +77,52 @@ export interface Preview {
   keywords?: string | null
   tone?: string | null
   ai_reasoning?: string | null
+  /**
+   * Lane that produced this card. 'ai' means the art director read the page and
+   * designed for it; 'template' means it was built from the page's own metadata
+   * because the plan's monthly AI allowance was spent. Absent on older backends.
+   */
+  generation_mode?: 'ai' | 'template'
+  /** Card layout that rendered. Null on previews generated before layouts existed. */
+  layout?: CardLayout | null
+  /** True when the card can be restyled/resized without spending an AI generation. */
+  can_rerender?: boolean
   created_at: string // ISO datetime
   monthly_clicks: number
+}
+
+/** Mirrors premium_card_renderer.LAYOUTS. */
+export type CardLayout =
+  | 'typographic'
+  | 'split'
+  | 'stat'
+  | 'profile'
+  | 'editorial'
+  | 'product'
+
+export type CardPanel = 'primary' | 'secondary' | 'dark' | 'light'
+export type CardAccent = 'bar' | 'dot' | 'shape'
+export type CardSize = 'wide' | 'square' | 'portrait'
+
+/** Direction for a re-render. Omitted fields keep their current value. */
+export interface PreviewRestyleRequest {
+  layout?: CardLayout
+  panel?: CardPanel
+  accent?: CardAccent
+}
+
+export interface PlatformCard {
+  size: CardSize
+  width: number
+  height: number
+  image_url: string
+}
+
+export interface PlatformCardsResponse {
+  preview_id: number
+  cards: PlatformCard[]
+  /** Sizes that could not be rendered. Empty on a fully successful run. */
+  missing: CardSize[]
 }
 
 // Generation runs (single + bulk) + sitemap discovery
@@ -146,6 +190,13 @@ export interface PreviewVariant {
   tone?: string | null
   keywords?: string | null
   image_url?: string | null
+  /**
+   * Which argument this variant makes. 'main' is the primary card; the others
+   * are genuinely different pitches for the same page, which is what makes an
+   * A/B result interpretable.
+   */
+  angle?: 'main' | 'benefit' | 'proof' | 'curiosity' | 'alternate' | null
+  subtitle?: string | null
   created_at: string
 }
 
@@ -210,6 +261,8 @@ export interface PublicPlan {
   price: number
   domains: number | null
   previews_month: number | null
+  /** Previews per month that get the full AI treatment; the rest use templates. */
+  ai_previews_month?: number | null
   team_seats: number | null
   features: string[]
 }
@@ -223,12 +276,14 @@ export interface MyPlan {
   limits: {
     domains: number | null
     previews_month: number | null
+    ai_previews_month?: number | null
     team_seats: number | null
   }
   features: string[]
   usage: {
     domains: number
     previews_month: number
+    ai_previews_month?: number
   }
 }
 

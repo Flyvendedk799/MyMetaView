@@ -38,11 +38,14 @@ def upsert_preview(
     tone: Optional[str] = None,
     ai_reasoning: Optional[str] = None,
     highlight_image_url: Optional[str] = None,
-    composited_image_url: Optional[str] = None
+    composited_image_url: Optional[str] = None,
+    generation_mode: str = "ai",
+    layout: Optional[str] = None,
+    render_spec: Optional[dict] = None
 ) -> PreviewModel:
     """
     Upsert preview record in database.
-    
+
     Args:
         db: Database session
         url: Preview URL
@@ -53,7 +56,10 @@ def upsert_preview(
         preview_type: Preview type
         user_id: User ID
         organization_id: Organization ID
-        
+        generation_mode: Lane that produced this card — "ai" or "template"
+        layout: The card layout that actually rendered
+        render_spec: Inputs for re-rendering this card without regenerating it
+
     Returns:
         Preview model instance
     """
@@ -74,6 +80,14 @@ def upsert_preview(
         existing_preview.keywords = keywords
         existing_preview.tone = tone
         existing_preview.ai_reasoning = ai_reasoning
+        existing_preview.generation_mode = generation_mode
+        # Only overwrite when this run produced one. A regeneration that fell
+        # through to the legacy renderer has no spec, and clearing the old one
+        # would strip re-render support from a preview that still has a card.
+        if layout:
+            existing_preview.layout = layout
+        if render_spec:
+            existing_preview.render_spec = render_spec
         if not existing_preview.type:
             existing_preview.type = preview_type
         
@@ -94,6 +108,9 @@ def upsert_preview(
             keywords=keywords,
             tone=tone,
             ai_reasoning=ai_reasoning,
+            generation_mode=generation_mode,
+            layout=layout,
+            render_spec=render_spec,
             user_id=user_id,
             organization_id=organization_id,
             created_at=datetime.utcnow(),

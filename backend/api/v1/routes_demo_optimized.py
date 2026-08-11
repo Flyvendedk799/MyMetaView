@@ -41,7 +41,7 @@ from backend.services.usage_limits import (
 )
 from backend.utils.url_sanitizer import validate_url_security
 from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig
-from backend.services.demo_quality_profiles import get_quality_profile, get_cache_prefix_for_mode
+from backend.services.quality_profiles import get_quality_profile, get_cache_prefix_for_mode
 from backend.services.preview_cache import (
     generate_cache_key,
     get_redis_client,
@@ -388,7 +388,7 @@ def generate_demo_preview_optimized(
         config = PreviewEngineConfig(
             is_demo=True,
             enable_brand_extraction=True,
-            enable_ai_reasoning=True,
+            enable_ai_reasoning=profile.ai_reasoning,
             enable_composited_image=True,
             enable_cache=not cache_disabled,
             enable_multi_agent=profile.multi_agent,

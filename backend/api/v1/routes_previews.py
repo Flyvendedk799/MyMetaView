@@ -2,7 +2,7 @@
 from datetime import datetime
 from fastapi import APIRouter, Query, Depends, HTTPException, status, Request
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from backend.schemas.preview import Preview, PreviewCreate, PreviewUpdate
 from backend.models.preview import Preview as PreviewModel
@@ -14,6 +14,16 @@ from backend.core.deps import get_current_user, get_paid_user, get_current_org, 
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
 from backend.services.preview_generator import generate_ai_preview
+from backend.services.generation_lane import record_ai_generation
+from backend.services.premium_card_renderer import CARD_SIZES
+from backend.services.card_rerender import (
+    DIRECTABLE_ACCENTS,
+    DIRECTABLE_LAYOUTS,
+    DIRECTABLE_PANELS,
+    apply_direction,
+    render_platform_sizes,
+    rerender_card,
+)
 from backend.services.activity_logger import log_activity
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.cache import invalidate_preview
@@ -275,7 +285,19 @@ def generate_preview_with_ai(
             db, current_org.id, user_id=current_user.id, domain_id=domain.id
         )
 
-    # Step 3: Call AI preview generator
+    # Step 3: Call AI preview generator.
+    # This is the legacy synchronous path: it predates the unified engine and
+    # does not run the art director or the premium card renderer, so it cannot
+    # honour the template lane. It still costs a vision call, so it spends from
+    # the account's monthly AI allowance rather than quietly bypassing the meter.
+    # The metered, engine-backed path the dashboard uses is POST /jobs/preview.
+    record_ai_generation(
+        db,
+        organization_id=current_org.id,
+        user_id=current_user.id,
+        url=request.url,
+        domain=request.domain,
+    )
     try:
         from backend.schemas.brand import BrandSettings as BrandSettingsSchema
         brand_schema = BrandSettingsSchema.model_validate(brand_settings)
@@ -339,3 +361,155 @@ def generate_preview_with_ai(
         db.refresh(new_preview)
         return new_preview
 
+
+class PreviewRestyleRequest(BaseModel):
+    """Direction for a re-render. Every field is optional; omitted means keep."""
+    layout: Optional[str] = Field(
+        None, description=f"One of: {', '.join(DIRECTABLE_LAYOUTS)}"
+    )
+    panel: Optional[str] = Field(
+        None, description=f"Panel colour role: {', '.join(DIRECTABLE_PANELS)}"
+    )
+    accent: Optional[str] = Field(
+        None, description=f"Accent treatment: {', '.join(DIRECTABLE_ACCENTS)}"
+    )
+
+
+@router.post("/{preview_id}/restyle", response_model=Preview)
+def restyle_preview(
+    preview_id: int,
+    request: PreviewRestyleRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
+    current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
+):
+    """Re-render this card with a different layout, panel colour or accent.
+
+    This is a pure render off the stored spec — no page capture, no vision call
+    — so it does NOT spend an AI generation from the plan's allowance. The copy
+    is unchanged; rewriting the hook is what a full regeneration is for.
+    """
+    preview = db.query(PreviewModel).filter(
+        PreviewModel.id == preview_id,
+        PreviewModel.organization_id == current_org.id,
+    ).first()
+    if not preview:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Preview not found")
+
+    if not preview.can_rerender:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This preview predates styled re-rendering. Regenerate it once "
+                   "to enable restyling.",
+        )
+
+    spec = apply_direction(
+        preview.render_spec,
+        layout=request.layout, panel=request.panel, accent=request.accent,
+    )
+    image_url, rendered_layout = rerender_card(
+        spec, url=preview.url, title=preview.title,
+    )
+    if not image_url:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not render the card. Your existing preview is unchanged.",
+        )
+
+    preview.image_url = image_url
+    preview.composited_image_url = image_url
+    preview.layout = rendered_layout
+    # Persist the direction so the next restyle builds on this one rather than
+    # silently reverting to what the art director originally chose.
+    preview.render_spec = {**spec, "rendered_layout": rendered_layout}
+    db.commit()
+    db.refresh(preview)
+
+    invalidate_preview(preview_id)
+    log_activity(
+        db,
+        user_id=current_user.id,
+        action="preview.restyled",
+        metadata={
+            "preview_id": preview_id,
+            "requested": request.model_dump(exclude_none=True),
+            "rendered_layout": rendered_layout,
+        },
+        request=http_request,
+    )
+    return preview
+
+
+@router.post("/{preview_id}/platform-cards")
+def build_platform_cards(
+    preview_id: int,
+    http_request: Request,
+    sizes: Optional[List[str]] = Query(
+        None, description="Subset of sizes to render; defaults to all"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
+    current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
+):
+    """Render this card at each aspect ratio and return the image URLs.
+
+    Each size is composed at its own dimensions rather than cropped from the
+    wide card, so a square is laid out as a square. Like restyling, this is a
+    pure render and spends no AI generation.
+    """
+    preview = db.query(PreviewModel).filter(
+        PreviewModel.id == preview_id,
+        PreviewModel.organization_id == current_org.id,
+    ).first()
+    if not preview:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Preview not found")
+
+    if not preview.can_rerender:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This preview predates multi-size rendering. Regenerate it once "
+                   "to enable it.",
+        )
+
+    unknown = [s for s in (sizes or []) if s not in CARD_SIZES]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown size(s): {', '.join(unknown)}. "
+                   f"Available: {', '.join(CARD_SIZES)}",
+        )
+
+    cards = render_platform_sizes(
+        preview.render_spec, url=preview.url, title=preview.title, sizes=sizes,
+    )
+    if not cards:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not render any sizes. Your existing preview is unchanged.",
+        )
+
+    log_activity(
+        db,
+        user_id=current_user.id,
+        action="preview.platform_cards",
+        metadata={"preview_id": preview_id, "sizes": sorted(cards)},
+        request=http_request,
+    )
+    return {
+        "preview_id": preview_id,
+        "cards": [
+            {
+                "size": key,
+                "width": CARD_SIZES[key].width,
+                "height": CARD_SIZES[key].height,
+                "image_url": url,
+            }
+            for key, url in cards.items()
+        ],
+        # Sizes that failed to render are simply absent; say so rather than
+        # letting the caller infer it from a short list.
+        "missing": [s for s in (sizes or list(CARD_SIZES)) if s not in cards],
+    }

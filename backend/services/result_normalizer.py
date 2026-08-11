@@ -131,6 +131,9 @@ def normalize_ai_result(raw: Optional[Dict[str, Any]], url: str) -> Dict[str, An
         # SINGLE_PASS_PROMPT Step 4). Preserved verbatim so the premium HTML
         # renderer can honour the layout/visual/color/accent decision.
         "composition": raw.get("composition") if isinstance(raw.get("composition"), dict) else {},
+        # Alternative hooks (Step 5). Already validated upstream; kept verbatim
+        # so the pipeline can render a distinct card per angle.
+        "variants": raw.get("variants") if isinstance(raw.get("variants"), list) else [],
     }
 
 

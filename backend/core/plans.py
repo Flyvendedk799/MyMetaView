@@ -2,6 +2,16 @@
 and gated features. Both billing and enforcement read from here.
 
 A plan's numeric limits: an int is the cap; None means unlimited.
+
+Two preview limits, and the difference matters:
+
+``previews_month``     how many previews the account may hold per month, at all.
+``ai_previews_month``  how many of those get the full AI treatment — the art
+                       director reads the actual page and designs a card for it.
+
+Past the AI allowance the account keeps generating, but on the template lane:
+the page's own metadata rendered through the same premium card. Cheaper for us,
+still presentable for them, and the obvious reason to upgrade.
 """
 import os
 from datetime import datetime
@@ -21,24 +31,24 @@ F_WHITE_LABEL = "white_label"
 PLANS = {
     "free": {
         "key": "free", "name": "Free", "price": 0,
-        "domains": 1, "previews_month": 25, "team_seats": 1,
+        "domains": 1, "previews_month": 25, "ai_previews_month": 5, "team_seats": 1,
         "features": set(),
     },
     "starter": {
         "key": "starter", "name": "Starter", "price": 19,
-        "domains": 3, "previews_month": 500, "team_seats": 1,
+        "domains": 3, "previews_month": 500, "ai_previews_month": 100, "team_seats": 1,
         "features": {F_BRAND},
         "stripe_env": "STRIPE_PRICE_TIER_BASIC",
     },
     "growth": {
         "key": "growth", "name": "Growth", "price": 49,
-        "domains": 15, "previews_month": 5000, "team_seats": 3,
+        "domains": 15, "previews_month": 5000, "ai_previews_month": 1000, "team_seats": 3,
         "features": {F_BRAND, F_CARD_CONTROLS, F_HIDE_WATERMARK, F_VARIANTS, F_ADV_ANALYTICS},
         "stripe_env": "STRIPE_PRICE_TIER_PRO",
     },
     "agency": {
         "key": "agency", "name": "Agency", "price": 149,
-        "domains": None, "previews_month": None, "team_seats": None,
+        "domains": None, "previews_month": None, "ai_previews_month": None, "team_seats": None,
         "features": {F_BRAND, F_CARD_CONTROLS, F_HIDE_WATERMARK, F_VARIANTS,
                      F_ADV_ANALYTICS, F_API, F_TEAM, F_WHITE_LABEL},
         "stripe_env": "STRIPE_PRICE_TIER_AGENCY",
@@ -103,6 +113,7 @@ def public_plans() -> list:
         out.append({
             "key": p["key"], "name": p["name"], "price": p["price"],
             "domains": p["domains"], "previews_month": p["previews_month"],
+            "ai_previews_month": p["ai_previews_month"],
             "team_seats": p["team_seats"], "features": sorted(p["features"]),
         })
     return out

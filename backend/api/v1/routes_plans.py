@@ -9,6 +9,7 @@ from backend.models.organization import Organization
 from backend.models.domain import Domain as DomainModel
 from backend.models.preview import Preview as PreviewModel
 from backend.core.plans import public_plans, get_plan
+from backend.services.generation_lane import ai_previews_used as ai_previews_used_this_month
 
 router = APIRouter(tags=["plans"])
 
@@ -35,6 +36,7 @@ def my_plan(
         PreviewModel.organization_id == current_org.id,
         PreviewModel.created_at >= month_start,
     ).count()
+    ai_previews_used = ai_previews_used_this_month(db, current_org.id)
     trial_ends = getattr(current_org, "trial_ends_at", None)
     return {
         "key": plan["key"],
@@ -45,8 +47,13 @@ def my_plan(
         "limits": {
             "domains": plan["domains"],
             "previews_month": plan["previews_month"],
+            "ai_previews_month": plan["ai_previews_month"],
             "team_seats": plan["team_seats"],
         },
         "features": sorted(plan["features"]),
-        "usage": {"domains": domains_used, "previews_month": previews_used},
+        "usage": {
+            "domains": domains_used,
+            "previews_month": previews_used,
+            "ai_previews_month": ai_previews_used,
+        },
     }

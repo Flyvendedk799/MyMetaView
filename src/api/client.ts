@@ -18,6 +18,9 @@ import type {
   Token,
   PublicPlan,
   MyPlan,
+  PreviewRestyleRequest,
+  PlatformCardsResponse,
+  CardSize,
   AnalyticsOverview,
   DomainAnalyticsItem,
   PreviewAnalyticsItem,
@@ -90,6 +93,9 @@ export type {
   Token,
   PublicPlan,
   MyPlan,
+  PreviewRestyleRequest,
+  PlatformCardsResponse,
+  CardSize,
   AnalyticsOverview,
   DomainAnalyticsItem,
   PreviewAnalyticsItem,
@@ -572,6 +578,37 @@ export async function generatePreviewWithAI(payload: { url: string; domain: stri
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+/**
+ * Re-render a card with a different layout, panel colour or accent.
+ *
+ * A pure render off the stored spec — no page capture, no model call — so it
+ * does not spend an AI generation. The copy stays as it is; changing the hook
+ * needs a full regeneration.
+ */
+export async function restylePreview(
+  previewId: number,
+  direction: PreviewRestyleRequest
+): Promise<Preview> {
+  return fetchApi<Preview>(`/api/v1/previews/${previewId}/restyle`, {
+    method: 'POST',
+    body: JSON.stringify(direction),
+  })
+}
+
+/** Render this card at each aspect ratio. Also free of AI cost. */
+export async function buildPlatformCards(
+  previewId: number,
+  sizes?: CardSize[]
+): Promise<PlatformCardsResponse> {
+  const query = sizes?.length
+    ? '?' + sizes.map((s) => `sizes=${encodeURIComponent(s)}`).join('&')
+    : ''
+  return fetchApi<PlatformCardsResponse>(
+    `/api/v1/previews/${previewId}/platform-cards${query}`,
+    { method: 'POST' }
+  )
 }
 
 // Job queue endpoints
