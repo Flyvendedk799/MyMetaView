@@ -26,6 +26,13 @@ export interface BrandSettings {
   accent_color: string
   font_family: string
   logo_url?: string | null
+  // Identity — feeds the copy and the brand name on generated previews.
+  // Empty means "keep inferring it from the page".
+  brand_name?: string | null
+  tagline?: string | null
+  brand_description?: string | null
+  audience?: string | null
+  voice: string
   // Preview-card controls ("auto" = let the AI decide)
   preview_layout: string
   preview_panel: string
@@ -40,6 +47,11 @@ export interface BrandSettingsUpdate {
   accent_color?: string
   font_family?: string
   logo_url?: string | null
+  brand_name?: string | null
+  tagline?: string | null
+  brand_description?: string | null
+  audience?: string | null
+  voice?: string
   preview_layout?: string
   preview_panel?: string
   preview_accent?: string
@@ -63,7 +75,13 @@ export interface Preview {
   monthly_clicks: number
 }
 
-// Bulk generation + sitemap discovery
+// Generation runs (single + bulk) + sitemap discovery
+export interface PreviewJobCreateResponse {
+  job_id: string
+  /** Run record for the generation-activity list. Absent on older backends. */
+  batch_id?: string
+}
+
 export interface SitemapDiscoverResponse {
   domain: string
   count: number
@@ -88,7 +106,7 @@ export interface BulkResultItem {
 
 export interface BulkJobStatus {
   batch_id: string
-  status: 'running' | 'completed' | 'failed'
+  status: 'queued' | 'running' | 'completed' | 'failed'
   total: number
   completed: number
   failed: number
@@ -103,6 +121,10 @@ export interface BulkJobSummary {
   completed: number
   failed: number
   created_at: string | null
+  /** 'single' = one URL (create / regenerate), 'bulk' = a whole-site run. */
+  kind?: 'single' | 'bulk'
+  /** URL for single runs; null for bulk (the domain is the label there). */
+  label?: string | null
 }
 
 export interface RecentBulkJobs {

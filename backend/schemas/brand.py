@@ -2,6 +2,10 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
+# Tone presets offered on the Brand & identity page. "auto" keeps today's
+# behaviour (infer the voice from the brand's colours and type).
+VOICE_CHOICES = ("auto", "professional", "confident", "friendly", "technical", "playful", "luxury")
+
 
 class BrandSettingsBase(BaseModel):
     """Base brand settings schema."""
@@ -10,6 +14,12 @@ class BrandSettingsBase(BaseModel):
     accent_color: str = Field(..., description="Accent brand color (hex)")
     font_family: str = Field(default="Inter", description="Font family name")
     logo_url: Optional[str] = Field(None, description="URL to logo image")
+    # Identity — feeds the copy and the brand name on generated cards
+    brand_name: Optional[str] = Field(None, description="Brand/site name shown on cards")
+    tagline: Optional[str] = Field(None, description="One-line descriptor of the site")
+    brand_description: Optional[str] = Field(None, description="What the site/company does")
+    audience: Optional[str] = Field(None, description="Who the site is for")
+    voice: str = Field(default="auto", description=" | ".join(VOICE_CHOICES))
     # Preview-card controls ("auto" = let the AI decide)
     preview_layout: str = Field(default="auto", description="auto | typographic | split")
     preview_panel: str = Field(default="auto", description="auto | primary | secondary | dark | light")
@@ -25,6 +35,11 @@ class BrandSettingsUpdate(BaseModel):
     accent_color: Optional[str] = None
     font_family: Optional[str] = None
     logo_url: Optional[str] = None
+    brand_name: Optional[str] = None
+    tagline: Optional[str] = None
+    brand_description: Optional[str] = None
+    audience: Optional[str] = None
+    voice: Optional[str] = None
     preview_layout: Optional[str] = None
     preview_panel: Optional[str] = None
     preview_accent: Optional[str] = None

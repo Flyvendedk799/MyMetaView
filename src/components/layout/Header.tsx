@@ -103,12 +103,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
           
           {/* Quick create button */}
           <button
-            onClick={() => navigate('/app/sites/new')}
+            onClick={() => navigate('/app/previews?new=1')}
             className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-semibold text-primary-500
                      hover:bg-brand-50 rounded-lg transition-colors"
           >
             <PlusIcon className="w-5 h-5" />
-            <span>New Site</span>
+            <span>New Preview</span>
           </button>
           
           {/* Notifications */}

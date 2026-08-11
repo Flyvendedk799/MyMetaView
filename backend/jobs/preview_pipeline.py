@@ -107,6 +107,11 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
                 "accent_color": brand_schema.accent_color,
                 "font_family": brand_schema.font_family,
                 "logo_url": brand_schema.logo_url,
+                # Identity the user typed in (Brand & identity page). Blank fields
+                # mean "keep inferring from the page", so nothing regresses for
+                # accounts that never filled these in.
+                "brand_name": (getattr(brand_schema, "brand_name", None) or "").strip() or None,
+                "tagline": (getattr(brand_schema, "tagline", None) or "").strip() or None,
                 # User's preview-card preferences — honoured by the engine's
                 # compositing step (layout/panel/accent overrides, force-brand-
                 # colours, hide-watermark). Layout/panel/accent are gated behind

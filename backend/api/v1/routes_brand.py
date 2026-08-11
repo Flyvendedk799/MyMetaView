@@ -2,7 +2,7 @@
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from backend.schemas.brand import BrandSettings, BrandSettingsUpdate
+from backend.schemas.brand import BrandSettings, BrandSettingsUpdate, VOICE_CHOICES
 from backend.models.brand import BrandSettings as BrandSettingsModel
 from backend.models.user import User
 from backend.db.session import get_db
@@ -57,6 +57,11 @@ def get_brand_settings(
         "accent_color": settings.accent_color,
         "font_family": settings.font_family,
         "logo_url": settings.logo_url,
+        "brand_name": getattr(settings, "brand_name", None),
+        "tagline": getattr(settings, "tagline", None),
+        "brand_description": getattr(settings, "brand_description", None),
+        "audience": getattr(settings, "audience", None),
+        "voice": getattr(settings, "voice", "auto") or "auto",
         "preview_layout": getattr(settings, "preview_layout", "auto") or "auto",
         "preview_panel": getattr(settings, "preview_panel", "auto") or "auto",
         "preview_accent": getattr(settings, "preview_accent", "auto") or "auto",
@@ -92,6 +97,16 @@ def update_brand_settings(
         db.add(settings)
 
     update_data = settings_update.model_dump(exclude_unset=True)
+    if "voice" in update_data and update_data["voice"] not in VOICE_CHOICES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"voice must be one of: {', '.join(VOICE_CHOICES)}",
+        )
+    # Free-text identity fields: trim, and treat "" as "unset" so the engine keeps
+    # inferring rather than being handed an empty string.
+    for field in ("brand_name", "tagline", "brand_description", "audience"):
+        if field in update_data and isinstance(update_data[field], str):
+            update_data[field] = update_data[field].strip() or None
     for field, value in update_data.items():
         setattr(settings, field, value)
 
@@ -195,13 +210,17 @@ def render_brand_preview(
         except Exception:
             logo_data_uri = None
 
-    org_slug = (current_org.name or "yourdomain").lower().replace(" ", "")
+    # The sample uses the saved identity where it exists, so a name/tagline change
+    # is visible on the card the moment it's saved.
+    brand_name = (getattr(s, "brand_name", None) or current_org.name or "").strip() or None
+    tagline = (getattr(s, "tagline", None) or "").strip() or None
+    org_slug = (brand_name or "yourdomain").lower().replace(" ", "")
     try:
         png = render_premium_card(
             title="Plans that scale with your team",
-            subtitle="Usage-based pricing that grows only when you do.",
+            subtitle=tagline or "Usage-based pricing that grows only when you do.",
             url=f"{org_slug}.com/pricing",
-            brand_name=current_org.name,
+            brand_name=brand_name,
             colors={"primary_color": primary, "secondary_color": secondary, "accent_color": accent},
             composition=composition,
             logo_data_uri=logo_data_uri,
