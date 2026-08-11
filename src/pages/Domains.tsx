@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { 
+import { Link } from 'react-router-dom'
+import {
   PlusIcon, 
   TrashIcon, 
   CheckCircleIcon, 
@@ -17,7 +18,9 @@ import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import EmptyState from '../components/ui/EmptyState'
 import Alert from '../components/ui/Alert'
+import CodeBlock from '../components/ui/CodeBlock'
 import { SkeletonList } from '../components/ui/Skeleton'
+import { buildSnippetTag } from '../lib/snippet'
 import { useDomains } from '../hooks/useDomains'
 import { usePreviews } from '../hooks/usePreviews'
 import { startDomainVerification, checkDomainVerification, debugDomainVerification } from '../api/client'
@@ -381,19 +384,24 @@ export default function Domains() {
             <SparklesIcon className="w-6 h-6 text-primary mt-0.5" />
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-secondary mb-2">Embed Script</h3>
-              <p className="text-secondary-600 mb-4">
+              <p className="text-secondary-600">
                 Add this script tag to your website's <code className="px-1.5 py-0.5 bg-secondary-100 rounded text-sm font-mono">&lt;head&gt;</code> to enable automatic URL previews.
               </p>
             </div>
           </div>
-          <div className="bg-secondary-900 rounded-lg p-4 overflow-x-auto">
-            <code className="text-sm text-secondary-100 font-mono">
-              {`<script src="https://mymetaview.com/static/snippet.js"></script>`}
-            </code>
+          <CodeBlock code={buildSnippetTag()} copyLabel="Copy tag" wrap />
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link
+              to="/app/install"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              One-click install for WordPress, Shopify, Tag Manager and more
+              <ArrowRightIcon className="w-4 h-4" />
+            </Link>
           </div>
           <p className="text-xs text-secondary-500 mt-3 flex items-start space-x-1">
             <InformationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>Copy and paste this script tag into your website's <code className="px-1 py-0.5 bg-secondary-100 rounded">&lt;head&gt;</code> section. It will automatically generate previews for all pages.</span>
+            <span>Paste it once into a shared header or template and it covers every page. Then use the Install page to confirm it is working.</span>
           </p>
         </Card>
       )}

@@ -376,6 +376,106 @@ export async function deleteDomain(id: number): Promise<void> {
   })
 }
 
+// ============================================================================
+// Snippet install
+// ============================================================================
+
+export interface InstallDomainStatus {
+  id: number
+  name: string
+  status: string
+  verified: boolean
+  snippet_installed_at: string | null
+  snippet_last_seen_at: string | null
+  snippet_version: string | null
+  snippet_live: boolean
+  snippet_outdated: boolean
+}
+
+export interface InstallConfig {
+  snippet_url: string
+  snippet_tag: string
+  snippet_version: string
+  api_origin: string
+  domains: InstallDomainStatus[]
+}
+
+export type InstallVerifyStatus = 'installed' | 'not_found' | 'unreachable' | 'blocked'
+
+export interface VerifyInstallResponse {
+  ok: boolean
+  checked_url: string
+  snippet_found: boolean
+  snippet_version: string | null
+  heartbeat_seen: boolean
+  heartbeat_at: string | null
+  og_title: string | null
+  og_image: string | null
+  has_own_og_tags: boolean
+  status: InstallVerifyStatus
+  message: string
+  hint: string | null
+}
+
+export async function fetchInstallConfig(): Promise<InstallConfig> {
+  return fetchApi<InstallConfig>('/api/v1/install/config')
+}
+
+export async function verifyInstall(payload: {
+  domain_id?: number
+  url?: string
+}): Promise<VerifyInstallResponse> {
+  return fetchApi<VerifyInstallResponse>('/api/v1/install/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    timeout: 30000, // The backend fetches a third-party page; allow for a slow origin.
+  })
+}
+
+export type InstallArtifact = 'wordpress-plugin' | 'gtm-container' | 'cloudflare-worker'
+
+const INSTALL_ARTIFACT_FILENAMES: Record<InstallArtifact, string> = {
+  'wordpress-plugin': 'mymetaview-previews.zip',
+  'gtm-container': 'mymetaview-gtm-container.json',
+  'cloudflare-worker': 'mymetaview-worker.js',
+}
+
+/**
+ * Download a generated install file and hand it to the browser.
+ *
+ * These endpoints need an auth header, so a plain <a href> will not do — we
+ * fetch the bytes and drive the download from an object URL.
+ */
+export async function downloadInstallArtifact(
+  artifact: InstallArtifact,
+  domainId?: number
+): Promise<void> {
+  const query = domainId !== undefined ? `?domain_id=${domainId}` : ''
+  const url = `${getApiBaseUrl()}/api/v1/install/downloads/${artifact}${query}`
+
+  const headers: Record<string, string> = {}
+  const token = getAuthToken()
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const selectedOrgId = localStorage.getItem('selected_org_id')
+  if (selectedOrgId) headers['X-Organization-ID'] = selectedOrgId
+
+  const response = await fetch(url, { method: 'GET', headers })
+  if (!response.ok) {
+    const detail = await response.json().catch(() => null)
+    throw new Error(detail?.detail || `Download failed (${response.status})`)
+  }
+
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = INSTALL_ARTIFACT_FILENAMES[artifact]
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(objectUrl)
+}
+
 // Brand settings endpoints
 export async function fetchBrandSettings(): Promise<BrandSettings> {
   return fetchApi<BrandSettings>('/api/v1/brand')

@@ -18,6 +18,10 @@ class Domain(Base):
     verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     monthly_clicks = Column(Integer, default=0, nullable=False)
+    # Snippet install tracking, reported by the embed script's heartbeat.
+    snippet_installed_at = Column(DateTime, nullable=True)
+    snippet_last_seen_at = Column(DateTime, nullable=True)
+    snippet_version = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     organization_id = Column(Integer, ForeignKey("organizations.id"), index=True, nullable=True)
     site_id = Column(Integer, ForeignKey("published_sites.id"), nullable=True, index=True)

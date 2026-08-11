@@ -11,6 +11,10 @@ export interface Domain {
   created_at: string // ISO datetime
   monthly_clicks: number
   site_id?: number | null // ID of the published site using this domain
+  // Reported by the embed snippet's heartbeat
+  snippet_installed_at?: string | null
+  snippet_last_seen_at?: string | null
+  snippet_version?: string | null
 }
 
 export interface DomainCreate {

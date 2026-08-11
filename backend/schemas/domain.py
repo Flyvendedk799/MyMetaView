@@ -35,10 +35,10 @@ class Domain(DomainBase):
     verification_method: Optional[str] = None
     verification_token: Optional[str] = None
     verified_at: Optional[datetime] = None
-    verification_method: Optional[str] = None
-    verification_token: Optional[str] = None
-    verified_at: Optional[datetime] = None
-    
+    snippet_installed_at: Optional[datetime] = Field(None, description="When the embed snippet first reported in")
+    snippet_last_seen_at: Optional[datetime] = Field(None, description="When the embed snippet was last seen")
+    snippet_version: Optional[str] = Field(None, description="Version of the embed snippet last seen")
+
     class Config:
         json_schema_extra = {
             "example": {

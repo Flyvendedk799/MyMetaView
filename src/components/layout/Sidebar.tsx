@@ -24,6 +24,7 @@ import {
   DocumentIcon,
   FolderIcon,
   ArrowLeftIcon,
+  CodeBracketIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../hooks/useAuth'
 import { CountBadge } from '../ui/Badge'
@@ -45,6 +46,7 @@ const mainNavigation: NavItem[] = [
   { name: 'Dashboard', href: '/app', icon: HomeIcon },
   { name: 'My Sites', href: '/app/sites', icon: NewspaperIcon },
   { name: 'Domains', href: '/app/domains', icon: GlobeAltIcon },
+  { name: 'Install', href: '/app/install', icon: CodeBracketIcon },
   { name: 'Preview Gallery', href: '/app/previews', icon: PhotoIcon },
 ]
 

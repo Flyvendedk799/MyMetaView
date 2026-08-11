@@ -4,6 +4,7 @@ import Login from '../pages/Login'
 import Signup from '../pages/Signup'
 import Dashboard from '../pages/Dashboard'
 import Domains from '../pages/Domains'
+import Install from '../pages/Install'
 import Brand from '../pages/Brand'
 import Previews from '../pages/Previews'
 import Analytics from '../pages/Analytics'
@@ -74,6 +75,14 @@ export default function Router() {
         element={
           <ProtectedRoute>
             <Domains />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/install"
+        element={
+          <ProtectedRoute>
+            <Install />
           </ProtectedRoute>
         }
       />

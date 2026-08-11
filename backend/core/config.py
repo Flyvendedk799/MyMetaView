@@ -91,7 +91,12 @@ class Settings:
     
     # Frontend URL for invite links
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
-    
+
+    # Public origin the embed snippet is served from and calls back to. This ends
+    # up baked into every customer's <script> tag, so it must be the real
+    # public hostname rather than an internal one.
+    PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "https://mymetaview.com")
+
     # CORS allowed origins (comma-separated list)
     CORS_ALLOWED_ORIGINS: str = os.getenv("CORS_ALLOWED_ORIGINS", "")
     
