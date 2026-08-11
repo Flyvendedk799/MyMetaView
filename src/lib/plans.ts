@@ -43,7 +43,7 @@ export const PLAN_MARKETING: Record<
   free: { description: 'Kick the tires', cta: 'Get started', support: 'Community support' },
   starter: { description: 'Perfect for small websites', cta: 'Start free trial', support: 'Email support' },
   growth: { description: 'For growing businesses', cta: 'Start free trial', support: 'Priority support' },
-  agency: { description: 'For agencies and teams', cta: 'Contact sales', support: 'Dedicated support' },
+  agency: { description: 'For agencies and teams', cta: 'Start free trial', support: 'Dedicated support' },
 }
 
 // Stripe price IDs per plan key. plans.py maps starter→BASIC, growth→PRO,

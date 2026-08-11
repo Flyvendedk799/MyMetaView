@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Seo from '../components/Seo'
 import SiteNav from '../components/SiteNav'
@@ -39,16 +39,16 @@ type Step = 'input' | 'preview'
  * MetaView Demo Page - Improved UX Version
  * 
  * IMPROVEMENTS IMPLEMENTED:
- * 1. âœ… Removed forced email/consent gating - Users can generate previews instantly
- * 2. âœ… Enhanced platform-specific previews with realistic layouts and truncation
- * 3. âœ… Added always-visible AI reasoning summary (non-technical, concise)
- * 4. âœ… Improved platform switching with proper aspect ratios and styling
+ * 1. ✅ Removed forced email/consent gating - Users can generate previews instantly
+ * 2. ✅ Enhanced platform-specific previews with realistic layouts and truncation
+ * 3. ✅ Added always-visible AI reasoning summary (non-technical, concise)
+ * 4. ✅ Improved platform switching with proper aspect ratios and styling
  * 
  * ENHANCEMENTS IN V2:
- * 1. âœ… Enhanced brand extraction (logo, colors, hero imagery) with brand_extractor.py
- * 2. âœ… Parallel processing for 37% faster generation (~30s vs ~48s)
- * 3. âœ… Brand-aligned og:images with extracted brand elements
- * 4. âœ… Improved caching and optimization
+ * 1. ✅ Enhanced brand extraction (logo, colors, hero imagery) with brand_extractor.py
+ * 2. ✅ Parallel processing for 37% faster generation (~30s vs ~48s)
+ * 3. ✅ Brand-aligned og:images with extracted brand elements
+ * 4. ✅ Improved caching and optimization
  */
 export default function Demo() {
   // Use the generation hook for all preview generation logic
@@ -74,7 +74,6 @@ export default function Demo() {
   const [showEmailSuccess, setShowEmailSuccess] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState<string>('facebook')
   const [showEmailPopup, setShowEmailPopup] = useState(false)
-  const [pendingUrl, setPendingUrl] = useState<string>('')
 
   const [emailError, setEmailError] = useState<string | null>(null)
   const [urlError, setUrlError] = useState<string | null>(null)
@@ -84,9 +83,8 @@ export default function Demo() {
   const [copySuccess, setCopySuccess] = useState(false)
   const [urlHistory, setUrlHistory] = useState<string[]>([])
 
-  const heroRef = useRef<HTMLDivElement>(null)
-  const lastLoggedImageUrlRef = useRef<string | null>(null)
   const imageToCopyRef = useRef<HTMLImageElement | null>(null)
+  const reasoningChainRef = useRef<HTMLDetailsElement | null>(null)
 
   // Sync hook error to local previewError state
   useEffect(() => {
@@ -243,18 +241,16 @@ export default function Demo() {
   }, [preview?.composited_preview_image_url])
 
   useEffect(() => {
+    // rAF-throttled: scrollY only moves two decorative blobs, so re-rendering
+    // this page on every scroll event was pure waste.
+    let ticking = false
     const handleScroll = () => {
-      setScrollY(window.pageYOffset)
-      
-      // Parallax effect on hero
-      const hero = heroRef.current
-      if (hero) {
-        const heroRect = hero.getBoundingClientRect()
-        const heroTop = heroRect.top + window.pageYOffset
-        const scrolled = window.pageYOffset
-        const parallaxOffset = (scrolled - heroTop) * 0.3
-        hero.style.transform = `translateY(${parallaxOffset}px)`
-      }
+      if (ticking) return
+      ticking = true
+      window.requestAnimationFrame(() => {
+        setScrollY(window.pageYOffset)
+        ticking = false
+      })
     }
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
@@ -419,7 +415,7 @@ export default function Demo() {
       id: 'facebook', 
       name: 'Facebook', 
       color: 'bg-primary-500', 
-      icon: 'ðŸ‘¤',
+      icon: '👤',
       aspectRatio: '1.91/1', // Facebook link preview aspect ratio
       maxTitleLength: 60,
       maxDescLength: 200,
@@ -428,7 +424,7 @@ export default function Demo() {
       id: 'twitter', 
       name: 'X (Twitter)', 
       color: 'bg-ink', 
-      icon: 'ðŸ¦',
+      icon: '🐦',
       aspectRatio: '1.91/1',
       maxTitleLength: 70,
       maxDescLength: 200,
@@ -437,7 +433,7 @@ export default function Demo() {
       id: 'linkedin', 
       name: 'LinkedIn', 
       color: 'bg-primary-600', 
-      icon: 'ðŸ’¼',
+      icon: '💼',
       aspectRatio: '1.91/1',
       maxTitleLength: 60,
       maxDescLength: 200,
@@ -446,7 +442,7 @@ export default function Demo() {
       id: 'slack', 
       name: 'Slack', 
       color: 'bg-primary-500', 
-      icon: 'ðŸ’¬',
+      icon: '💬',
       aspectRatio: '1.91/1',
       maxTitleLength: 50,
       maxDescLength: 150,
@@ -455,7 +451,7 @@ export default function Demo() {
       id: 'instagram', 
       name: 'Instagram', 
       color: 'bg-primary-500', 
-      icon: 'ðŸ“·',
+      icon: '📷',
       aspectRatio: '1/1', // Instagram is square
       maxTitleLength: 50,
       maxDescLength: 125,
@@ -499,133 +495,7 @@ export default function Demo() {
 
       {/* Navigation (shared dark identity) */}
       <SiteNav />
-      {false && (
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-b border-secondary-100/80 transition-all duration-300" style={{ boxShadow: scrollY > 10 ? '0 4px 20px rgba(0,0,0,0.06)' : 'none' }}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-12">
-          <div className="flex items-center justify-between h-14 sm:h-16 md:h-18">
-            <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
-              <div className="relative">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary-500 rounded-xl flex items-center justify-center shadow-card transition-all duration-300">
-                  <span className="text-white font-display font-semibold text-base sm:text-lg">M</span>
-                </div>
-                <div className="absolute -inset-1 hidden" />
-              </div>
-              <span className="text-lg sm:text-xl font-display font-semibold text-secondary-900 tracking-tight">MetaView</span>
-            </Link>
-            <div className="hidden lg:flex items-center space-x-10">
-              {[
-                { href: '/#product', label: 'Product' },
-                { href: '/#features', label: 'Features' },
-                { href: '/#pricing', label: 'Pricing' },
-                { href: '/#docs', label: 'Docs' },
-              ].map((item) => (
-                <Link 
-                  key={item.label}
-                  to={item.href} 
-                  className="relative py-1 font-semibold text-sm transition-all duration-200 group text-secondary-600 hover:text-secondary-900"
-                >
-                  {item.label}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-500 group-hover:w-full transition-all duration-300" />
-                </Link>
-              ))}
-              <Link 
-                to="/blog" 
-                className="relative py-1 font-semibold text-sm transition-all duration-200 group text-secondary-600 hover:text-secondary-900"
-              >
-                Blog
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-500 group-hover:w-full transition-all duration-300" />
-              </Link>
-              <Link to="/app" className="text-secondary-600 hover:text-secondary-900 transition-all duration-200 font-semibold text-sm relative group py-1">
-                Login
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-500 group-hover:w-full transition-all duration-300" />
-              </Link>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Link
-                to="/app"
-                className="hidden sm:flex group relative px-5 sm:px-6 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 hover:scale-[1.04] active:scale-[0.98] overflow-hidden min-h-[44px] items-center justify-center select-none"
-              >
-                <span className="relative z-10 flex items-center">
-                  Get Started Free
-                  <ArrowUpRightIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" />
-                </span>
-                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-paper/10" />
-              </Link>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 text-secondary-700 hover:text-secondary-900 hover:bg-secondary-100 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-                aria-expanded={mobileMenuOpen}
-              >
-                {mobileMenuOpen ? (
-                  <XMarkIcon className="w-6 h-6" />
-                ) : (
-                  <Bars3Icon className="w-6 h-6" />
-                )}
-              </button>
-            </div>
-          </div>
-          
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-secondary-100 py-4 bg-white/95 backdrop-blur-xl">
-              <div className="flex flex-col space-y-1">
-                <Link 
-                  to="/#product" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 text-secondary-700 hover:bg-accent-50 hover:text-accent-600 rounded-xl transition-colors font-semibold text-base min-h-[44px] flex items-center"
-                >
-                  Product
-                </Link>
-                <Link 
-                  to="/#features" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 text-secondary-700 hover:bg-accent-50 hover:text-accent-600 rounded-xl transition-colors font-semibold text-base min-h-[44px] flex items-center"
-                >
-                  Features
-                </Link>
-                <Link 
-                  to="/#pricing" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 text-secondary-700 hover:bg-accent-50 hover:text-accent-600 rounded-xl transition-colors font-semibold text-base min-h-[44px] flex items-center"
-                >
-                  Pricing
-                </Link>
-                <Link 
-                  to="/#docs" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 text-secondary-700 hover:bg-accent-50 hover:text-accent-600 rounded-xl transition-colors font-semibold text-base min-h-[44px] flex items-center"
-                >
-                  Docs
-                </Link>
-                <Link 
-                  to="/blog" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 text-secondary-700 hover:bg-accent-50 hover:text-accent-600 rounded-xl transition-colors font-semibold text-base min-h-[44px] flex items-center"
-                >
-                  Blog
-                </Link>
-                <Link 
-                  to="/app" 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 text-secondary-700 hover:bg-accent-50 hover:text-accent-600 rounded-xl transition-colors font-semibold text-base min-h-[44px] flex items-center"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/app"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="mx-4 mt-2 px-6 py-3 bg-accent-500 text-white rounded-xl font-bold text-sm transition-all duration-300 min-h-[44px] flex items-center justify-center "
-                >
-                  Get Started Free
-                  <ArrowUpRightIcon className="w-4 h-4 ml-2" />
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-      )}
+
 
       {/* Hero Section */}
       <section className="relative pt-20 sm:pt-24 md:pt-28 pb-8 sm:pb-12 md:pb-20 px-3 sm:px-4 md:px-6 lg:px-12">
@@ -664,19 +534,6 @@ export default function Demo() {
                 <div className="absolute inset-0 bg-paper/[0.02]" />
                 
                 <div className="relative p-4 sm:p-6 md:p-8 lg:p-10">
-                  {/* Success overlay */}
-                  {showEmailSuccess && (
-                    <div className="absolute inset-0 bg-success-500/10 backdrop-blur-sm z-10 flex items-center justify-center animate-fade-in">
-                      <div className="bg-ink rounded-2xl p-8 shadow-overlay border border-success-500/40 animate-scale-in">
-                        <div className="w-16 h-16 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                          <CheckIcon className="w-8 h-8 text-white" />
-                        </div>
-                        <h3 className="text-xl font-display font-semibold text-paper mb-2 text-center">Subscribed!</h3>
-                        <p className="text-paper/70 text-center">You'll receive updates from MetaView</p>
-                      </div>
-                    </div>
-                  )}
-
                   <form onSubmit={handleUrlSubmit} className="space-y-6" noValidate>
                     {/* URL Input - Primary */}
                     <div>
@@ -751,7 +608,7 @@ export default function Demo() {
                           ))}
                           {urlHistory.length > 0 && (
                             <>
-                              <span className="px-2 py-1.5 text-xs text-paper/30">â€¢</span>
+                              <span className="px-2 py-1.5 text-xs text-paper/30">•</span>
                               {urlHistory.slice(0, 2).map((historyUrl, index) => {
                                 try {
                                   const domain = new URL(historyUrl).hostname.replace('www.', '')
@@ -876,7 +733,7 @@ export default function Demo() {
             progress={generationProgress}
             statusMessage={generationStatus}
             estimatedTimeRemaining={estimatedTimeRemaining}
-            url={pendingUrl || url}
+            url={url}
             showCelebration={showCompletionCelebration}
             onCancel={cancelGeneration}
           />
@@ -885,6 +742,16 @@ export default function Demo() {
           {showEmailPopup && preview && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
               <div className="bg-ink border border-paper/10 rounded-2xl shadow-overlay max-w-md w-full p-8 relative animate-scale-in">
+                {/* Subscription confirmed — replaces the form briefly before the popup closes */}
+                {showEmailSuccess && (
+                  <div className="absolute inset-0 z-10 bg-ink rounded-2xl flex flex-col items-center justify-center animate-fade-in">
+                    <div className="w-16 h-16 bg-success-500 rounded-full flex items-center justify-center mb-4">
+                      <CheckIcon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-display font-semibold text-paper mb-1">Subscribed!</h3>
+                    <p className="text-paper/70 text-sm">You'll receive updates from MetaView</p>
+                  </div>
+                )}
                 {/* Close button */}
                 <button
                   onClick={() => {
@@ -1119,7 +986,7 @@ export default function Demo() {
                       Processing Time: <span className="font-bold text-paper">{(preview.processing_time_ms / 1000).toFixed(1)}s</span>
                       {preview.processing_time_ms < 35000 && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-success-500/15 border border-success-500/30 rounded-full text-xs font-medium text-success-500">
-                          âš¡ Fast
+                          ⚡ Fast
                         </span>
                       )}
                     </div>
@@ -1197,25 +1064,15 @@ export default function Demo() {
                       </p>
                       <button
                         onClick={() => {
-                          // Find and scroll to the AI Reasoning Chain accordion
-                          const detailsElements = document.querySelectorAll('details')
-                          
-                          for (let i = 0; i < detailsElements.length; i++) {
-                            const details = detailsElements[i]
-                            const summary = details.querySelector('summary')
-                            if (summary && summary.textContent?.includes('AI Reasoning Chain')) {
-                              // Found it - scroll and open
-                              details.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                              setTimeout(() => {
-                                (details as HTMLDetailsElement).open = true
-                              }, 300)
-                              break
-                            }
+                          const details = reasoningChainRef.current
+                          if (details) {
+                            details.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                            details.open = true
                           }
                         }}
                         className="mt-3 text-xs text-accent-500 hover:text-accent-400 font-semibold transition-colors"
                       >
-                        View full reasoning chain â†’
+                        View full reasoning chain →
                       </button>
                     </div>
                   </div>
@@ -1228,7 +1085,7 @@ export default function Demo() {
                 <div className="relative">
                   <div className="text-center mb-6">
                     <h3 className="text-2xl font-display font-semibold text-paper mb-2">Generated Preview</h3>
-                    <p className="text-paper/60">Your og:image â€” optimised for every social platform</p>
+                    <p className="text-paper/60">Your og:image — optimised for every social platform</p>
                   </div>
 
                   {/* Brand Elements Showcase */}
@@ -1294,7 +1151,7 @@ export default function Demo() {
                     </div>
                   )}
 
-                  {/* Preview image â€” shown at full display width so users can appreciate the quality */}
+                  {/* Preview image — shown at full display width so users can appreciate the quality */}
                   <div className="w-full">
                     {preview ? (
                       <ReconstructedPreview preview={preview} />
@@ -1324,10 +1181,10 @@ export default function Demo() {
                           This is how your link appears when shared on social platforms
                         </p>
                         <p className="text-xs text-paper/40 italic px-2 hidden sm:block">
-                          Preview images are non-interactive â€” this is exactly how platforms render your link. Images are optimized for maximum readability and brand recognition.
+                          Preview images are non-interactive — this is exactly how platforms render your link. Images are optimized for maximum readability and brand recognition.
                         </p>
                         <p className="text-xs text-paper/40 mt-2 px-2">
-                          ðŸ’¡ Tip: The preview image is automatically set as <code className="px-1 py-0.5 bg-paper/10 text-paper/70 rounded text-xs font-mono">og:image</code> for social sharing
+                          💡 This is the og:image your pages serve once MetaView is installed on your site
                         </p>
                       </div>
                       <div className="max-w-full sm:max-w-2xl mx-auto px-2 sm:px-0">
@@ -1396,7 +1253,7 @@ export default function Demo() {
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>
-                                This image is automatically set as <code className="px-1 py-0.5 bg-paper/10 text-paper/70 rounded text-xs font-mono">og:image</code> for social sharing
+                                Served as this page's <code className="px-1 py-0.5 bg-paper/10 text-paper/70 rounded text-xs font-mono">og:image</code> once MetaView is installed
                               </p>
                             </div>
                           </div>
@@ -1475,7 +1332,7 @@ export default function Demo() {
               )}
 
               {/* Layout Reasoning - Always show with meaningful content */}
-              <details className="bg-paper/5 rounded-xl border border-paper/10 overflow-hidden">
+              <details ref={reasoningChainRef} className="bg-paper/5 rounded-xl border border-paper/10 overflow-hidden">
                 <summary className="px-6 py-4 cursor-pointer hover:bg-paper/10 transition-colors flex items-center justify-between">
                   <span className="font-display font-semibold text-paper flex items-center">
                     <svg className="w-5 h-5 mr-2 text-paper/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1544,8 +1401,8 @@ export default function Demo() {
                   <div className="pt-3 border-t border-paper/10">
                     <div className="flex flex-wrap gap-4 text-xs text-paper/50">
                       <span>â±ï¸ Generated in {(preview.processing_time_ms / 1000).toFixed(1)}s</span>
-                      <span>ðŸŽ¯ Confidence: {Math.round(preview.reasoning_confidence * 100)}%</span>
-                      <span>ðŸ“Š Quality: {preview.blueprint.overall_quality}</span>
+                      <span>🎯 Confidence: {Math.round(preview.reasoning_confidence * 100)}%</span>
+                      <span>📊 Quality: {preview.blueprint.overall_quality}</span>
                     </div>
                   </div>
                 </div>
@@ -1661,7 +1518,7 @@ export default function Demo() {
                                       </div>
                                       <div className="flex items-center space-x-1 text-[11px] text-secondary-500">
                                         <span>Just now</span>
-                                        <span>Â·</span>
+                                        <span>·</span>
                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z" clipRule="evenodd" />
                                         </svg>
@@ -1682,7 +1539,7 @@ export default function Demo() {
                                         {preview.cta_text ? (
                                           <>Check this out! {preview.cta_text}</>
                                         ) : (
-                                          <>Check out this link! ðŸ”—</>
+                                          <>Check out this link! 🔗</>
                                         )}
                                       </p>
                                     </div>
@@ -1796,7 +1653,7 @@ export default function Demo() {
               <div className="bg-ink rounded-2xl p-10 text-center text-white relative overflow-hidden">
                 <div className="absolute inset-0 hidden" />
                 <div className="relative z-10 max-w-2xl mx-auto">
-                  <h3 className="text-3xl font-display font-semibold text-paper mb-3">Ready to Create Unlimited Previews?</h3>
+                  <h3 className="text-3xl font-display font-semibold text-paper mb-3">Ready to make every share look like this?</h3>
                   <p className="text-paper/70 mb-2 text-lg font-semibold">
                     Increase click-through rates with brand-aware social previews
                   </p>
@@ -1806,7 +1663,7 @@ export default function Demo() {
                   <div className="flex flex-wrap items-center justify-center gap-6 mb-6">
                     <div className="flex items-center space-x-2 text-sm text-paper/60">
                       <CheckIcon className="w-5 h-5 text-success-500" />
-                      <span>Unlimited previews</span>
+                      <span>14-day free trial</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-paper/60">
                       <CheckIcon className="w-5 h-5 text-success-500" />
@@ -1820,7 +1677,7 @@ export default function Demo() {
                   <div className="mb-6 text-sm text-paper/50">
                     <span className="inline-flex items-center gap-1">
                       <ShieldCheckIcon className="w-4 h-4 text-success-400" />
-                      Free trial Â· No credit card required
+                      Free trial · No credit card required
                     </span>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">

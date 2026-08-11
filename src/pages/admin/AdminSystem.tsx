@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowPathIcon, ExclamationTriangleIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -197,7 +197,7 @@ export default function AdminSystem() {
                 <p className={`text-sm font-medium ${
                   deploymentResult.success ? 'text-success-800' : 'text-error-800'
                 }`}>
-                  {deploymentResult.success ? 'âœ“ ' : 'âœ— '}
+                  {deploymentResult.success ? '✓ ' : '✗ '}
                   {deploymentResult.message}
                 </p>
                 {deploymentResult.branch_merged && (

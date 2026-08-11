@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ClipboardDocumentIcon, CheckIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -294,7 +294,7 @@ export default function AdminActivity() {
                     className="shrink-0 mt-0.5 px-1 py-0.5 rounded hover:bg-secondary-200 transition-colors text-[10px] text-secondary-400 group-hover:text-secondary-600"
                     title="Copy full log as pretty JSON"
                   >
-                    {isCopiedFull ? 'âœ“' : 'full'}
+                    {isCopiedFull ? '✓' : 'full'}
                   </button>
                   {/* Copy for support */}
                   <button
@@ -302,7 +302,7 @@ export default function AdminActivity() {
                     className="shrink-0 mt-0.5 px-1 py-0.5 rounded hover:bg-secondary-200 transition-colors text-[10px] text-secondary-400 group-hover:text-secondary-600"
                     title="Copy human-readable + JSON for support tickets"
                   >
-                    {isCopiedSupport ? 'âœ“' : 'support'}
+                    {isCopiedSupport ? '✓' : 'support'}
                   </button>
 
                   {/* Timestamp */}

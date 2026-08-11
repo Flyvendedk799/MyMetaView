@@ -18,57 +18,12 @@ import { getPlans } from '../api/client'
 import { FALLBACK_PLANS, toDisplayPlan, type DisplayPlan } from '../lib/plans'
 
 // Animated counter hook for stats
-function useCountUp(target: number, duration: number = 2000, startOnView: boolean = true) {
-  const [count, setCount] = useState(0)
-  const [hasStarted, setHasStarted] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!startOnView) {
-      setHasStarted(true)
-    }
-  }, [startOnView])
-
-  useEffect(() => {
-    if (startOnView && ref.current) {
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting && !hasStarted) {
-            setHasStarted(true)
-          }
-        },
-        { threshold: 0.5 }
-      )
-      observer.observe(ref.current)
-      return () => observer.disconnect()
-    }
-  }, [startOnView, hasStarted])
-
-  useEffect(() => {
-    if (!hasStarted) return
-
-    let startTime: number
-    const animate = (currentTime: number) => {
-      if (!startTime) startTime = currentTime
-      const progress = Math.min((currentTime - startTime) / duration, 1)
-      // Ease out cubic for smooth deceleration
-      const easeOut = 1 - Math.pow(1 - progress, 3)
-      setCount(Math.floor(easeOut * target))
-      if (progress < 1) {
-        requestAnimationFrame(animate)
-      }
-    }
-    requestAnimationFrame(animate)
-  }, [hasStarted, target, duration])
-
-  return { count, ref }
-}
 
 const steps = [
   {
     step: '01',
     title: 'Connect a domain',
-    description: 'One DNS record or one line of middleware. MetaView verifies it and starts crawling.',
+    description: 'Verify with a DNS record, HTML file, or meta tag. Then pull in your pages straight from your sitemap.',
   },
   {
     step: '02',
@@ -78,7 +33,7 @@ const steps = [
   {
     step: '03',
     title: 'Every link is covered',
-    description: 'New pages get metadata within minutes of publishing. Crawlers get the tags, humans get the image.',
+    description: 'Generate for one URL or your whole sitemap in one run. Crawlers get the tags, humans get the image.',
   },
 ]
 
@@ -97,12 +52,12 @@ const features = [
   },
   {
     title: 'Multi-Variant A/B/C Testing',
-    description: 'Generate three preview variants per URL. Test what resonates best automatically.',
+    description: 'Every URL gets up to three angles — benefit, proof, curiosity. Serve any of them per link.',
     icon: StarIcon,
     badge: 'Popular',
   },
   {
-    title: 'Real-Time Analytics',
+    title: 'Impression & Click Analytics',
     description: 'Track impressions, clicks, CTR, and performance metrics per domain and preview.',
     icon: ChartBarIcon,
     badge: null,
@@ -149,10 +104,6 @@ export default function Landing() {
   }, [])
 
   // Animated counters for stats section
-  const stat1 = useCountUp(2000, 2000)
-  const stat2 = useCountUp(40, 1500)
-  const stat3 = useCountUp(10, 1800)
-  const stat4 = useCountUp(99, 2200)
 
   useEffect(() => {
     // Intersection Observer for staggered fade-in animations
@@ -260,49 +211,33 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Stats band */}
+      {/* Product facts band — verifiable claims only */}
       <section className="bg-paper border-y border-line py-12 sm:py-16 px-4 sm:px-6 lg:px-12">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div ref={stat1.ref} className="flex flex-col items-center gap-1.5 text-center">
+            <div className="flex flex-col items-center gap-1.5 text-center">
               <span className="font-display font-semibold text-3xl sm:text-4xl lg:text-5xl tracking-display text-secondary-900 tabular-nums">
-                {stat1.count.toLocaleString()}+
+                ~20s
               </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Active teams</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">To a finished card</span>
             </div>
-            <div ref={stat2.ref} className="flex flex-col items-center gap-1.5 text-center">
+            <div className="flex flex-col items-center gap-1.5 text-center">
               <span className="font-display font-semibold text-3xl sm:text-4xl lg:text-5xl tracking-display text-secondary-900 tabular-nums">
-                {stat2.count}%
+                6
               </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Avg. CTR increase</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Card layouts</span>
             </div>
-            <div ref={stat3.ref} className="flex flex-col items-center gap-1.5 text-center">
+            <div className="flex flex-col items-center gap-1.5 text-center">
               <span className="font-display font-semibold text-3xl sm:text-4xl lg:text-5xl tracking-display text-secondary-900 tabular-nums">
-                {stat3.count}M+
+                3
               </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Previews generated</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Angles per URL</span>
             </div>
-            <div ref={stat4.ref} className="flex flex-col items-center gap-1.5 text-center">
+            <div className="flex flex-col items-center gap-1.5 text-center">
               <span className="font-display font-semibold text-3xl sm:text-4xl lg:text-5xl tracking-display text-secondary-900 tabular-nums">
-                {stat4.count}.9%
+                14d
               </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Uptime SLA</span>
-            </div>
-          </div>
-
-          <div className="border-t border-line mt-10 pt-8">
-            <p className="text-center font-mono text-[11px] uppercase tracking-[0.2em] text-secondary-400 mb-6">
-              Trusted by forward-thinking teams
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 lg:gap-16">
-              {['NordicStore', 'CloudWave', 'TechFlow', 'DataVault', 'StreamLine'].map((company) => (
-                <span
-                  key={company}
-                  className="text-xl sm:text-2xl font-display font-semibold tracking-display-sm text-secondary-300 hover:text-secondary-600 transition-colors cursor-default"
-                >
-                  {company}
-                </span>
-              ))}
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Free trial, no card</span>
             </div>
           </div>
         </div>
@@ -400,7 +335,7 @@ export default function Landing() {
             </h2>
             <p className="text-base leading-relaxed text-secondary-600 max-w-[48ch]">
               Slack unfurls, X cards, LinkedIn shares, iMessage bubbles — each platform reads your
-              tags differently. MetaView validates every preview against each one before it ships.
+              tags differently. MetaView shows you exactly how each one renders your card before you share.
             </p>
             <div className="flex flex-wrap gap-2">
               {platforms.map((platform, i) => (
@@ -532,7 +467,7 @@ export default function Landing() {
             </span>
             <span className="flex items-center gap-2">
               <CheckIcon className="w-4 h-4 text-success-500" />
-              14-day money back
+              14-day free trial
             </span>
           </div>
         </div>
@@ -556,8 +491,8 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto w-full">
-            <a
-              href="/docs"
+            <Link
+              to="/demo"
               className="bg-surface rounded-xl p-6 border border-line shadow-card hover:border-primary-500 hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-2"
             >
               <span className="font-mono text-xs text-accent-700">01</span>
@@ -565,8 +500,8 @@ export default function Landing() {
               <p className="text-sm leading-relaxed text-secondary-600">
                 Connect a domain and ship your first preview in under five minutes.
               </p>
-              <span className="mt-auto pt-2 font-mono text-[13px] text-primary-500">/docs → getting-started</span>
-            </a>
+              <span className="mt-auto pt-2 font-mono text-[13px] text-primary-500">Try the live demo →</span>
+            </Link>
             <a
               href="/docs"
               className="bg-surface rounded-xl p-6 border border-line shadow-card hover:border-primary-500 hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-2"

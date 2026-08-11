@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Seo from '../components/Seo'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
@@ -369,7 +369,7 @@ export default function Blog() {
                     onClick={() => handleCategoryFilter('')}
                     className="hover:text-accent-900"
                   >
-                    Ã—
+                    ×
                   </button>
                 </span>
               )}
@@ -385,7 +385,7 @@ export default function Blog() {
                     }}
                     className="hover:text-primary-900"
                   >
-                    Ã—
+                    ×
                   </button>
                 </span>
               )}
@@ -598,7 +598,7 @@ export default function Blog() {
               <Link to="/#pricing" className="hover:text-white transition-colors">Pricing</Link>
               <Link to="/app" className="hover:text-white transition-colors">Dashboard</Link>
             </div>
-            <span className="text-sm text-secondary-500">Â© 2024 MetaView. All rights reserved.</span>
+            <span className="text-sm text-secondary-500">© 2024 MetaView. All rights reserved.</span>
           </div>
         </div>
       </footer>
