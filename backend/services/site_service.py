@@ -23,19 +23,20 @@ def get_site_limit_for_plan(subscription_plan: Optional[str]) -> int:
     Returns:
         Maximum number of sites allowed
     """
+    # Aligned with core.plans (the canonical table) via resolve_plan_key so
+    # legacy Stripe names ("basic", "pro") map to real tiers instead of a
+    # separate, drifted plan list.
+    from backend.core.plans import resolve_plan_key
+
     plan_limits = {
-        None: 0,  # No plan
-        'free': 0,  # Free plan - no sites
-        'starter': 1,  # Starter plan - 1 site
-        'pro': 3,  # Pro plan - 3 sites
-        'enterprise': -1,  # Enterprise - unlimited
+        'free': 0,
+        'starter': 1,
+        'growth': 3,
+        'agency': -1,  # unlimited
     }
-    
-    if not subscription_plan:
-        return plan_limits.get(None, 0)
-    
-    plan_lower = subscription_plan.lower()
-    return plan_limits.get(plan_lower, 0)
+
+    key = resolve_plan_key(subscription_plan)
+    return plan_limits.get(key, 0)
 
 
 def check_site_limit(org: Organization, db: Session) -> Tuple[bool, str]:

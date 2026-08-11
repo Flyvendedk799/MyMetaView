@@ -26,7 +26,7 @@
 (function (window, document) {
   'use strict';
 
-  var VERSION = '2.0.0';
+  var VERSION = '2.1.0';
   var GUARD = '__mymetaview__';
 
   // Only ever run once per document, even if the tag is included twice.
@@ -168,9 +168,9 @@
     return true;
   }
 
-  // MyMetaView categorises previews as product/blog/landing. Open Graph accepts a
-  // different, fixed vocabulary — send a value crawlers actually understand.
-  var OG_TYPES = { product: 'product', blog: 'article', landing: 'website' };
+  // MyMetaView categorises previews as product/blog/article/landing. Open Graph
+  // accepts a different, fixed vocabulary — send a value crawlers understand.
+  var OG_TYPES = { product: 'product', blog: 'article', article: 'article', landing: 'website' };
 
   function applyPreview(data, url) {
     if (!data || !data.title) {
@@ -282,6 +282,37 @@
     } catch (e) { /* nothing else to try; pings are best-effort */ }
   }
 
+  // When a visitor lands here from a social platform, that is a preview click:
+  // the share card did its job. Reported once per URL per tab, best-effort.
+  var SOCIAL_REFERRERS = /(^|\.)(facebook\.com|fb\.com|m\.facebook\.com|l\.facebook\.com|instagram\.com|l\.instagram\.com|twitter\.com|x\.com|t\.co|linkedin\.com|lnkd\.in|slack\.com|discord\.com|discordapp\.com|reddit\.com|out\.reddit\.com|pinterest\.[a-z.]+|t\.me|telegram\.(me|org)|api\.whatsapp\.com|wa\.me|news\.ycombinator\.com|bsky\.app|mastodon\.[a-z.]+|threads\.net)$/i;
+
+  function reportSocialVisit(url) {
+    try {
+      var ref = document.referrer;
+      if (!ref) return;
+      var refHost = new URL(ref).hostname;
+      if (!SOCIAL_REFERRERS.test(refHost)) return;
+
+      var key = 'mmv:visit:' + url;
+      try {
+        if (window.sessionStorage.getItem(key)) return;
+        window.sessionStorage.setItem(key, '1');
+      } catch (e) { /* private mode — report once per page load */ }
+
+      var endpoint = config.api + '/api/v1/track/social-visit' +
+        '?url=' + encodeURIComponent(url) +
+        '&ref=' + encodeURIComponent(refHost) +
+        (config.site ? '&site=' + encodeURIComponent(config.site) : '');
+
+      if (navigator.sendBeacon && navigator.sendBeacon(endpoint)) {
+        log('social visit reported (beacon):', refHost);
+        return;
+      }
+      window.fetch(endpoint, { method: 'GET', mode: 'no-cors', cache: 'no-store', keepalive: true });
+      log('social visit reported (fetch):', refHost);
+    } catch (e) { /* analytics are optional; never disturb the host page */ }
+  }
+
   // ---------------------------------------------------------------------------
   // Run
   // ---------------------------------------------------------------------------
@@ -320,6 +351,7 @@
     }
     run();
     ping();
+    reportSocialVisit(canonicalUrl());
   }
 
   // Single-page apps swap the URL without a page load, so re-run on navigation.

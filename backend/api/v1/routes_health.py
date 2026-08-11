@@ -71,8 +71,9 @@ def check_database_health() -> ComponentHealth:
     try:
         db = SessionLocal()
         try:
-            # Simple query to test connectivity
-            db.execute("SELECT 1")
+            # Simple query to test connectivity (SQLAlchemy 2.x requires text())
+            from sqlalchemy import text
+            db.execute(text("SELECT 1"))
             latency_ms = (time.time() - start_time) * 1000
 
             return ComponentHealth(

@@ -265,7 +265,9 @@ def invalidate_cache(url: str) -> bool:
         return False
     
     try:
-        # All possible cache prefixes used in the system
+        # All possible cache prefixes used in the system. These must match the
+        # prefixes callers actually pass to engine.generate(); a mismatch means
+        # "regenerate" quietly serves the stale entry for its full TTL.
         all_prefixes = [
             CacheConfig.PREVIEW_PREFIX,   # "preview:focus:"
             CacheConfig.ANALYSIS_PREFIX,  # "analysis:"
@@ -274,9 +276,12 @@ def invalidate_cache(url: str) -> bool:
             "demo:preview:v3:fast:",      # Demo v3 quality profiles
             "demo:preview:v3:balanced:",
             "demo:preview:v3:ultra:",
+            "demo:preview:v3:template:",  # Demo past its AI allowance
             "preview:engine:",            # Engine default
             "preview:enhanced:",          # Enhanced engine
-            "saas:preview:",              # SaaS preview
+            "saas:preview:",              # SaaS legacy (pre-lane)
+            "saas:preview:ai:",           # SaaS AI lane (jobs/preview_pipeline)
+            "saas:preview:template:",     # SaaS template lane
         ]
         
         keys = [generate_cache_key(url, prefix) for prefix in all_prefixes]

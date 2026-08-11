@@ -36,6 +36,9 @@ ENV PATH=/root/.local/bin:$PATH
 RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     fonts-liberation \
+    fonts-noto-core \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
     fontconfig \
     && rm -rf /var/lib/apt/lists/* \
     && fc-cache -f -v

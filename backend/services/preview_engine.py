@@ -798,6 +798,12 @@ class PreviewEngine:
             # Normalize AI result through the result normalizer layer
             ai_result = normalize_ai_result(ai_result, url_str)
 
+            # Refine weak text from the page's own metadata BEFORE rendering,
+            # so the card and the served og: tags always agree. Post-render
+            # mutation used to fix the metadata while the image kept the weak
+            # copy baked in.
+            ai_result = self._refine_text_from_page(ai_result, url_str)
+
             # Stage 4: Generate composited image
             with ctx.stage("image_generation") as _istage:
                 composited_image_url = self._generate_composited_image(
@@ -1029,7 +1035,10 @@ class PreviewEngine:
 
                                     # IMPROVEMENT 3: If no credibility, try HTML schema
                                     if not ai_result.get("credibility_items"):
-                                        metadata = extract_metadata_from_html(html_content) if 'metadata' not in dir() else metadata
+                                        # `metadata` is only bound when IMPROVEMENT 2
+                                        # ran; extract fresh otherwise.
+                                        if 'metadata' not in locals() or metadata is None:
+                                            metadata = extract_metadata_from_html(html_content)
                                         rating = metadata.get("aggregate_rating")
                                         if rating:
                                             ai_result["credibility_items"] = [{"type": "rating", "value": str(rating)}]
@@ -2818,6 +2827,103 @@ class PreviewEngine:
         
         return composited_image_url
     
+    # Colors the brand extractor substitutes when a light page has no dominant
+    # pixel color. They are a heuristic guess, not the brand — never let them
+    # outrank the AI's actual read of the page.
+    _SYNTHETIC_SLATE_PRIMARIES = {"#475569", "#334155", "#64748b", "#64748B"}
+
+    def _refine_text_from_page(self, ai_result: Dict[str, Any], url: str) -> Dict[str, Any]:
+        """Backfill weak titles/descriptions from the page's own metadata.
+
+        The page's og:title / og:description are what the site's authors chose
+        for exactly this purpose, which beats a hostname-derived label or an
+        invented sentence every time. Runs before compositing so the rendered
+        card and the served metadata agree.
+        """
+        try:
+            html_content = getattr(self, "_last_html_content", "") or ""
+
+            from backend.services.result_normalizer import _is_generic_placeholder_title, _title_from_url
+
+            title = (ai_result.get("title") or "").strip()
+            desc = (ai_result.get("description") or "").strip()
+            url_derived = title and title == _title_from_url(url)
+            needs_title = (
+                len(title) < 10
+                or _is_generic_placeholder_title(title)
+                or url_derived
+            )
+            needs_desc = len(desc) < 30
+
+            metadata = (
+                extract_metadata_from_html(html_content)
+                if html_content and (needs_title or needs_desc)
+                else {}
+            )
+
+            if needs_title:
+                og_title = (
+                    metadata.get("og_title")
+                    or metadata.get("twitter_title")
+                    or metadata.get("title")
+                    or ""
+                ).strip()
+                if og_title and len(og_title) > 5 and not _is_generic_placeholder_title(og_title):
+                    ai_result["title"] = og_title[:120]
+                    self.logger.info("Refined weak title from page metadata")
+
+            if needs_desc:
+                og_desc = (
+                    metadata.get("og_description")
+                    or metadata.get("twitter_description")
+                    or metadata.get("description")
+                    or ""
+                ).strip()
+                if og_desc and len(og_desc) > len(desc):
+                    ai_result["description"] = og_desc[:350]
+                    self.logger.info("Refined weak description from page metadata")
+        except Exception as refine_err:  # noqa: BLE001
+            self.logger.debug(f"Text refinement skipped: {refine_err}")
+
+        # Give the card a subtitle when the AI produced none: the description
+        # is the closest thing the page offers, and a headline-only card wastes
+        # the space a preview exists to use.
+        try:
+            if not ai_result.get("subtitle"):
+                desc_for_sub = (ai_result.get("description") or "").strip()
+                if desc_for_sub and len(desc_for_sub) > 94:
+                    # Stay under the renderer's own 96-char cap so it never
+                    # re-truncates mid-word. Prefer a whole sentence.
+                    window = desc_for_sub[:94]
+                    sentence_end = max(
+                        window.rfind(". "), window.rfind("! "), window.rfind("? ")
+                    )
+                    if sentence_end >= 40:
+                        desc_for_sub = window[: sentence_end + 1]
+                    else:
+                        desc_for_sub = window.rsplit(" ", 1)[0].rstrip(",.;:") + "…"
+                if desc_for_sub:
+                    ai_result["subtitle"] = desc_for_sub
+        except Exception:  # noqa: BLE001
+            pass
+
+        # Extract social proof BEFORE rendering so proof-driven layouts can
+        # actually use it (post-render extraction can only fix the metadata).
+        try:
+            if not ai_result.get("credibility_items"):
+                corpus = "\n".join(
+                    filter(None, [ai_result.get("description"), getattr(self, "_last_html_content", "")])
+                )
+                proofs = extract_social_proof(corpus)
+                if proofs:
+                    ai_result["credibility_items"] = [
+                        {"type": p.label, "value": p.value} for p in proofs[:3]
+                    ]
+        except Exception:  # noqa: BLE001
+            pass
+
+        return ai_result
+
     def _determine_colors(
         self,
         ai_result: Dict[str, Any],
@@ -2834,16 +2940,26 @@ class PreviewEngine:
                     "secondary_color": color_palette.get("secondary", "#1E40AF"),
                     "accent_color": color_palette.get("accent", "#F59E0B"),
                 }
-        
-        # Priority 2: Brand colors
+
+        # Priority 2: Brand colors — unless they are the extractor's synthetic
+        # slate stand-in for light pages, in which case the AI's read (below)
+        # is the truer brand signal.
+        blueprint_colors = ai_result.get("blueprint", {}) or {}
         if brand_elements and isinstance(brand_elements, dict):
             brand_colors = brand_elements.get("colors", {})
             if isinstance(brand_colors, dict) and brand_colors.get("primary_color"):
-                return {
-                    "primary_color": brand_colors.get("primary_color", "#2563EB"),
-                    "secondary_color": brand_colors.get("secondary_color", "#1E40AF"),
-                    "accent_color": brand_colors.get("accent_color", "#F59E0B"),
-                }
+                brand_primary = brand_colors.get("primary_color", "")
+                is_synthetic = brand_primary in self._SYNTHETIC_SLATE_PRIMARIES
+                ai_has_real_color = (
+                    blueprint_colors.get("primary_color")
+                    and blueprint_colors.get("primary_color") not in self._SYNTHETIC_SLATE_PRIMARIES
+                )
+                if not (is_synthetic and ai_has_real_color):
+                    return {
+                        "primary_color": brand_colors.get("primary_color", "#2563EB"),
+                        "secondary_color": brand_colors.get("secondary_color", "#1E40AF"),
+                        "accent_color": brand_colors.get("accent_color", "#F59E0B"),
+                    }
         
         # Priority 3: AI-extracted colors
         blueprint = ai_result.get("blueprint", {})
@@ -3043,9 +3159,10 @@ class PreviewEngine:
         html_result = self._extract_from_html_only(html_content, url, screenshot_bytes=getattr(self, '_last_screenshot_bytes', None))
         processing_time_ms = int((time.time() - start_time) * 1000)
         
-        # Ensure we have valid title and description
+        # Ensure we have a valid title; never fabricate a description — empty
+        # lets integrations keep the page's own tags.
         title = html_result.get("title") or "Untitled"
-        description = html_result.get("description") or f"Visit {url} to learn more"
+        description = html_result.get("description") or ""
         
         # PHASE 2: Use smart fallback colors if provided
         if fallback_colors:
@@ -3177,17 +3294,26 @@ class PreviewEngine:
         parsed = urlparse(url)
         domain = parsed.netloc.replace('www.', '')
 
+        # The captured page's own metadata is the best deterministic source for
+        # weak titles/descriptions. Cheap: the HTML is already in memory.
+        page_metadata = {}
+        try:
+            html_corpus_for_meta = getattr(self, "_last_html_content", "") or ""
+            if html_corpus_for_meta:
+                page_metadata = extract_metadata_from_html(html_corpus_for_meta)
+        except Exception:
+            page_metadata = {}
+
         # === TITLE VALIDATION (Phase 4.2 — deterministic fallback chain) ===
         if is_low_information_hook(result.title or ""):
             previous_title = result.title or ""
             result.warnings.append(f"Weak title detected: '{previous_title}'")
-            try:
-                metadata = extract_metadata_from_html(
-                    self._last_screenshot_bytes  # type: ignore[arg-type]
-                ) if False else {}  # avoid heavy refetch here
-            except Exception:
-                metadata = {}
-            og_title = result.subtitle if result.subtitle else None
+            og_title = (
+                page_metadata.get("og_title")
+                or page_metadata.get("title")
+                or result.subtitle
+                or None
+            )
             replacement = fallback_title_chain(
                 extracted_hook=previous_title,
                 og_title=og_title,
@@ -3297,17 +3423,25 @@ class PreviewEngine:
         
         if desc_is_weak:
             result.warnings.append("Description is weak or generic")
-            # Try to generate a better description from tags or credibility
-            if result.credibility_items:
+            # The page's own meta description is what its authors wrote for
+            # this exact purpose — always better than stitched-together tags.
+            page_desc = (
+                page_metadata.get("og_description")
+                or page_metadata.get("description")
+                or ""
+            ).strip()
+            if page_desc and len(page_desc) >= 20:
+                result.description = page_desc[:350]
+            elif result.credibility_items:
                 proof = result.credibility_items[0].get("value", "")
                 if proof and proof not in (result.title or ""):
                     result.description = proof
-            elif result.tags and len(result.tags) >= 2:
-                result.description = " • ".join(result.tags[:3])
-        
-        # === ENSURE WE HAVE SOMETHING ===
+
+        # No invented boilerplate: an empty description means integrations
+        # keep the page's own tags, which beats shipping filler like
+        # "Discover what example.com has to offer" as the og:description.
         if not result.description:
-            result.description = f"Discover what {domain} has to offer"
+            result.description = ""
         
         # === SUBTITLE AS SOCIAL PROOF ===
         # If subtitle looks like social proof, ensure it's in credibility_items too

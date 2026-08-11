@@ -78,9 +78,11 @@ class Settings:
     R2_PUBLIC_BASE_URL: str = os.getenv("R2_PUBLIC_BASE_URL", "")
     
     # Screenshot system uses Playwright (no API key needed)
-    
-    # Placeholder image fallback
-    PLACEHOLDER_IMAGE_URL: str = os.getenv("PLACEHOLDER_IMAGE_URL", "https://via.placeholder.com/1200x630/2979FF/FFFFFF?text=Preview+Not+Available")
+
+    # Placeholder image fallback. Self-hosted: the old via.placeholder.com
+    # default is a dead service, so every fallback og:image 404'd. Empty env ->
+    # resolved against PUBLIC_BASE_URL at use time (see placeholder_image_url()).
+    PLACEHOLDER_IMAGE_URL: str = os.getenv("PLACEHOLDER_IMAGE_URL", "")
     
     # Stripe configuration
     STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
@@ -95,7 +97,15 @@ class Settings:
     # Public origin the embed snippet is served from and calls back to. This ends
     # up baked into every customer's <script> tag, so it must be the real
     # public hostname rather than an internal one.
-    PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "https://mymetaview.com")
+    PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
+
+    # Origin used to build absolute URLs for locally stored assets (the disk
+    # fallback when R2 is unconfigured or failing). Empty -> PUBLIC_BASE_URL.
+    ASSET_BASE_URL: str = os.getenv("ASSET_BASE_URL", "") or os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
+
+    # Directory for locally stored media (screenshot/preview fallback storage).
+    # Served by the /static mount, so it must live under backend/static.
+    MEDIA_ROOT: str = os.getenv("MEDIA_ROOT", "backend/static/media")
 
     # CORS allowed origins (comma-separated list)
     CORS_ALLOWED_ORIGINS: str = os.getenv("CORS_ALLOWED_ORIGINS", "")
@@ -126,4 +136,13 @@ if _use_production:
     settings = production_settings
 else:
     settings = Settings()
+
+
+def placeholder_image_url() -> str:
+    """Resolve the fallback og:image URL, self-hosted unless overridden."""
+    configured = getattr(settings, "PLACEHOLDER_IMAGE_URL", "") or ""
+    if configured and "via.placeholder.com" not in configured:
+        return configured
+    base = (getattr(settings, "PUBLIC_BASE_URL", "") or "http://localhost:8000").rstrip("/")
+    return f"{base}/static/placeholder-preview.png"
 

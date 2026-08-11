@@ -39,3 +39,6 @@ ENV/
 htmlcov/
 
 test-results/
+
+# Local media fallback storage (generated at runtime)
+backend/static/media/

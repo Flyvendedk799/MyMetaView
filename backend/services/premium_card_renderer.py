@@ -343,7 +343,7 @@ ${font_head}
   .card {
     width:${card_w}px; height:${card_h}px; position:relative; overflow:hidden;
     background:${panel}; color:${ink}; display:flex; flex-direction:${card_dir};
-    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    font-family:'IBM Plex Sans', 'Noto Sans', 'Noto Sans CJK SC', system-ui, sans-serif;
     -webkit-font-smoothing:antialiased;
   }
   .accent-shape {
@@ -358,18 +358,18 @@ ${font_head}
   }
   .top { display:flex; align-items:center; justify-content:space-between; gap:24px; }
   .eyebrow {
-    font-family:'IBM Plex Mono', monospace; font-weight:500; font-size:${eyebrow_sz}px;
+    font-family:'IBM Plex Mono', 'Noto Sans Mono', monospace; font-weight:500; font-size:${eyebrow_sz}px;
     letter-spacing:0.14em; text-transform:uppercase; color:${dim};
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .logo { height:${logo_h}px; max-width:250px; object-fit:contain; opacity:0.98; }
   .wordmark {
-    font-family:'Bricolage Grotesque', sans-serif; font-weight:600; font-size:22px;
+    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC', sans-serif; font-weight:600; font-size:22px;
     letter-spacing:-0.01em; color:${ink};
   }
   .headline-wrap { display:flex; flex-direction:column; gap:${gap}px; }
   .headline {
-    font-family:'Bricolage Grotesque', sans-serif; font-weight:600;
+    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC', sans-serif; font-weight:600;
     font-size:${hsize}px; line-height:1.05; letter-spacing:-0.025em;
     color:${ink}; max-width:${headline_mw};
   }
@@ -380,7 +380,7 @@ ${font_head}
   }
   .footer {
     display:flex; align-items:center; gap:14px;
-    font-family:'IBM Plex Mono', monospace; font-size:15px; letter-spacing:0.06em;
+    font-family:'IBM Plex Mono', 'Noto Sans Mono', monospace; font-size:15px; letter-spacing:0.06em;
     color:${dim}; text-transform:uppercase;
   }
   .dot { width:8px; height:8px; border-radius:9999px; background:${accent}; }
@@ -406,11 +406,11 @@ ${font_head}
 
   /* --- stat: the proof number is the hero, the headline supports it --- */
   .stat-value {
-    font-family:'Bricolage Grotesque', sans-serif; font-weight:700;
+    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC', sans-serif; font-weight:700;
     font-size:${stat_sz}px; line-height:0.92; letter-spacing:-0.04em; color:${ink};
   }
   .stat-label {
-    font-family:'IBM Plex Mono', monospace; font-size:${eyebrow_sz}px; font-weight:500;
+    font-family:'IBM Plex Mono', 'Noto Sans Mono', monospace; font-size:${eyebrow_sz}px; font-weight:500;
     letter-spacing:0.12em; text-transform:uppercase; color:${accent};
     max-width:24ch;
   }
@@ -430,7 +430,7 @@ ${font_head}
   /* --- editorial: kicker, rule, deck — an article, not an ad --- */
   .rule { width:100%; height:1px; background:${hline}; }
   .kicker {
-    font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:${eyebrow_sz}px;
+    font-family:'IBM Plex Mono', 'Noto Sans Mono', monospace; font-weight:600; font-size:${eyebrow_sz}px;
     letter-spacing:0.16em; text-transform:uppercase; color:${accent};
   }
   .deck { font-size:${sub_sz}px; line-height:1.45; color:${dim}; max-width:44ch; }
@@ -439,7 +439,7 @@ ${font_head}
   .chip {
     display:inline-flex; align-items:center; align-self:flex-start; gap:10px;
     padding:12px 22px; border-radius:9999px; background:${accent};
-    color:${on_accent}; font-family:'IBM Plex Mono', monospace; font-weight:600;
+    color:${on_accent}; font-family:'IBM Plex Mono', 'Noto Sans Mono', monospace; font-weight:600;
     font-size:17px; letter-spacing:0.06em; text-transform:uppercase;
   }
 </style></head>
@@ -809,7 +809,8 @@ def _rasterize(doc: str, size: CardSize = DEFAULT_SIZE) -> bytes:
         try:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
-                browser = p.chromium.launch(args=BrowserPool.BROWSER_ARGS, headless=True)
+                from backend.services.playwright_screenshot import chromium_launch_kwargs
+                browser = p.chromium.launch(**chromium_launch_kwargs())
                 try:
                     box["png"] = _shoot(browser, doc, size)
                 finally:

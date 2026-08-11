@@ -13,7 +13,7 @@ domain in production and the install silently does nothing.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-PUBLIC_PATH_PREFIXES = ("/api/v1/public/",)
+PUBLIC_PATH_PREFIXES = ("/api/v1/public/", "/api/v1/track/")
 
 # Long enough that a preflight is not repeated for every page view.
 PREFLIGHT_MAX_AGE = "86400"

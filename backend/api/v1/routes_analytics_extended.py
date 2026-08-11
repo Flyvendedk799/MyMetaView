@@ -56,59 +56,51 @@ class PreviewAnalyticsItem(BaseModel):
 
 @router.get("/overview", response_model=AnalyticsOverview)
 def get_analytics_overview(
+    days: int = Query(30, description="Window in days: 7, 30, or 90"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org)
 ):
     """Get analytics overview for the current organization."""
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    
-    # Total impressions and clicks (last 30 days)
-    impressions_query = db.query(func.count(AnalyticsEvent.id)).filter(
+    if days not in (7, 30, 90):
+        days = 30
+    window_start = datetime.utcnow() - timedelta(days=days)
+
+    # Totals + daily buckets in one grouped query instead of 2 + 2*days
+    # separate COUNTs.
+    day_col = func.date(AnalyticsEvent.created_at)
+    rows = db.query(
+        day_col.label("day"),
+        AnalyticsEvent.event_type,
+        func.count(AnalyticsEvent.id).label("count"),
+    ).filter(
         AnalyticsEvent.organization_id == current_org.id,
-        AnalyticsEvent.event_type == "impression",
-        AnalyticsEvent.created_at >= thirty_days_ago
-    )
-    total_impressions = impressions_query.scalar() or 0
-    
-    clicks_query = db.query(func.count(AnalyticsEvent.id)).filter(
-        AnalyticsEvent.organization_id == current_org.id,
-        AnalyticsEvent.event_type == "click",
-        AnalyticsEvent.created_at >= thirty_days_ago
-    )
-    total_clicks = clicks_query.scalar() or 0
-    
-    # Calculate CTR
+        AnalyticsEvent.event_type.in_(["impression", "click"]),
+        AnalyticsEvent.created_at >= window_start,
+    ).group_by(day_col, AnalyticsEvent.event_type).all()
+
+    by_day = {}
+    total_impressions = 0
+    total_clicks = 0
+    for day, event_type, count in rows:
+        day_str = str(day)[:10]
+        bucket = by_day.setdefault(day_str, {"impression": 0, "click": 0})
+        bucket[event_type] = int(count or 0)
+        if event_type == "impression":
+            total_impressions += int(count or 0)
+        else:
+            total_clicks += int(count or 0)
+
     ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0.0
-    
-    # Build timeseries (daily for last 30 days)
+
     impressions_timeseries = []
     clicks_timeseries = []
-    
-    for i in range(30):
-        day_start = datetime.utcnow() - timedelta(days=30 - i)
-        day_end = day_start + timedelta(days=1)
-        day_str = day_start.date().isoformat()
-        
-        # Count impressions for this day
-        day_impressions = db.query(func.count(AnalyticsEvent.id)).filter(
-            AnalyticsEvent.organization_id == current_org.id,
-            AnalyticsEvent.event_type == "impression",
-            AnalyticsEvent.created_at >= day_start,
-            AnalyticsEvent.created_at < day_end
-        ).scalar() or 0
-        
-        # Count clicks for this day
-        day_clicks = db.query(func.count(AnalyticsEvent.id)).filter(
-            AnalyticsEvent.organization_id == current_org.id,
-            AnalyticsEvent.event_type == "click",
-            AnalyticsEvent.created_at >= day_start,
-            AnalyticsEvent.created_at < day_end
-        ).scalar() or 0
-        
-        impressions_timeseries.append(TimeseriesPoint(date=day_str, value=day_impressions))
-        clicks_timeseries.append(TimeseriesPoint(date=day_str, value=day_clicks))
-    
+    for i in range(days):
+        day_str = (datetime.utcnow() - timedelta(days=days - 1 - i)).date().isoformat()
+        bucket = by_day.get(day_str, {"impression": 0, "click": 0})
+        impressions_timeseries.append(TimeseriesPoint(date=day_str, value=bucket["impression"]))
+        clicks_timeseries.append(TimeseriesPoint(date=day_str, value=bucket["click"]))
+
     return AnalyticsOverview(
         total_impressions=total_impressions,
         total_clicks=total_clicks,

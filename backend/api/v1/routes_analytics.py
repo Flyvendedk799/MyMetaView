@@ -2,15 +2,16 @@
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Query, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 from backend.schemas.analytics import AnalyticsSummary, TopDomain
 from backend.models.preview import Preview as PreviewModel
 from backend.models.domain import Domain as DomainModel
 from backend.models.analytics_event import AnalyticsEvent
 from backend.models.brand import BrandSettings as BrandSettingsModel
+from backend.models.organization import Organization
 from backend.models.user import User
 from backend.db.session import get_db
-from backend.core.deps import get_current_user, get_paid_user
+from backend.core.deps import get_current_org, get_paid_user
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -19,27 +20,37 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 def get_analytics_summary(
     period: str = Query("7d", description="Time period: '7d' or '30d'"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_paid_user)
+    current_user: User = Depends(get_paid_user),
+    current_org: Organization = Depends(get_current_org),
 ):
-    """Get analytics summary for the current user for a given period."""
+    """Analytics summary for the current organization for a given period.
+
+    Org-scoped like every other analytics endpoint (events written by the
+    public serving path carry organization_id; user_id can be null there).
+    """
     if period not in ["7d", "30d"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Period must be '7d' or '30d'"
         )
-    
+
     days = 30 if period == "30d" else 7
     since = datetime.utcnow() - timedelta(days=days)
 
     _clicks = case((AnalyticsEvent.event_type == "click", 1), else_=0)
     _imps = case((AnalyticsEvent.event_type == "impression", 1), else_=0)
 
-    # Real clicks/impressions from tracked events (this user, in-period)
+    org_events = or_(
+        AnalyticsEvent.organization_id == current_org.id,
+        AnalyticsEvent.user_id == current_user.id,  # legacy rows without org
+    )
+
+    # Real clicks/impressions from tracked events (this org, in-period)
     totals = db.query(
         func.coalesce(func.sum(_clicks), 0),
         func.coalesce(func.sum(_imps), 0),
     ).filter(
-        AnalyticsEvent.user_id == current_user.id,
+        org_events,
         AnalyticsEvent.created_at >= since,
     ).first()
     total_clicks = int(totals[0] or 0)
@@ -47,29 +58,31 @@ def get_analytics_summary(
     # Fall back to the denormalised counter only if no events have been tracked yet.
     if total_clicks == 0 and total_impressions == 0:
         mc = db.query(func.sum(PreviewModel.monthly_clicks)).filter(
-            PreviewModel.user_id == current_user.id
+            PreviewModel.organization_id == current_org.id
         ).scalar()
         total_clicks = int(mc) if mc else 0
 
+    ctr = round((total_clicks / total_impressions) * 100, 1) if total_impressions > 0 else 0.0
+
     total_previews = db.query(func.count(PreviewModel.id)).filter(
-        PreviewModel.user_id == current_user.id
+        PreviewModel.organization_id == current_org.id
     ).scalar() or 0
 
     total_domains = db.query(func.count(DomainModel.id)).filter(
-        DomainModel.user_id == current_user.id
+        DomainModel.organization_id == current_org.id
     ).scalar() or 0
     verified_domains = db.query(func.count(DomainModel.id)).filter(
-        DomainModel.user_id == current_user.id,
-        DomainModel.status == "active"
+        DomainModel.organization_id == current_org.id,
+        DomainModel.status == "verified"
     ).scalar() or 0
 
     # Honest "brand setup" score (0-100) from real completeness signals, not a
     # fabricated baseline: has a domain, a verified domain, previews, and a
     # customised brand profile.
-    # A user can own several brands (one per domain), so the score asks whether
+    # An org can own several brands (one per domain), so the score asks whether
     # any of them has been customised rather than picking one arbitrarily.
     brands = db.query(BrandSettingsModel).filter(
-        BrandSettingsModel.user_id == current_user.id
+        BrandSettingsModel.organization_id == current_org.id
     ).all()
     brand_customised = any(
         b.logo_url or (b.primary_color not in (None, "", "#2979FF")) for b in brands
@@ -83,7 +96,7 @@ def get_analytics_summary(
         func.coalesce(func.sum(_clicks), 0),
         func.coalesce(func.sum(_imps), 0),
     ).filter(
-        AnalyticsEvent.user_id == current_user.id,
+        org_events,
         AnalyticsEvent.created_at >= since,
         AnalyticsEvent.domain_id.isnot(None),
     ).group_by(AnalyticsEvent.domain_id).all()
@@ -92,20 +105,20 @@ def get_analytics_summary(
     if rows:
         name_by_id = dict(
             db.query(DomainModel.id, DomainModel.name).filter(
-                DomainModel.user_id == current_user.id
+                DomainModel.organization_id == current_org.id
             ).all()
         )
         for domain_id, clicks, imps in rows:
             c, im = int(clicks or 0), int(imps or 0)
-            ctr = round((c / im) * 100, 1) if im > 0 else 0.0
-            top_domains.append(TopDomain(domain=name_by_id.get(domain_id, "—"), clicks=c, ctr=ctr))
+            domain_ctr = round((c / im) * 100, 1) if im > 0 else 0.0
+            top_domains.append(TopDomain(domain=name_by_id.get(domain_id, "—"), clicks=c, ctr=domain_ctr))
         top_domains.sort(key=lambda t: t.clicks, reverse=True)
         top_domains = top_domains[:4]
     else:
         # No events yet: show real click counters with an honest 0% CTR (no impressions).
         for domain_name, clicks in db.query(
             PreviewModel.domain, func.sum(PreviewModel.monthly_clicks)
-        ).filter(PreviewModel.user_id == current_user.id).group_by(
+        ).filter(PreviewModel.organization_id == current_org.id).group_by(
             PreviewModel.domain
         ).order_by(func.sum(PreviewModel.monthly_clicks).desc()).limit(4).all():
             top_domains.append(TopDomain(domain=domain_name, clicks=int(clicks or 0), ctr=0.0))
@@ -113,9 +126,11 @@ def get_analytics_summary(
     return AnalyticsSummary(
         period=period,
         total_clicks=total_clicks,
+        total_impressions=total_impressions,
+        ctr=ctr,
         total_previews=total_previews,
         total_domains=total_domains,
+        verified_domains=verified_domains,
         brand_score=int(brand_score),
         top_domains=top_domains,
     )
-

@@ -14,8 +14,11 @@ class AnalyticsSummary(BaseModel):
     """Analytics summary schema."""
     period: str = Field(..., description="Time period: '7d' or '30d'")
     total_clicks: int
+    total_impressions: int = 0
+    ctr: float = Field(0.0, description="Overall click-through rate as percentage")
     total_previews: int
     total_domains: int
+    verified_domains: int = 0
     brand_score: int = Field(..., ge=0, le=100, description="Brand score (0-100)")
     top_domains: List[TopDomain]
     

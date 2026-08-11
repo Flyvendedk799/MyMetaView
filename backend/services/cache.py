@@ -134,3 +134,56 @@ def invalidate_preview(preview_id: int) -> None:
     except Exception as e:
         logger.warning(f"Cache invalidate error for preview_metadata:{preview_id}: {e}")
 
+
+# ---------------------------------------------------------------------------
+# Full-response cache for GET /api/v1/public/preview
+#
+# Keyed by (site override, full URL, variant) so one Redis GET answers repeat
+# snippet/browser traffic without touching the database. Crawler requests
+# bypass this cache at the route level so impressions stay observable.
+# ---------------------------------------------------------------------------
+
+PUBLIC_PREVIEW_TTL = 180  # 3 minutes; matches how fast edits should go live
+
+
+def _public_preview_key(site: str, full_url: str, variant: str) -> str:
+    return _get_cache_key("public_preview", site or "-", variant or "-", full_url)
+
+
+def get_cached_public_preview(site: str, full_url: str, variant: str) -> Optional[dict]:
+    """Get a cached public preview response."""
+    try:
+        redis_client = get_redis_connection()
+        cached = redis_client.get(_public_preview_key(site, full_url, variant))
+        if cached:
+            return _deserialize(cached)
+    except Exception as e:
+        logger.warning(f"Cache get error for public_preview:{full_url}: {e}")
+    return None
+
+
+def set_cached_public_preview(site: str, full_url: str, variant: str, value: dict) -> None:
+    """Cache a public preview response."""
+    try:
+        redis_client = get_redis_connection()
+        redis_client.setex(
+            _public_preview_key(site, full_url, variant),
+            PUBLIC_PREVIEW_TTL,
+            _serialize(value),
+        )
+    except Exception as e:
+        logger.warning(f"Cache set error for public_preview:{full_url}: {e}")
+
+
+def invalidate_public_preview_for_url(full_url: str) -> None:
+    """Drop every cached public response for a URL (all sites/variants)."""
+    try:
+        redis_client = get_redis_connection()
+        # Key layout puts the URL last, so match on its suffix across
+        # site/variant combinations.
+        pattern = _get_cache_key("public_preview", "*", "*", full_url)
+        for key in redis_client.scan_iter(match=pattern):
+            redis_client.delete(key)
+    except Exception as e:
+        logger.warning(f"Cache invalidate error for public_preview:{full_url}: {e}")
+

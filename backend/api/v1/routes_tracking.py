@@ -109,6 +109,68 @@ def track_impression(
         return JSONResponse({"status": "ok", "error": str(e)})
 
 
+@router.post("/social-visit")
+@router.get("/social-visit")
+def track_social_visit(
+    url: str = Query(..., description="Page URL the visitor landed on"),
+    ref: str = Query(None, description="Referrer (the social platform the visitor came from)"),
+    site: str = Query(None, description="Registered domain override (snippet data-site)"),
+    request: Request = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Record that a visitor reached a customer page from a social platform.
+
+    Fired by the embed snippet (sendBeacon) when document.referrer is a known
+    social network. This is the "click" side of preview CTR: the crawler fetch
+    of /public/preview is the impression, a human arriving from the platform
+    is the click. Resolves the preview by URL, so the snippet needs no IDs.
+    """
+    client_ip = get_client_ip(request)
+    rate_limit_key = get_rate_limit_key_for_ip(client_ip, "track_social_visit")
+    if not check_rate_limit(rate_limit_key, limit=120, window_seconds=300):
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"status": "error", "detail": "Rate limit exceeded."}
+        )
+
+    try:
+        if not validate_url(url):
+            return JSONResponse({"status": "ignored"})
+
+        parsed = urlparse(url)
+        hostname = (site or parsed.netloc).lower().split(":")[0]
+        if hostname.startswith("www."):
+            hostname = hostname[4:]
+
+        domain_obj = db.query(DomainModel).filter(DomainModel.name == hostname).first()
+        if not domain_obj:
+            return JSONResponse({"status": "ignored"})
+
+        normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
+        preview = db.query(PreviewModel).filter(
+            PreviewModel.organization_id == domain_obj.organization_id,
+            PreviewModel.url.in_([normalized, url]),
+        ).first()
+
+        event = AnalyticsEvent(
+            user_id=domain_obj.user_id,
+            domain_id=domain_obj.id,
+            preview_id=preview.id if preview else None,
+            organization_id=domain_obj.organization_id,
+            event_type="click",
+            referrer=(ref or (request.headers.get("Referer") if request else None) or "")[:500] or None,
+            user_agent=get_user_agent(request),
+            ip_address=client_ip,
+        )
+        db.add(event)
+        db.commit()
+        return JSONResponse({"status": "ok"})
+    except Exception as e:
+        # Tracking must never break the customer's page
+        return JSONResponse({"status": "ok", "error": str(e)[:100]})
+
+
 @router.get("/click")
 def track_click(
     preview_id: int = Query(..., description="Preview ID"),
