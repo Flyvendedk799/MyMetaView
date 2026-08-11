@@ -890,8 +890,8 @@ export async function fetchAdminActivity(
 }
 
 // Analytics endpoints
-export async function fetchAnalyticsOverview(): Promise<AnalyticsOverview> {
-  return fetchApi<AnalyticsOverview>('/api/v1/analytics/overview')
+export async function fetchAnalyticsOverview(days: 7 | 30 | 90 = 30): Promise<AnalyticsOverview> {
+  return fetchApi<AnalyticsOverview>(`/api/v1/analytics/overview?days=${days}`)
 }
 
 export async function fetchDomainAnalytics(): Promise<DomainAnalyticsItem[]> {
