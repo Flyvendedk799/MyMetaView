@@ -1,260 +1,90 @@
-# Preview SaaS Dashboard
+# MyMetaView
 
-A modern, premium SaaS dashboard for automatically generating branded URL previews for websites.
+Branded link previews for every page of your site — generated automatically,
+served to every platform that renders a share card.
 
-> Database migrations applied - columns fixed and up to date.
+Connect a domain, verify it, and MyMetaView captures each page, reads its
+content and brand, and composes a real Open Graph card for it (headline,
+description, colors, logo, layout). Install once — a snippet, a Cloudflare
+Worker, or the WordPress plugin — and shared links on Facebook, X, LinkedIn,
+Slack, Discord, and WhatsApp render your cards. Crawler fetches and social
+visits are tracked, so the dashboard shows impressions, clicks, and CTR per
+domain and per page.
 
-## Tech Stack
+## How it works
 
-- **React** + **Vite** - Fast development and build tooling
-- **TypeScript** - Type-safe development
-- **TailwindCSS** - Utility-first CSS framework
-- **React Router** - Client-side routing
-- **Heroicons** - Beautiful SVG icons
-- **Inter Font** - Clean, modern typography
+1. **Connect & verify a domain** — DNS record, HTML file, or meta tag.
+2. **Generate previews** — one URL at a time or your whole sitemap in a bulk
+   run. The engine screenshots the page, extracts brand and metadata, has an
+   AI art director write the copy and pick a layout, and renders a crisp
+   1200×630 card with real typography (plus square/portrait exports).
+3. **Install** — the JS snippet covers JS-executing crawlers and powers
+   install verification + click analytics; the Cloudflare Worker and the
+   WordPress plugin inject tags **server-side**, which is what non-JS
+   crawlers (most of them) actually see.
+4. **Measure** — every crawler fetch of a preview is an impression; every
+   visitor arriving from a social referrer is a click.
 
-## Project Structure
+Every URL also gets up to three copy angles (benefit / proof / curiosity) you
+can serve per link, and cards can be restyled (layout, panel, accent) or
+re-rendered per platform size without spending an AI generation.
 
-```
-src/
-├── components/
-│   ├── layout/
-│   │   ├── Layout.tsx      # Main layout wrapper
-│   │   ├── Sidebar.tsx      # Navigation sidebar
-│   │   └── Header.tsx       # Top header bar
-│   └── ui/
-│       ├── Card.tsx         # Reusable card component
-│       ├── Button.tsx       # Button component
-│       └── Modal.tsx        # Modal dialog component
-├── pages/
-│   ├── Dashboard.tsx        # Dashboard home page
-│   ├── Domains.tsx         # Domain management page
-│   ├── Brand.tsx           # Brand settings page
-│   ├── Previews.tsx        # Preview gallery page
-│   ├── Analytics.tsx       # Analytics page
-│   └── Billing.tsx         # Billing page
-├── router/
-│   └── Router.tsx          # Route configuration
-├── App.tsx                 # Main app component
-├── main.tsx                # Entry point
-└── index.css               # Global styles
-```
+## Stack
 
-## Design Principles
+- **Frontend** — React 18 + Vite + TypeScript + Tailwind (`src/`)
+- **API** — FastAPI + SQLAlchemy 2 (`backend/`), Postgres in production
+  (SQLite for local dev), Redis + RQ for background generation
+- **Engine** — Playwright capture, OpenAI-compatible reasoning (single
+  art-director pass), HTML/CSS card rendering rasterized in headless
+  Chromium, Cloudflare R2 storage (local-disk fallback built in)
+- **Billing** — Stripe subscriptions with a 14-day no-card trial
 
-- Clean, minimal, premium aesthetic
-- Generous whitespace
-- Strong typography hierarchy
-- Rounded corners (8px)
-- Soft, subtle shadows
-- Smooth hover states
-- Simple, focused UIs
+## Local development
 
-## Color Palette
+Backend (Python 3.11+):
 
-- **Primary**: #2979FF (Blue)
-- **Secondary**: #0A1A3C (Dark Navy)
-- **Accent**: #3FFFD3 (Cyan)
-- **Background**: #F5F7FA (Light Gray)
-- **Neutrals**: Soft gray scale for text and borders
-
-## Setup Instructions
-
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-
-3. **Build for production:**
-   ```bash
-   npm run build
-   ```
-
-4. **Preview production build:**
-   ```bash
-   npm run preview
-   ```
-
-## Features
-
-- ✅ Responsive sidebar navigation
-- ✅ Mobile-friendly mobile menu
-- ✅ Dashboard with stat cards
-- ✅ Domain management table
-- ✅ Brand settings with preview
-- ✅ Preview gallery with filters
-- ✅ Analytics dashboard
-- ✅ Billing and subscription management
-
-## Backend Integration
-
-The frontend is now connected to a FastAPI backend running at `http://localhost:8000` by default.
-
-### Backend Setup
-
-See `backend/README_backend.md` for detailed backend setup instructions.
-
-### Production Deployment
-
-For production deployment on Railway, see [DEPLOYMENT.md](./DEPLOYMENT.md).
-
-### Environment Variables
-
-For a complete list of environment variables, see [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md).
-
-**Quick Start:**
-
-1. **Create and activate virtual environment:**
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   # or
-   source venv/bin/activate  # macOS/Linux
-   ```
-
-2. **Install backend dependencies:**
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-
-3. **Run the backend server:**
-   ```bash
-   uvicorn backend.main:app --reload
-   ```
-
-### Frontend Configuration
-
-The frontend reads the API base URL from environment variables:
-
-- Create a `.env` file (or copy `.env.example`) with:
-  ```
-  VITE_API_BASE_URL=http://localhost:8000
-  ```
-
-- If not set, defaults to `http://localhost:8000`
-
-### Running Both Services
-
-**Terminal 1 - Backend:**
 ```bash
-uvicorn backend.main:app --reload
+python -m venv venv && source venv/bin/activate
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload          # http://localhost:8000
 ```
 
-**Terminal 2 - Frontend:**
+Frontend:
+
 ```bash
-npm run dev
+npm install
+npm run dev                                # http://localhost:5173
 ```
 
-The frontend will automatically connect to the backend API. CORS is configured to allow requests from the Vite dev server.
+That's enough for the full loop locally: SQLite is the default database,
+generated images fall back to local disk when R2 isn't configured, and the
+engine degrades gracefully without an `OPENAI_API_KEY` (cards are built from
+the page's own metadata). Redis enables caching and background jobs:
+`redis-server` + `python -m backend.queue.worker`.
 
-## Authentication
+Useful dev environment variables:
 
-The application uses JWT-based authentication:
+| Variable | Purpose |
+|---|---|
+| `OPENAI_API_KEY` | Enables AI copy + art direction (optional in dev) |
+| `REDIS_URL` | Caching + background job queue |
+| `PLAYWRIGHT_CHROMIUM_EXECUTABLE` | Use a system Chromium instead of the Playwright-managed download |
+| `CAPTURE_USE_ENV_PROXY` / `CAPTURE_IGNORE_TLS_ERRORS` | Capture behind egress proxies (dev only) |
+| `ALLOW_PRIVATE_URLS` | Allow capturing localhost fixtures (ignored in production) |
 
-- **Backend**: JWT tokens issued via `/api/v1/auth/login` and `/api/v1/auth/signup`
-- **Frontend**: Token stored in localStorage, all `/app/*` routes are protected
-- **Protected Routes**: All dashboard routes require authentication
+The complete list lives in [`docs/ops/ENVIRONMENT_VARIABLES.md`](docs/ops/ENVIRONMENT_VARIABLES.md).
 
-### Testing Authentication
+## Tests
 
-1. **Start backend:**
-   ```bash
-   uvicorn backend.main:app --reload
-   ```
+```bash
+python -m pytest backend/tests             # engine + services (181 tests)
+npm run build                              # typecheck + production build
+npm run test:e2e                           # Playwright smoke of public pages
+```
 
-2. **Start frontend:**
-   ```bash
-   npm run dev
-   ```
+## Deployment
 
-3. **Create an account:**
-   - Navigate to `/signup`
-   - Enter email and password
-   - Account is created and you're automatically logged in
-
-4. **Login:**
-   - Navigate to `/login`
-   - Enter your credentials
-   - You'll be redirected to `/app` dashboard
-
-5. **Access protected routes:**
-   - All `/app/*` routes require authentication
-   - If not logged in, you'll be redirected to `/login`
-   - Token is automatically included in API requests
-
-6. **Logout:**
-   - Click on your email in the header
-   - Select "Logout" from the dropdown menu
-
-## Development
-
-- **Phase 1-2**: Frontend foundation with mock data
-- **Phase 3**: FastAPI backend with in-memory storage
-- **Phase 4**: Frontend-backend integration
-- **Phase 5**: SQLAlchemy database integration
-- **Phase 6**: JWT authentication system (current)
-
-## Troubleshooting
-
-### Frontend Can't Connect to Backend (ERR_CONNECTION_REFUSED)
-
-**Symptoms:**
-- Browser console shows `ERR_CONNECTION_REFUSED` when making API calls
-- Signup/login fails with "Failed to fetch"
-- Frontend is trying to connect to `localhost:8000` instead of Railway backend
-
-**Solution:**
-1. **Check Environment Variables**: Ensure `VITE_API_BASE_URL` is set in your Railway frontend service
-   - Go to Railway dashboard → Your frontend service → Variables
-   - Add: `VITE_API_BASE_URL=https://your-backend-service.railway.app/api/v1`
-   - **Important**: Include `/api/v1` in the URL
-
-2. **Rebuild Frontend**: After setting the variable, Railway will automatically rebuild
-   - Check build logs to confirm the variable is being used
-   - Look for `[App Startup] API Base URL:` in browser console
-
-3. **Verify Backend is Running**: 
-   - Check Railway backend service logs
-   - Look for startup message: `Starting Preview SaaS API`
-   - Test backend health: `curl https://your-backend-service.railway.app/health`
-
-4. **Check CORS Settings**:
-   - Ensure `CORS_ALLOWED_ORIGINS` in backend includes your frontend URL
-   - Format: `https://your-frontend.railway.app` (comma-separated if multiple)
-
-### Backend Not Starting
-
-**Check Logs:**
-- Railway logs will show startup errors
-- Look for database connection errors
-- Verify all required environment variables are set
-
-**Common Issues:**
-- Missing `DATABASE_URL` → Backend can't connect to PostgreSQL
-- Missing `SECRET_KEY` → JWT signing fails
-- Missing `REDIS_URL` → Job queue won't work
-- Missing `OPENAI_API_KEY` → AI preview generation fails
-
-### Debugging Tips
-
-1. **Frontend Console Logs**: Open browser DevTools → Console
-   - Look for `[App Startup]` messages showing API URL
-   - Check for `[API]` logs showing request URLs
-   - Check for `[API Error]` logs showing connection failures
-
-2. **Backend Logs**: Check Railway backend service logs
-   - Startup logs show environment and configuration
-   - Request logs show all API calls with request IDs
-   - Error logs show detailed stack traces
-
-3. **Health Check**: Test backend health endpoint
-   ```bash
-   curl https://your-backend-service.railway.app/health
-   ```
-   Should return: `{"status": "ok", "version": "1.0.0"}`
-
+Production runs on Railway (API + worker + Postgres + Redis) with Cloudflare
+R2 for image storage. See [`docs/ops/DEPLOYMENT.md`](docs/ops/DEPLOYMENT.md)
+and the rest of [`docs/ops/`](docs/ops/). Historical planning documents from
+earlier development sessions are preserved in [`docs/archive/`](docs/archive/).

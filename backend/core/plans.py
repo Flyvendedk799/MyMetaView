@@ -105,7 +105,19 @@ def price_id_to_plan_key(price_id: str) -> Optional[str]:
 
 
 def public_plans() -> list:
-    """Serializable tier list for the pricing/billing UI (no python sets)."""
+    """Serializable tier list for the pricing/billing UI (no python sets).
+
+    Includes each tier's Stripe price id so the frontend never needs its own
+    copy of the price configuration (a missing VITE_ var used to silently turn
+    a plan into "Coming soon").
+    """
+    from backend.core.config import settings
+
+    price_ids = {
+        "starter": settings.STRIPE_PRICE_TIER_BASIC,
+        "growth": settings.STRIPE_PRICE_TIER_PRO,
+        "agency": settings.STRIPE_PRICE_TIER_AGENCY,
+    }
     order = ["starter", "growth", "agency"]
     out = []
     for k in order:
@@ -115,5 +127,6 @@ def public_plans() -> list:
             "domains": p["domains"], "previews_month": p["previews_month"],
             "ai_previews_month": p["ai_previews_month"],
             "team_seats": p["team_seats"], "features": sorted(p["features"]),
+            "price_id": price_ids.get(k) or None,
         })
     return out

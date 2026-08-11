@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import Modal from '../components/ui/Modal'
+import Modal, { ConfirmDialog } from '../components/ui/Modal'
 import EmptyState from '../components/ui/EmptyState'
 import Alert from '../components/ui/Alert'
 import CodeBlock from '../components/ui/CodeBlock'
@@ -50,6 +50,7 @@ export default function Domains() {
     return counts
   }, [previews])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null)
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
   const [verifyingDomain, setVerifyingDomain] = useState<Domain | null>(null)
   const [verificationMethod, setVerificationMethod] = useState<'dns' | 'html' | 'meta' | null>(null)
@@ -187,15 +188,15 @@ export default function Domains() {
     }
   }
 
-  const handleDeleteDomain = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this domain? This action cannot be undone.')) {
-      try {
-        await removeDomain(id)
-        setSuccessMessage('Domain deleted successfully')
-        setTimeout(() => setSuccessMessage(''), 3000)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete domain')
-      }
+  const handleDeleteDomain = async (domain: Domain) => {
+    try {
+      await removeDomain(domain.id)
+      setSuccessMessage('Domain deleted successfully')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete domain')
+    } finally {
+      setDomainToDelete(null)
     }
   }
 
@@ -499,7 +500,7 @@ export default function Domains() {
                           </Button>
                         )}
                         <button
-                          onClick={() => handleDeleteDomain(domain.id)}
+                          onClick={() => setDomainToDelete(domain)}
                           className="text-error-600 hover:text-error-800 transition-colors inline-flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-error-50"
                           title="Delete domain"
                         >
@@ -1061,6 +1062,20 @@ export default function Domains() {
           )}
         </div>
       </Modal>
+
+      {/* Delete Domain Confirmation */}
+      <ConfirmDialog
+        isOpen={domainToDelete !== null}
+        onClose={() => setDomainToDelete(null)}
+        onConfirm={() => {
+          if (domainToDelete) handleDeleteDomain(domainToDelete)
+        }}
+        title="Delete domain?"
+        message={`Deleting ${domainToDelete?.name || 'this domain'} stops previews from being served for it. This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }

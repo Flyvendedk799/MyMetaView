@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { ArrowPathIcon, ExclamationTriangleIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
+import { ExclamationTriangleIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { fetchAdminSystemOverview, fetchAdminWorkerHealth, triggerDeployment, type SystemOverview, type WorkerHealth } from '../../api/client'
@@ -9,7 +10,6 @@ export default function AdminSystem() {
   const [workerHealth, setWorkerHealth] = useState<WorkerHealth | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [restarting, setRestarting] = useState(false)
   const [deploying, setDeploying] = useState(false)
   const [deploymentResult, setDeploymentResult] = useState<{ success: boolean; message: string; branch_merged?: string } | null>(null)
 
@@ -34,25 +34,6 @@ export default function AdminSystem() {
       setError(err instanceof Error ? err.message : 'Failed to load system data')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleRestartWorkers = async () => {
-    if (!window.confirm('Are you sure you want to restart workers? This will interrupt any running jobs.')) {
-      return
-    }
-
-    try {
-      setRestarting(true)
-      // Worker restart endpoint would be implemented here
-      // For now, this is a placeholder - Railway handles worker restarts via service restart
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      alert('Worker restart initiated (service restart required)')
-      await loadData()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to restart workers')
-    } finally {
-      setRestarting(false)
     }
   }
 
@@ -209,49 +190,57 @@ export default function AdminSystem() {
             )}
           </Card>
 
-          {/* Worker Management */}
+          {/* Worker Health */}
           <Card className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-secondary">Worker Management</h2>
-              <Button
-                onClick={handleRestartWorkers}
-                disabled={restarting}
-                variant="secondary"
-              >
-                {restarting ? (
-                  <span className="flex items-center space-x-2">
-                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                    <span>Restarting...</span>
-                  </span>
-                ) : (
-                  <span className="flex items-center space-x-2">
-                    <ArrowPathIcon className="w-5 h-5" />
-                    <span>Restart Workers</span>
-                  </span>
-                )}
-              </Button>
+            <h2 className="text-xl font-semibold text-secondary mb-4">Worker Health</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="p-4 bg-secondary-50 rounded-lg">
+                <p className="text-sm text-secondary-600 mb-1">Main Queue</p>
+                <p className="text-xl font-bold text-secondary">
+                  {workerHealth?.main_queue_length.toLocaleString() || '0'}
+                </p>
+              </div>
+              <div className="p-4 bg-secondary-50 rounded-lg">
+                <p className="text-sm text-secondary-600 mb-1">Dead Letter Queue</p>
+                <p className="text-xl font-bold text-secondary">
+                  {workerHealth?.dlq_length.toLocaleString() || '0'}
+                </p>
+              </div>
+              <div className="p-4 bg-secondary-50 rounded-lg">
+                <p className="text-sm text-secondary-600 mb-1">Recent Failures</p>
+                <p className="text-xl font-bold text-secondary">
+                  {workerHealth?.recent_failures_count.toLocaleString() || '0'}
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-secondary-600">
-              Worker status monitoring and management. Restart workers if they become unresponsive.
-            </p>
-            <div className="mt-4 p-4 bg-secondary-50 rounded-lg">
-              <p className="text-sm text-secondary-600">
-                <strong>Note:</strong> Worker restart functionality is currently stubbed. Implement actual worker management endpoint.
+            <div className="text-sm text-secondary-600 space-y-1">
+              <p>
+                Last successful job:{' '}
+                {workerHealth?.last_successful_job_at
+                  ? new Date(workerHealth.last_successful_job_at).toLocaleString()
+                  : 'none recorded'}
+              </p>
+              <p>
+                Last failure:{' '}
+                {workerHealth?.last_failure_at
+                  ? new Date(workerHealth.last_failure_at).toLocaleString()
+                  : 'none recorded'}
               </p>
             </div>
+            <p className="mt-4 text-sm text-secondary-500">
+              Workers restart automatically on each deploy (Railway) — there is no manual restart control.
+            </p>
           </Card>
 
-          {/* Error Logs Placeholder */}
+          {/* Recent Errors */}
           <Card>
             <h2 className="text-xl font-semibold text-secondary mb-4">Recent Errors</h2>
-            <div className="p-4 bg-secondary-50 rounded-lg">
-              <p className="text-sm text-secondary-600">
-                Error logs will be displayed here once error logging is fully implemented in webhooks and jobs.
-              </p>
-              <p className="text-xs text-secondary-500 mt-2">
-                Latest {overview?.errors_past_24h || 0} errors in the past 24 hours.
-              </p>
-            </div>
+            <p className="text-sm text-secondary-600 mb-3">
+              {(overview?.errors_past_24h || 0).toLocaleString()} errors in the past 24 hours — errors are tracked in the error log.
+            </p>
+            <Link to="/app/admin/errors" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+              View error log →
+            </Link>
           </Card>
         </>
       )}

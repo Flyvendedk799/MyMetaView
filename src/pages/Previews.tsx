@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon, SwatchIcon, EyeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import Modal from '../components/ui/Modal'
+import Modal, { ConfirmDialog } from '../components/ui/Modal'
 import EmptyState from '../components/ui/EmptyState'
 import Alert from '../components/ui/Alert'
 import { SkeletonGrid } from '../components/ui/Skeleton'
@@ -123,6 +123,7 @@ export default function Previews() {
   }
   // Detail modal — platform mockups, meta tags, downloads.
   const [detailPreview, setDetailPreview] = useState<Preview | null>(null)
+  const [previewToDelete, setPreviewToDelete] = useState<number | null>(null)
   const verifiedDomains = useMemo(() => domains.filter((d) => d.status === 'verified'), [domains])
 
   // Bulk "cover your site" generation
@@ -453,12 +454,12 @@ export default function Previews() {
   }
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this preview?')) {
-      try {
-        await deletePreview(id)
-      } catch (err) {
-        // Error is handled by hook
-      }
+    try {
+      await deletePreview(id)
+    } catch (err) {
+      // Error is handled by hook
+    } finally {
+      setPreviewToDelete(null)
     }
   }
 
@@ -955,7 +956,7 @@ export default function Previews() {
                             <PencilIcon className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(preview.id)}
+                            onClick={() => setPreviewToDelete(preview.id)}
                             className="text-error-600 hover:text-error-700 transition-colors p-1"
                             title="Delete preview"
                           >
@@ -1383,6 +1384,20 @@ export default function Previews() {
           )}
         </div>
       </Modal>
+
+      {/* Delete Preview Confirmation */}
+      <ConfirmDialog
+        isOpen={previewToDelete !== null}
+        onClose={() => setPreviewToDelete(null)}
+        onConfirm={() => {
+          if (previewToDelete !== null) handleDelete(previewToDelete)
+        }}
+        title="Delete preview?"
+        message="The preview and its variants will be removed, and its URL will fall back to the page's own tags."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }

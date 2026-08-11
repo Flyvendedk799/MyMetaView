@@ -159,7 +159,7 @@ export default function Login() {
 
           <p className="text-center text-sm text-secondary-600 mt-8 leading-relaxed">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
+            <Link to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'} className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
               Sign up for free
             </Link>
           </p>

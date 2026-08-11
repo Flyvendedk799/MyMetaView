@@ -41,36 +41,6 @@ import type {
   AdminUserDetail,
   AdminDomain,
   AdminPreview,
-  PublishedSite,
-  PublishedSiteCreate,
-  PublishedSiteUpdate,
-  SitePost,
-  SitePostCreate,
-  SitePostUpdate,
-  SitePostListItem,
-  PaginatedSitePosts,
-  SiteCategory,
-  SiteCategoryCreate,
-  SiteCategoryUpdate,
-  SitePage,
-  SitePageCreate,
-  SitePageUpdate,
-  SiteMenu,
-  SiteMenuCreate,
-  SiteMenuUpdate,
-  SiteMenuItem,
-  SiteMenuItemCreate,
-  SiteMenuItemUpdate,
-  SiteMedia,
-  SiteMediaCreate,
-  SiteMediaUpdate,
-  SiteBranding,
-  SiteBrandingCreate,
-  SiteBrandingUpdate,
-  SiteSettings,
-  SiteSettingsCreate,
-  SiteSettingsUpdate,
-  SiteStats,
 } from './types'
 
 // Re-export types for use in other files
@@ -113,37 +83,6 @@ export type {
   AdminUserDetail,
   AdminDomain,
   AdminPreview,
-  // Site types
-  PublishedSite,
-  PublishedSiteCreate,
-  PublishedSiteUpdate,
-  SitePost,
-  SitePostCreate,
-  SitePostUpdate,
-  SitePostListItem,
-  PaginatedSitePosts,
-  SiteCategory,
-  SiteCategoryCreate,
-  SiteCategoryUpdate,
-  SitePage,
-  SitePageCreate,
-  SitePageUpdate,
-  SiteMenu,
-  SiteMenuCreate,
-  SiteMenuUpdate,
-  SiteMenuItem,
-  SiteMenuItemCreate,
-  SiteMenuItemUpdate,
-  SiteMedia,
-  SiteMediaCreate,
-  SiteMediaUpdate,
-  SiteBranding,
-  SiteBrandingCreate,
-  SiteBrandingUpdate,
-  SiteSettings,
-  SiteSettingsCreate,
-  SiteSettingsUpdate,
-  SiteStats,
 }
 
 /**
@@ -397,10 +336,6 @@ export async function createDomain(payload: DomainCreate): Promise<Domain> {
   })
 }
 
-export async function fetchDomainById(id: number): Promise<Domain> {
-  return fetchApi<Domain>(`/api/v1/domains/${id}`)
-}
-
 export async function deleteDomain(id: number): Promise<void> {
   await fetchApi<{ success: boolean }>(`/api/v1/domains/${id}`, {
     method: 'DELETE',
@@ -596,13 +531,6 @@ export async function deletePreview(previewId: number): Promise<void> {
   })
 }
 
-export async function generatePreviewWithAI(payload: { url: string; domain: string }): Promise<Preview> {
-  return fetchApi<Preview>('/api/v1/previews/generate', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
 /**
  * Re-render a card with a different layout, panel colour or accent.
  *
@@ -635,12 +563,6 @@ export async function buildPlatformCards(
 }
 
 // Job queue endpoints
-export interface JobStatus {
-  status: 'queued' | 'started' | 'finished' | 'failed'
-  result: Preview | null
-  error: string | null
-}
-
 export async function createPreviewJob(
   payload: { url: string; domain: string; force?: boolean }
 ): Promise<PreviewJobCreateResponse> {
@@ -648,10 +570,6 @@ export async function createPreviewJob(
     method: 'POST',
     body: JSON.stringify(payload),
   })
-}
-
-export async function getJobStatus(jobId: string): Promise<JobStatus> {
-  return fetchApi<JobStatus>(`/api/v1/jobs/${jobId}/status`)
 }
 
 // Bulk / whole-site generation + sitemap discovery
@@ -728,14 +646,6 @@ export async function createBillingPortal(): Promise<{ portal_url: string }> {
   return fetchApi<{ portal_url: string }>('/api/v1/billing/portal', {
     method: 'POST',
   })
-}
-
-export async function getBillingStatus(): Promise<{
-  subscription_status: string
-  subscription_plan?: string | null
-  trial_ends_at?: string | null
-}> {
-  return fetchApi('/api/v1/billing/status')
 }
 
 export async function changeSubscriptionPlan(priceId: string): Promise<{
@@ -860,12 +770,6 @@ export async function deleteUserAccount(): Promise<{ success: boolean; message: 
   })
 }
 
-export async function deleteOrganization(orgId: number): Promise<{ success: boolean; message: string }> {
-  return fetchApi(`/api/v1/account/organizations/${orgId}`, {
-    method: 'DELETE',
-  })
-}
-
 // Activity endpoints
 
 export async function fetchUserActivity(skip = 0, limit = 50): Promise<ActivityLog[]> {
@@ -977,10 +881,6 @@ export async function fetchPreviewVariants(previewId: number): Promise<PreviewVa
   return fetchApi<PreviewVariant[]>(`/api/v1/preview-variants/preview/${previewId}`)
 }
 
-export async function getPreviewVariant(variantId: number): Promise<PreviewVariant> {
-  return fetchApi<PreviewVariant>(`/api/v1/preview-variants/${variantId}`)
-}
-
 export async function updatePreviewVariant(
   variantId: number,
   data: { title?: string; description?: string; tone?: string; keywords?: string; image_url?: string }
@@ -988,12 +888,6 @@ export async function updatePreviewVariant(
   return fetchApi<PreviewVariant>(`/api/v1/preview-variants/${variantId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
-  })
-}
-
-export async function deletePreviewVariant(variantId: number): Promise<void> {
-  await fetchApi(`/api/v1/preview-variants/${variantId}`, {
-    method: 'DELETE',
   })
 }
 
@@ -1152,10 +1046,6 @@ export async function fetchBlogPostBySlug(slug: string): Promise<BlogPost> {
 
 export async function fetchBlogCategories(includeEmpty: boolean = false): Promise<BlogCategory[]> {
   return fetchApi<BlogCategory[]>(`/api/v1/blog/categories?include_empty=${includeEmpty}`, undefined, false)
-}
-
-export async function fetchBlogCategoryBySlug(slug: string): Promise<BlogCategory> {
-  return fetchApi<BlogCategory>(`/api/v1/blog/categories/${slug}`, undefined, false)
 }
 
 // ============================================================================
@@ -1405,20 +1295,6 @@ export interface DemoPreviewResponse {
   message: string
 }
 
-/**
- * @deprecated Use createDemoJob + getDemoJobStatus instead. The /api/v1/demo/preview
- * endpoint is deprecated; demo-v2 job flow avoids Railway's 60s timeout and provides
- * progress feedback. Will be removed in a future release.
- */
-export async function generateDemoPreview(url: string): Promise<DemoPreviewResponse> {
-  const token = getAuthToken()
-  return fetchApi<DemoPreviewResponse>('/api/v1/demo/preview', {
-    method: 'POST',
-    body: JSON.stringify({ url }),
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  }, false) // Public endpoint; attach auth when available for user-scoped activity logs
-}
-
 // ============================================================================
 // Demo Preview V2 - Enhanced with Brand Extraction
 // ============================================================================
@@ -1432,26 +1308,6 @@ export interface BrandElements {
 
 export interface DemoPreviewResponseV2 extends DemoPreviewResponse {
   brand?: BrandElements | null
-}
-
-/**
- * Generate demo preview using sync V2 endpoint.
- *
- * @deprecated Prefer createDemoJob + getDemoJobStatus for production. Sync endpoint
- * can hit Railway's 60s load balancer timeout. Job flow provides progress and avoids
- * timeouts. Sync endpoint kept for quick tests only.
- *
- * @param url - URL to generate preview for
- * @returns Enhanced preview response with brand elements
- */
-export async function generateDemoPreviewV2(url: string): Promise<DemoPreviewResponseV2> {
-  const token = getAuthToken()
-  return fetchApi<DemoPreviewResponseV2>('/api/v1/demo-v2/preview', {
-    method: 'POST',
-    body: JSON.stringify({ url }),
-    timeout: 300000, // 5 minutes for preview generation (can take 30-90s, with buffer for slow pages)
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  }, false) // Public endpoint; attach auth when available for user-scoped activity logs
 }
 
 // Async demo job endpoints (work around Railway's 60-second load balancer timeout)
@@ -1488,301 +1344,4 @@ export async function getDemoJobStatus(jobId: string): Promise<DemoJobStatusResp
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   }, false) // Public endpoint; attach auth when available for user-scoped activity logs
 }
-
-// Sites Management
-export async function fetchSites(): Promise<PublishedSite[]> {
-  return fetchApi<PublishedSite[]>('/api/v1/sites', {
-    method: 'GET',
-  })
-}
-
-export async function createSite(payload: PublishedSiteCreate): Promise<PublishedSite> {
-  return fetchApi<PublishedSite>('/api/v1/sites', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function fetchSiteById(siteId: number): Promise<PublishedSite> {
-  return fetchApi<PublishedSite>(`/api/v1/sites/${siteId}`, {
-    method: 'GET',
-  })
-}
-
-export async function updateSite(siteId: number, payload: PublishedSiteUpdate): Promise<PublishedSite> {
-  return fetchApi<PublishedSite>(`/api/v1/sites/${siteId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function deleteSite(siteId: number): Promise<void> {
-  return fetchApi<void>(`/api/v1/sites/${siteId}`, {
-    method: 'DELETE',
-  })
-}
-
-export async function publishSite(siteId: number): Promise<PublishedSite> {
-  return fetchApi<PublishedSite>(`/api/v1/sites/${siteId}/publish`, {
-    method: 'POST',
-  })
-}
-
-export async function unpublishSite(siteId: number): Promise<PublishedSite> {
-  return fetchApi<PublishedSite>(`/api/v1/sites/${siteId}/unpublish`, {
-    method: 'POST',
-  })
-}
-
-export async function fetchSiteStats(siteId: number): Promise<SiteStats> {
-  return fetchApi<SiteStats>(`/api/v1/sites/${siteId}/stats`, {
-    method: 'GET',
-  })
-}
-
-// Site Posts
-export async function fetchSitePosts(
-  siteId: number,
-  params?: { page?: number; per_page?: number; status?: string; category_id?: number; search?: string }
-): Promise<PaginatedSitePosts> {
-  const queryParams = new URLSearchParams()
-  if (params?.page) queryParams.append('page', params.page.toString())
-  if (params?.per_page) queryParams.append('per_page', params.per_page.toString())
-  if (params?.status) queryParams.append('status', params.status)
-  if (params?.category_id) queryParams.append('category_id', params.category_id.toString())
-  if (params?.search) queryParams.append('search', params.search)
-  
-  const query = queryParams.toString()
-  return fetchApi<PaginatedSitePosts>(`/api/v1/sites/${siteId}/posts${query ? `?${query}` : ''}`, {
-    method: 'GET',
-  })
-}
-
-export async function createSitePost(siteId: number, payload: SitePostCreate): Promise<SitePost> {
-  return fetchApi<SitePost>(`/api/v1/sites/${siteId}/posts`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function fetchSitePost(siteId: number, postId: number): Promise<SitePost> {
-  return fetchApi<SitePost>(`/api/v1/sites/${siteId}/posts/${postId}`, {
-    method: 'GET',
-  })
-}
-
-export async function updateSitePost(siteId: number, postId: number, payload: SitePostUpdate): Promise<SitePost> {
-  return fetchApi<SitePost>(`/api/v1/sites/${siteId}/posts/${postId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function deleteSitePost(siteId: number, postId: number): Promise<void> {
-  return fetchApi<void>(`/api/v1/sites/${siteId}/posts/${postId}`, {
-    method: 'DELETE',
-  })
-}
-
-// Site Categories
-export async function fetchSiteCategories(siteId: number): Promise<SiteCategory[]> {
-  return fetchApi<SiteCategory[]>(`/api/v1/sites/${siteId}/categories`, {
-    method: 'GET',
-  })
-}
-
-export async function createSiteCategory(siteId: number, payload: SiteCategoryCreate): Promise<SiteCategory> {
-  return fetchApi<SiteCategory>(`/api/v1/sites/${siteId}/categories`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function updateSiteCategory(siteId: number, categoryId: number, payload: SiteCategoryUpdate): Promise<SiteCategory> {
-  return fetchApi<SiteCategory>(`/api/v1/sites/${siteId}/categories/${categoryId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function deleteSiteCategory(siteId: number, categoryId: number): Promise<void> {
-  return fetchApi<void>(`/api/v1/sites/${siteId}/categories/${categoryId}`, {
-    method: 'DELETE',
-  })
-}
-
-// Site Pages
-export async function fetchSitePages(siteId: number): Promise<SitePage[]> {
-  return fetchApi<SitePage[]>(`/api/v1/sites/${siteId}/pages`, {
-    method: 'GET',
-  })
-}
-
-export async function createSitePage(siteId: number, payload: SitePageCreate): Promise<SitePage> {
-  return fetchApi<SitePage>(`/api/v1/sites/${siteId}/pages`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function fetchSitePage(siteId: number, pageId: number): Promise<SitePage> {
-  return fetchApi<SitePage>(`/api/v1/sites/${siteId}/pages/${pageId}`, {
-    method: 'GET',
-  })
-}
-
-export async function updateSitePage(siteId: number, pageId: number, payload: SitePageUpdate): Promise<SitePage> {
-  return fetchApi<SitePage>(`/api/v1/sites/${siteId}/pages/${pageId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function deleteSitePage(siteId: number, pageId: number): Promise<void> {
-  return fetchApi<void>(`/api/v1/sites/${siteId}/pages/${pageId}`, {
-    method: 'DELETE',
-  })
-}
-
-// Site Menus
-export async function fetchSiteMenus(siteId: number): Promise<SiteMenu[]> {
-  return fetchApi<SiteMenu[]>(`/api/v1/sites/${siteId}/menus`, {
-    method: 'GET',
-  })
-}
-
-export async function createSiteMenu(siteId: number, payload: SiteMenuCreate): Promise<SiteMenu> {
-  return fetchApi<SiteMenu>(`/api/v1/sites/${siteId}/menus`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function fetchSiteMenu(siteId: number, menuId: number): Promise<SiteMenu> {
-  return fetchApi<SiteMenu>(`/api/v1/sites/${siteId}/menus/${menuId}`, {
-    method: 'GET',
-  })
-}
-
-export async function updateSiteMenu(siteId: number, menuId: number, payload: SiteMenuUpdate): Promise<SiteMenu> {
-  return fetchApi<SiteMenu>(`/api/v1/sites/${siteId}/menus/${menuId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function deleteSiteMenu(siteId: number, menuId: number): Promise<void> {
-  return fetchApi<void>(`/api/v1/sites/${siteId}/menus/${menuId}`, {
-    method: 'DELETE',
-  })
-}
-
-// Site Menu Items
-export async function createSiteMenuItem(siteId: number, menuId: number, payload: SiteMenuItemCreate): Promise<SiteMenuItem> {
-  return fetchApi<SiteMenuItem>(`/api/v1/sites/${siteId}/menus/${menuId}/items`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function updateSiteMenuItem(siteId: number, menuId: number, itemId: number, payload: SiteMenuItemUpdate): Promise<SiteMenuItem> {
-  return fetchApi<SiteMenuItem>(`/api/v1/sites/${siteId}/menus/${menuId}/items/${itemId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function deleteSiteMenuItem(siteId: number, menuId: number, itemId: number): Promise<void> {
-  return fetchApi<void>(`/api/v1/sites/${siteId}/menus/${menuId}/items/${itemId}`, {
-    method: 'DELETE',
-  })
-}
-
-// Site Media
-export async function fetchSiteMedia(siteId: number, params?: { page?: number; per_page?: number; search?: string }): Promise<SiteMedia[]> {
-  const queryParams = new URLSearchParams()
-  if (params?.page) queryParams.append('page', params.page.toString())
-  if (params?.per_page) queryParams.append('per_page', params.per_page.toString())
-  if (params?.search) queryParams.append('search', params.search)
-  
-  const query = queryParams.toString()
-  return fetchApi<SiteMedia[]>(`/api/v1/sites/${siteId}/media${query ? `?${query}` : ''}`, {
-    method: 'GET',
-  })
-}
-
-export async function uploadSiteMedia(siteId: number, file: File, altText?: string): Promise<SiteMedia> {
-  const formData = new FormData()
-  formData.append('file', file)
-  if (altText) formData.append('alt_text', altText)
-  
-  const token = localStorage.getItem('token')
-  const response = await fetch(`/api/v1/sites/${siteId}/media/upload`, {
-    method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: formData,
-  })
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
-    throw new Error(error.detail || 'Upload failed')
-  }
-  
-  return response.json()
-}
-
-export async function createSiteMedia(siteId: number, payload: SiteMediaCreate): Promise<SiteMedia> {
-  return fetchApi<SiteMedia>(`/api/v1/sites/${siteId}/media`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function updateSiteMedia(siteId: number, mediaId: number, payload: SiteMediaUpdate): Promise<SiteMedia> {
-  return fetchApi<SiteMedia>(`/api/v1/sites/${siteId}/media/${mediaId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export async function deleteSiteMedia(siteId: number, mediaId: number): Promise<void> {
-  return fetchApi<void>(`/api/v1/sites/${siteId}/media/${mediaId}`, {
-    method: 'DELETE',
-  })
-}
-
-// Site Branding
-export async function fetchSiteBranding(siteId: number): Promise<SiteBranding> {
-  return fetchApi<SiteBranding>(`/api/v1/sites/${siteId}/branding`, {
-    method: 'GET',
-  })
-}
-
-export async function updateSiteBranding(siteId: number, payload: SiteBrandingUpdate): Promise<SiteBranding> {
-  return fetchApi<SiteBranding>(`/api/v1/sites/${siteId}/branding`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-// Site Settings
-export async function fetchSiteSettings(siteId: number): Promise<SiteSettings> {
-  return fetchApi<SiteSettings>(`/api/v1/sites/${siteId}/settings`, {
-    method: 'GET',
-  })
-}
-
-export async function updateSiteSettings(siteId: number, payload: SiteSettingsUpdate): Promise<SiteSettings> {
-  return fetchApi<SiteSettings>(`/api/v1/sites/${siteId}/settings`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-
-
-
-
 

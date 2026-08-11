@@ -240,6 +240,31 @@ def generate_bulk_preview_job(
     )
     logger.info("bulk %s: done. completed=%d failed=%d", batch_id, completed, failed)
 
+    # Bulk runs take minutes and people close the tab — tell them it's done.
+    # Single-URL runs stay silent; an email per card would be noise.
+    if total > 1:
+        try:
+            from backend.db.session import SessionLocal
+            from backend.models.user import User
+            from backend.core.config import settings as app_settings
+            from backend.services.email_service import send_bulk_run_finished_email
+
+            db = SessionLocal()
+            try:
+                owner = db.query(User).filter(User.id == user_id).first()
+                if owner and owner.email:
+                    send_bulk_run_finished_email(
+                        owner.email,
+                        domain,
+                        completed,
+                        failed,
+                        f"{app_settings.FRONTEND_URL.rstrip('/')}/app/previews",
+                    )
+            finally:
+                db.close()
+        except Exception as email_err:  # pragma: no cover — never fail the run
+            logger.warning("bulk %s: completion email failed: %s", batch_id, email_err)
+
     return {
         "batch_id": batch_id,
         "status": final_status,

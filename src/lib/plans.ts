@@ -46,12 +46,18 @@ export const PLAN_MARKETING: Record<
   agency: { description: 'For agencies and teams', cta: 'Start free trial', support: 'Dedicated support' },
 }
 
-// Stripe price IDs per plan key. plans.py maps starter→BASIC, growth→PRO,
-// agency→AGENCY via its `stripe_env`; we mirror that mapping here.
+// Stripe price IDs per plan key. The backend's /plans response is the source
+// of truth (price_id per plan); these VITE_ vars remain only as a fallback for
+// older backends that don't send it.
 export const PLAN_PRICE_IDS: Record<string, string> = {
   starter: (import.meta.env.VITE_STRIPE_PRICE_TIER_BASIC as string) || '',
   growth: (import.meta.env.VITE_STRIPE_PRICE_TIER_PRO as string) || '',
   agency: (import.meta.env.VITE_STRIPE_PRICE_TIER_AGENCY as string) || '',
+}
+
+/** Server-sent price id first, env fallback second. */
+export function planPriceId(plan: Pick<PublicPlan, 'key'> & { price_id?: string | null }): string {
+  return plan.price_id || PLAN_PRICE_IDS[plan.key] || ''
 }
 
 /** The plan we highlight as "most popular" across the UI. */
@@ -111,7 +117,7 @@ export function toDisplayPlan(plan: PublicPlan): DisplayPlan {
     features: planToBullets(plan),
     cta: PLAN_MARKETING[plan.key]?.cta ?? 'Start free trial',
     highlighted: plan.key === HIGHLIGHTED_PLAN_KEY,
-    priceId: PLAN_PRICE_IDS[plan.key] ?? '',
+    priceId: planPriceId(plan),
   }
 }
 

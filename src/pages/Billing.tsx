@@ -6,7 +6,7 @@ import { createCheckoutSession, createBillingPortal, changeSubscriptionPlan, get
 import type { PublicPlan, MyPlan } from '../api/types'
 import { useOrganization } from '../hooks/useOrganization'
 import { useAuth } from '../hooks/useAuth'
-import { planToBullets, PLAN_MARKETING, PLAN_PRICE_IDS, HIGHLIGHTED_PLAN_KEY } from '../lib/plans'
+import { planToBullets, PLAN_MARKETING, planPriceId, HIGHLIGHTED_PLAN_KEY } from '../lib/plans'
 
 // Tier ordering for upgrade/downgrade math (matches backend/core/plans.py).
 const PLAN_RANK: Record<string, number> = { free: 0, starter: 1, growth: 2, agency: 3 }
@@ -74,7 +74,8 @@ export default function Billing() {
   // Active subscribers get a prorated change-plan; everyone else (free / trialing
   // without a card / canceled) goes through a fresh Stripe checkout.
   const handleSelectPlan = async (planKey: string) => {
-    const priceId = PLAN_PRICE_IDS[planKey]
+    const plan = plans.find((p) => p.key === planKey)
+    const priceId = plan ? planPriceId(plan) : ''
     if (!priceId || priceId.trim() === '') {
       setError('Checkout isn’t configured for this plan yet. Please contact support.')
       return
@@ -274,7 +275,7 @@ export default function Billing() {
                 const popular = plan.key === HIGHLIGHTED_PLAN_KEY
                 const bullets = planToBullets(plan)
                 const marketing = PLAN_MARKETING[plan.key]
-                const priceConfigured = !!PLAN_PRICE_IDS[plan.key]
+                const priceConfigured = !!planPriceId(plan)
 
                 return (
                   <div

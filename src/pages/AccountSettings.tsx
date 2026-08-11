@@ -1,26 +1,64 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import { exportUserData, deleteUserAccount } from '../api/client'
+import Alert from '../components/ui/Alert'
+import Input from '../components/ui/Input'
+import { ConfirmDialog } from '../components/ui/Modal'
+import { exportUserData, deleteUserAccount, changePassword } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
-import { useNavigate } from 'react-router-dom'
-import { ExclamationTriangleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon, ArrowDownTrayIcon, KeyIcon } from '@heroicons/react/24/outline'
 
 export default function AccountSettings() {
   const [exporting, setExporting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
+
+  // Change password
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError(null)
+    setPasswordSuccess(false)
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.')
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New passwords do not match.')
+      return
+    }
+    try {
+      setChangingPassword(true)
+      await changePassword(currentPassword, newPassword)
+      setPasswordSuccess(true)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Could not change password.')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
 
   const handleExportData = async () => {
     try {
       setExporting(true)
       setError(null)
-      
+
       const data = await exportUserData()
-      
+
       // Download as JSON file
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -39,27 +77,15 @@ export default function AccountSettings() {
   }
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirm !== 'DELETE') {
-      setError('Please type "DELETE" to confirm account deletion')
-      return
-    }
-
-    if (!window.confirm('Are you absolutely sure? This action cannot be undone. Your account and all associated data will be permanently deleted.')) {
-      return
-    }
-
     try {
       setDeleting(true)
       setError(null)
-      
       await deleteUserAccount()
-      
-      // Logout and redirect to landing
       logout()
       navigate('/')
-      alert('Your account has been deleted. We\'re sorry to see you go.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete account')
+      setShowDeleteDialog(false)
     } finally {
       setDeleting(false)
     }
@@ -68,42 +94,86 @@ export default function AccountSettings() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-secondary mb-2">Account Settings</h1>
-        <p className="text-secondary-600">Manage your account data and privacy</p>
+        <h1 className="font-display text-3xl font-semibold tracking-display text-secondary-900 mb-1.5">Account</h1>
+        <p className="text-[15px] text-secondary-600">Your sign-in details, data, and privacy</p>
       </div>
 
       {error && (
-        <Card className="mb-6 bg-error-50 border-error-200">
-          <p className="text-error-800">Error: {error}</p>
-        </Card>
+        <div className="mb-6">
+          <Alert variant="error" onDismiss={() => setError(null)}>{error}</Alert>
+        </div>
       )}
+
+      {/* Profile */}
+      <Card className="mb-6">
+        <h2 className="text-xl font-semibold text-secondary-900 mb-1">Profile</h2>
+        <p className="text-secondary-600 text-sm mb-4">
+          Signed in as <span className="font-medium text-secondary-900">{user?.email}</span>
+        </p>
+        <p className="text-[13px] text-secondary-500">
+          Your email address is your account identity and can't be changed here — write to{' '}
+          <a href="mailto:hello@mymetaview.com" className="text-primary-600 hover:text-primary-700">hello@mymetaview.com</a>{' '}
+          if you need it moved.
+        </p>
+      </Card>
+
+      {/* Change password */}
+      <Card className="mb-6">
+        <div className="flex items-start gap-3 mb-4">
+          <KeyIcon className="w-6 h-6 text-secondary-400 flex-shrink-0 mt-1" />
+          <div>
+            <h2 className="text-xl font-semibold text-secondary-900 mb-1">Change password</h2>
+            <p className="text-secondary-600 text-sm">At least 8 characters.</p>
+          </div>
+        </div>
+        <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
+          {passwordError && <Alert variant="error">{passwordError}</Alert>}
+          {passwordSuccess && <Alert variant="success">Password updated.</Alert>}
+          <Input
+            label="Current password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+          <Input
+            label="New password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+          />
+          <Input
+            label="Confirm new password"
+            type="password"
+            value={confirmNewPassword}
+            onChange={(e) => setConfirmNewPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+          />
+          <Button type="submit" loading={changingPassword}>
+            Update password
+          </Button>
+        </form>
+      </Card>
 
       {/* Data Export */}
       <Card className="mb-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-secondary mb-2">Export Your Data</h2>
+            <h2 className="text-xl font-semibold text-secondary-900 mb-2">Export your data</h2>
             <p className="text-secondary-600 text-sm">
               Download all your data in JSON format. This includes your profile, organizations, domains, previews, and activity logs.
             </p>
           </div>
         </div>
-        <Button
-          onClick={handleExportData}
-          disabled={exporting}
-          variant="secondary"
-        >
-          {exporting ? (
-            <span className="flex items-center space-x-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>Exporting...</span>
-            </span>
-          ) : (
-            <span className="flex items-center space-x-2">
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              <span>Export My Data</span>
-            </span>
-          )}
+        <Button onClick={handleExportData} loading={exporting} variant="secondary">
+          <span className="flex items-center space-x-2">
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            <span>Export my data</span>
+          </span>
         </Button>
       </Card>
 
@@ -112,11 +182,11 @@ export default function AccountSettings() {
         <div className="flex items-start space-x-3 mb-4">
           <ExclamationTriangleIcon className="w-6 h-6 text-error-500 flex-shrink-0 mt-1" />
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-error-700 mb-2">Delete Account</h2>
+            <h2 className="text-xl font-semibold text-error-700 mb-2">Delete account</h2>
             <p className="text-secondary-600 text-sm mb-4">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>
-            <div className="mb-4">
+            <div className="mb-4 max-w-xs">
               <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Type "DELETE" to confirm:
               </label>
@@ -129,39 +199,43 @@ export default function AccountSettings() {
               />
             </div>
             <Button
-              onClick={handleDeleteAccount}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={deleting || deleteConfirm !== 'DELETE'}
               className="bg-error-600 hover:bg-error-700 text-white"
             >
-              {deleting ? (
-                <span className="flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Deleting...</span>
-                </span>
-              ) : (
-                'Delete My Account'
-              )}
+              Delete my account
             </Button>
           </div>
         </div>
       </Card>
 
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDeleteAccount}
+        title="Delete your account?"
+        message="Your domains, previews, brand settings, and analytics will be permanently removed. This cannot be undone."
+        confirmText="Delete everything"
+        loading={deleting}
+        variant="danger"
+      />
+
       {/* Legal Links */}
       <Card>
-        <h2 className="text-xl font-semibold text-secondary mb-4">Legal</h2>
+        <h2 className="text-xl font-semibold text-secondary-900 mb-4">Legal</h2>
         <div className="space-y-2 text-sm">
-          <a href="/privacy" className="text-primary hover:text-primary/80 block">
+          <Link to="/privacy" className="text-primary-600 hover:text-primary-700 block">
             Privacy Policy
-          </a>
-          <a href="/terms" className="text-primary hover:text-primary/80 block">
+          </Link>
+          <Link to="/terms" className="text-primary-600 hover:text-primary-700 block">
             Terms of Service
-          </a>
+          </Link>
           <p className="text-secondary-500 mt-4">
-            For questions about data processing or deletion, please contact support.
+            For questions about data processing or deletion, write to{' '}
+            <a href="mailto:hello@mymetaview.com" className="text-primary-600 hover:text-primary-700">hello@mymetaview.com</a>.
           </p>
         </div>
       </Card>
     </div>
   )
 }
-

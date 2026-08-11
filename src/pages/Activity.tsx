@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   UserIcon,
   GlobeAltIcon,
@@ -60,10 +61,10 @@ const ACTION_COLORS: Record<string, string> = {
 }
 
 function formatAction(action: string): string {
-  return action
-    .split('.')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+  // "preview.ai_job.completed" -> "Preview ai job completed", not the
+  // machine-y "Preview Ai_job Completed".
+  const words = action.split('.').join(' ').split('_').join(' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 function getActionDescription(action: string, metadata: Record<string, any> | null): string {
@@ -118,6 +119,7 @@ function getActionDescription(action: string, metadata: Record<string, any> | nu
 }
 
 export default function Activity() {
+  const navigate = useNavigate()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -166,7 +168,7 @@ export default function Activity() {
             description="Your account activity and events will appear here as you use the platform. Start by adding a domain or generating your first preview."
             action={{
               label: 'Go to Dashboard',
-              onClick: () => window.location.href = '/app',
+              onClick: () => navigate('/app'),
             }}
           />
         </Card>

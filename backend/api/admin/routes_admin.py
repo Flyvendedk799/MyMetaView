@@ -432,9 +432,10 @@ def get_system_overview(
     # Total users
     total_users = db.query(func.count(User.id)).scalar() or 0
     
-    # Active subscribers
-    active_subscribers = db.query(func.count(User.id)).filter(
-        User.subscription_status.in_(['active', 'trialing'])
+    # Active subscribers (subscriptions are organization-level)
+    from backend.models.organization import Organization as OrgModel
+    active_subscribers = db.query(func.count(OrgModel.id)).filter(
+        OrgModel.subscription_status.in_(['active', 'trialing'])
     ).scalar() or 0
     
     # Total domains
@@ -494,9 +495,10 @@ def get_admin_analytics_overview(
     # Total users
     total_users = db.query(func.count(User.id)).scalar() or 0
     
-    # Active subscribers
-    active_subscribers = db.query(func.count(User.id)).filter(
-        User.subscription_status.in_(['active', 'trialing'])
+    # Active subscribers (subscriptions are organization-level)
+    from backend.models.organization import Organization as OrgModel
+    active_subscribers = db.query(func.count(OrgModel.id)).filter(
+        OrgModel.subscription_status.in_(['active', 'trialing'])
     ).scalar() or 0
     
     # Total domains

@@ -16,6 +16,7 @@ import {
   fetchBlogPosts,
   fetchBlogCategories,
   fetchFeaturedBlogPosts,
+  subscribeToNewsletter,
   type BlogPostListItem,
   type BlogCategory,
   type PaginatedBlogPosts,
@@ -28,7 +29,14 @@ export default function Blog() {
   const [categories, setCategories] = useState<BlogCategory[]>([])
   const [pagination, setPagination] = useState<Omit<PaginatedBlogPosts, 'items'> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [postsError, setPostsError] = useState(false)
+  const [categoriesError, setCategoriesError] = useState(false)
+  const [featuredError, setFeaturedError] = useState(false)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+  const [newsletterEmail, setNewsletterEmail] = useState('')
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false)
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false)
+  const [newsletterError, setNewsletterError] = useState<string | null>(null)
   
   const currentPage = parseInt(searchParams.get('page') || '1')
   const currentCategory = searchParams.get('category') || ''
@@ -45,6 +53,7 @@ export default function Blog() {
 
   async function loadData() {
     setLoading(true)
+    setPostsError(false)
     try {
       const data = await fetchBlogPosts({
         page: currentPage,
@@ -64,6 +73,7 @@ export default function Blog() {
       })
     } catch (error) {
       console.error('Failed to load blog posts:', error)
+      setPostsError(true)
     } finally {
       setLoading(false)
     }
@@ -75,6 +85,7 @@ export default function Blog() {
       setCategories(data)
     } catch (error) {
       console.error('Failed to load categories:', error)
+      setCategoriesError(true)
     }
   }
 
@@ -84,6 +95,27 @@ export default function Blog() {
       setFeaturedPosts(data)
     } catch (error) {
       console.error('Failed to load featured posts:', error)
+      setFeaturedError(true)
+    }
+  }
+
+  async function handleNewsletterSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const email = newsletterEmail.trim()
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setNewsletterError('Please enter a valid email address.')
+      return
+    }
+    setNewsletterSubmitting(true)
+    setNewsletterError(null)
+    try {
+      await subscribeToNewsletter({ email, source: 'blog', consent_given: true })
+      setNewsletterSubscribed(true)
+    } catch (error) {
+      console.error('Failed to subscribe to newsletter:', error)
+      setNewsletterError(error instanceof Error ? error.message : 'Failed to subscribe — please try again.')
+    } finally {
+      setNewsletterSubmitting(false)
     }
   }
 
@@ -255,6 +287,9 @@ export default function Blog() {
                 )}
               </button>
             ))}
+            {categoriesError && (
+              <span className="text-sm text-secondary-400 whitespace-nowrap">Couldn't load categories.</span>
+            )}
           </div>
         </div>
       </section>
@@ -355,6 +390,15 @@ export default function Blog() {
         </section>
       )}
 
+      {/* Featured Posts Load Error */}
+      {showFeatured && featuredError && (
+        <section className="py-12 px-4 sm:px-6 lg:px-12 bg-white">
+          <div className="max-w-7xl mx-auto">
+            <p className="text-center text-secondary-500">Couldn't load featured posts — try refreshing.</p>
+          </div>
+        </section>
+      )}
+
       {/* Main Content */}
       <section className="py-12 px-4 sm:px-6 lg:px-12">
         <div className="max-w-7xl mx-auto">
@@ -403,6 +447,10 @@ export default function Blog() {
                   <div className="bg-secondary-200 h-4 rounded w-full" />
                 </div>
               ))}
+            </div>
+          ) : postsError ? (
+            <div className="text-center py-16">
+              <p className="text-secondary-500">Couldn't load posts — try refreshing.</p>
             </div>
           ) : posts.length === 0 ? (
             <div className="text-center py-16">
@@ -566,19 +614,31 @@ export default function Blog() {
           <p className="text-accent-100 mb-8">
             Get the latest insights on URL previews, SEO optimization, and growth strategies delivered to your inbox.
           </p>
-          <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-paper/60 focus:outline-none focus:ring-2 focus:ring-white/50"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-white text-accent-600 rounded-xl font-bold hover:bg-accent-50 transition-colors"
-            >
-              Subscribe
-            </button>
-          </form>
+          {newsletterSubscribed ? (
+            <p className="text-lg font-bold text-white">You're subscribed.</p>
+          ) : (
+            <div className="max-w-md mx-auto">
+              <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-paper/60 focus:outline-none focus:ring-2 focus:ring-white/50"
+                />
+                <button
+                  type="submit"
+                  disabled={newsletterSubmitting}
+                  className="px-6 py-3 bg-white text-accent-600 rounded-xl font-bold hover:bg-accent-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {newsletterSubmitting ? 'Subscribing…' : 'Subscribe'}
+                </button>
+              </form>
+              {newsletterError && (
+                <p className="mt-3 text-sm text-white/90 text-left">{newsletterError}</p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

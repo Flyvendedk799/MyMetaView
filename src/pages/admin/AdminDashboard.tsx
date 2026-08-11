@@ -199,26 +199,50 @@ export default function AdminDashboard() {
             </div>
           </Card>
 
-          {/* Charts Placeholder */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Activity Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-secondary mb-4">Daily Previews Generated</h2>
-              <div className="h-64 flex items-center justify-center bg-secondary-50 rounded-lg">
-                <p className="text-secondary-500">Chart placeholder - integrate charting library</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-secondary-600 mb-1">Previews Generated (24h)</p>
+                  <p className="text-3xl font-bold text-secondary">
+                    {overview?.previews_generated_24h.toLocaleString() || '0'}
+                  </p>
+                  <p className="text-sm text-secondary-500 mt-2">
+                    Preview images rendered in the last 24 hours.
+                  </p>
+                </div>
+                <PhotoIcon className="w-8 h-8 text-primary-500" />
               </div>
             </Card>
 
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-secondary mb-4">New Signups</h2>
-              <div className="h-64 flex items-center justify-center bg-secondary-50 rounded-lg">
-                <p className="text-secondary-500">Chart placeholder - integrate charting library</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-secondary-600 mb-1">Registered Users</p>
+                  <p className="text-3xl font-bold text-secondary">
+                    {overview?.total_users.toLocaleString() || '0'}
+                  </p>
+                  <p className="text-sm text-secondary-500 mt-2">
+                    {overview?.active_subscribers.toLocaleString() || '0'} with an active subscription.
+                  </p>
+                </div>
+                <UsersIcon className="w-8 h-8 text-success-500" />
               </div>
             </Card>
 
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-secondary mb-4">Queue Activity</h2>
-              <div className="h-64 flex items-center justify-center bg-secondary-50 rounded-lg">
-                <p className="text-secondary-500">Chart placeholder - integrate charting library</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-secondary-600 mb-1">Queue Backlog</p>
+                  <p className="text-3xl font-bold text-secondary">
+                    {overview?.redis_queue_length.toLocaleString() || '0'}
+                  </p>
+                  <p className="text-sm text-secondary-500 mt-2">
+                    {overview?.jobs_running.toLocaleString() || '0'} jobs running right now.
+                  </p>
+                </div>
+                <ChartBarIcon className="w-8 h-8 text-warning-500" />
               </div>
             </Card>
           </div>
