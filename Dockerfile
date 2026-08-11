@@ -28,8 +28,6 @@ COPY --from=builder /root/.local /root/.local
 # Copy application code
 COPY backend/ ./backend/
 COPY alembic.ini ./
-COPY backend-entrypoint.sh ./
-RUN chmod +x /app/backend-entrypoint.sh
 
 # Make sure scripts in .local are usable
 ENV PATH=/root/.local/bin:$PATH
@@ -50,6 +48,11 @@ EXPOSE 8000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
+
+# Kept below the Playwright/Chromium layers on purpose: this file changes far
+# more rarely than they take to rebuild, so copying it last keeps them cached.
+COPY backend-entrypoint.sh ./
+RUN chmod +x /app/backend-entrypoint.sh
 
 # Run migrations once, then hand off to the command below
 ENTRYPOINT ["/app/backend-entrypoint.sh"]
