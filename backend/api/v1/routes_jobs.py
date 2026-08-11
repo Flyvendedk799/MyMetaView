@@ -13,11 +13,12 @@ from backend.core.deps import get_current_user, get_current_org, role_required
 from backend.core.paid_user import get_paid_user
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
-from backend.jobs.preview_pipeline import generate_preview_job
 from backend.jobs.bulk_preview_job import (
     generate_bulk_preview_job,
+    generate_tracked_preview_job,
     get_bulk_batch_data,
     seed_batch,
+    fail_seeded_batch,
     list_org_batches,
 )
 from backend.services.sitemap_discovery import discover_sitemap_urls
@@ -71,8 +72,12 @@ def create_preview_job(
 ):
     """
     Create a background job to generate AI preview (owner/admin/editor only).
-    
-    Returns job_id that can be used to poll for status.
+
+    The work runs on the server, so the caller does not have to stay on the page:
+    the run is also recorded as a one-URL batch and returned as ``batch_id``, which
+    the dashboard's generation-activity list polls.
+
+    Returns job_id (RQ) + batch_id (activity record).
     """
     # Rate limiting: 100 generations per hour per organization
     rate_limit_key = get_rate_limit_key_for_org(current_org.id)
@@ -126,31 +131,41 @@ def create_preview_job(
             detail=str(e)
         )
     
+    # Record the run before enqueueing so it shows as "queued" the instant the
+    # dialog closes — even if every worker is busy.
+    from datetime import datetime as _dt
+    batch_id = str(uuid4())
+    created_at = _dt.utcnow().isoformat()
+    seed_batch(batch_id, current_org.id, request.domain, 1, created_at, kind="single", label=sanitized_url)
+
     # Enqueue job (pass organization_id to worker)
     try:
         redis_conn = get_rq_redis_connection()
         queue = Queue("preview_generation", connection=redis_conn)
         job = queue.enqueue(
-            generate_preview_job,
+            generate_tracked_preview_job,
+            batch_id,
             current_user.id,
             current_org.id,  # Pass organization_id
             sanitized_url,
             request.domain,
             request.force,  # force_regenerate: bypass cache on re-roll
+            created_at,
             job_timeout='10m'  # 10 minute timeout for AI generation
         )
-        
+
         # Log job enqueue
         log_activity(
             db,
             user_id=current_user.id,
             action="preview.ai_job.queued",
-            metadata={"job_id": job.id, "url": sanitized_url, "domain": request.domain},
+            metadata={"job_id": job.id, "batch_id": batch_id, "url": sanitized_url, "domain": request.domain},
             request=http_request
         )
-        
-        return {"job_id": job.id}
+
+        return {"job_id": job.id, "batch_id": batch_id}
     except Exception as e:
+        fail_seeded_batch(batch_id, f"Could not queue the job: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create job: {str(e)}"
@@ -297,6 +312,7 @@ def create_bulk_preview_job(
             job_timeout='2h',  # bulk runs many URLs sequentially
         )
     except Exception as e:
+        fail_seeded_batch(batch_id, f"Could not queue the run: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create bulk job: {str(e)}",

@@ -4,7 +4,7 @@ Records when a domain's embed snippet first reported in and when it was last
 seen, so the dashboard can show a real install status instead of guessing.
 
 Revision ID: 20250302_add_snippet_install_tracking
-Revises: 20250301_create_published_sites_tables
+Revises: 20250302_add_brand_identity_fields
 Create Date: 2025-03-02 00:00:00.000000
 
 """
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '20250302_add_snippet_install_tracking'
-down_revision: Union[str, None] = '20250301_create_published_sites_tables'
+down_revision: Union[str, None] = '20250302_add_brand_identity_fields'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

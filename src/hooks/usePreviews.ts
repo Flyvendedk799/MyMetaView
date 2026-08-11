@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchPreviews, createOrUpdatePreview, updatePreview, deletePreview, generatePreviewWithAI, createPreviewJob, getJobStatus } from '../api/client'
+import { fetchPreviews, createOrUpdatePreview, updatePreview, deletePreview } from '../api/client'
 import type { Preview, PreviewCreate, PreviewUpdate } from '../api/types'
 
+/**
+ * CRUD over the org's previews.
+ *
+ * AI generation is deliberately absent: it runs as a background job on the server
+ * (see `createPreviewJob` + the generation-activity list on the Previews page), so
+ * nothing here waits on it. Call `refetch` when a run reports finished.
+ */
 interface UsePreviewsReturn {
   previews: Preview[]
   loading: boolean
@@ -9,8 +16,6 @@ interface UsePreviewsReturn {
   createOrUpdatePreview: (input: PreviewCreate) => Promise<Preview>
   updatePreview: (id: number, input: PreviewUpdate) => Promise<void>
   deletePreview: (id: number) => Promise<void>
-  generateWithAI: (url: string, domain: string) => Promise<Preview>
-  generatePreviewAsync: (url: string, domain: string) => Promise<string>
   refetch: (type?: string) => Promise<void>
 }
 
@@ -82,67 +87,6 @@ export function usePreviews(type?: string): UsePreviewsReturn {
     []
   )
 
-  const handleGenerateWithAI = useCallback(
-    async (url: string, domain: string): Promise<Preview> => {
-      try {
-        setError(null)
-        const newPreview = await generatePreviewWithAI({ url, domain })
-        await loadPreviews(type)
-        return newPreview
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to generate preview with AI')
-        throw err
-      }
-    },
-    [loadPreviews, type]
-  )
-
-  const handleGeneratePreviewAsync = useCallback(
-    async (url: string, domain: string): Promise<string> => {
-      try {
-        setError(null)
-        // Create job
-        const { job_id } = await createPreviewJob({ url, domain })
-        
-        // Poll job status until finished
-        return new Promise((resolve, reject) => {
-          const pollInterval = setInterval(async () => {
-            try {
-              const status = await getJobStatus(job_id)
-              
-              if (status.status === 'finished') {
-                clearInterval(pollInterval)
-                // Reload previews
-                await loadPreviews(type)
-                resolve(job_id)
-              } else if (status.status === 'failed') {
-                clearInterval(pollInterval)
-                const errorMsg = status.error || 'Job failed'
-                setError(errorMsg)
-                reject(new Error(errorMsg))
-              }
-              // Continue polling for 'queued' and 'started' statuses
-            } catch (err) {
-              clearInterval(pollInterval)
-              setError(err instanceof Error ? err.message : 'Failed to poll job status')
-              reject(err)
-            }
-          }, 1500) // Poll every 1.5 seconds
-          
-          // Timeout after 2 minutes
-          setTimeout(() => {
-            clearInterval(pollInterval)
-            reject(new Error('Job timeout: Preview generation took too long'))
-          }, 120000)
-        })
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create preview job')
-        throw err
-      }
-    },
-    [loadPreviews, type]
-  )
-
   return {
     previews,
     loading,
@@ -150,8 +94,6 @@ export function usePreviews(type?: string): UsePreviewsReturn {
     createOrUpdatePreview: handleCreateOrUpdate,
     updatePreview: handleUpdate,
     deletePreview: handleDelete,
-    generateWithAI: handleGenerateWithAI,
-    generatePreviewAsync: handleGeneratePreviewAsync,
     refetch: loadPreviews,
   }
 }

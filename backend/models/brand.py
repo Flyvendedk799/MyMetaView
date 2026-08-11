@@ -15,6 +15,15 @@ class BrandSettings(Base):
     font_family = Column(String, nullable=False, default="Inter")
     logo_url = Column(String, nullable=True)
 
+    # --- Identity: who the site is, in the user's own words. Feeds the copy the
+    # preview engine writes (and the brand name printed on the card), so it is not
+    # decoration — an empty field just means "keep inferring it from the page".
+    brand_name = Column(String, nullable=True)         # wordmark / name on the card
+    tagline = Column(String, nullable=True)            # one-line descriptor
+    brand_description = Column(String, nullable=True)  # what you do, for context
+    audience = Column(String, nullable=True)           # who it's for
+    voice = Column(String, nullable=False, server_default="auto")  # see VOICE_CHOICES
+
     # --- Preview-card controls (honoured by the render engine for a user's own
     # previews). "auto" lets the AI art director decide; any other value overrides.
     preview_layout = Column(String, nullable=False, server_default="auto")   # auto | typographic | split

@@ -8,6 +8,7 @@ import type {
   PreviewCreate,
   PreviewUpdate,
   PreviewVariant,
+  PreviewJobCreateResponse,
   SitemapDiscoverResponse,
   BulkJobCreateResponse,
   BulkJobStatus,
@@ -79,6 +80,7 @@ export type {
   PreviewCreate,
   PreviewUpdate,
   PreviewVariant,
+  PreviewJobCreateResponse,
   SitemapDiscoverResponse,
   BulkJobCreateResponse,
   BulkJobStatus,
@@ -571,8 +573,10 @@ export interface JobStatus {
   error: string | null
 }
 
-export async function createPreviewJob(payload: { url: string; domain: string; force?: boolean }): Promise<{ job_id: string }> {
-  return fetchApi<{ job_id: string }>('/api/v1/jobs/preview', {
+export async function createPreviewJob(
+  payload: { url: string; domain: string; force?: boolean }
+): Promise<PreviewJobCreateResponse> {
+  return fetchApi<PreviewJobCreateResponse>('/api/v1/jobs/preview', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
