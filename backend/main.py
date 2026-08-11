@@ -21,6 +21,7 @@ if os.getenv("ENV", "development").lower() != "production":
     from backend.api.v1 import routes_testing
 from backend.db import Base
 from backend.db.session import engine
+from backend.db.schema_sync import sync_missing_columns
 
 # Setup structured logging
 log_level = os.getenv("LOG_LEVEL", "INFO")
@@ -92,6 +93,26 @@ def on_startup():
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}", exc_info=True)
         raise
+
+    # create_all() above only creates missing *tables*. Columns added to an
+    # existing table arrive via Alembic — which nothing in the deploy path runs,
+    # so they were never applied. Reconcile them here instead of serving 500s.
+    try:
+        added = sync_missing_columns(engine)
+        if added:
+            logger.warning(
+                "Schema sync added %d missing column(s): %s. "
+                "These should have come from an Alembic migration — check that "
+                "migrations run on deploy.",
+                len(added),
+                ", ".join(added),
+            )
+        else:
+            logger.info("Database schema matches the models")
+    except Exception as e:
+        # Never block startup on this: the app may still serve fine, and the
+        # error is more useful in the logs than as a crash loop.
+        logger.error(f"Schema sync failed: {e}", exc_info=True)
 
 
 # Configure CORS
