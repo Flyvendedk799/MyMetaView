@@ -479,14 +479,22 @@ export async function downloadInstallArtifact(
 }
 
 // Brand settings endpoints
-export async function fetchBrandSettings(): Promise<BrandSettings> {
-  return fetchApi<BrandSettings>('/api/v1/brand')
+//
+// Brands are scoped per domain: each connected site has its own identity.
+// Passing no domainId targets the organization-wide default.
+function brandQuery(domainId?: number | null): string {
+  return domainId != null ? `?domain_id=${domainId}` : ''
+}
+
+export async function fetchBrandSettings(domainId?: number | null): Promise<BrandSettings> {
+  return fetchApi<BrandSettings>(`/api/v1/brand${brandQuery(domainId)}`)
 }
 
 export async function updateBrandSettings(
-  payload: BrandSettingsUpdate
+  payload: BrandSettingsUpdate,
+  domainId?: number | null
 ): Promise<BrandSettings> {
-  return fetchApi<BrandSettings>('/api/v1/brand', {
+  return fetchApi<BrandSettings>(`/api/v1/brand${brandQuery(domainId)}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
@@ -496,7 +504,7 @@ export async function updateBrandSettings(
  * Upload a brand logo (multipart). We use a raw fetch here so the browser sets
  * the multipart Content-Type + boundary itself (fetchApi forces application/json).
  */
-export async function uploadBrandLogo(file: File): Promise<BrandSettings> {
+export async function uploadBrandLogo(file: File, domainId?: number | null): Promise<BrandSettings> {
   const baseUrl = getApiBaseUrl()
   const form = new FormData()
   form.append('file', file)
@@ -507,7 +515,7 @@ export async function uploadBrandLogo(file: File): Promise<BrandSettings> {
   const selectedOrgId = localStorage.getItem('selected_org_id')
   if (selectedOrgId) headers['X-Organization-ID'] = selectedOrgId
 
-  const response = await fetch(`${baseUrl}/api/v1/brand/logo`, {
+  const response = await fetch(`${baseUrl}/api/v1/brand/logo${brandQuery(domainId)}`, {
     method: 'POST',
     headers, // deliberately no Content-Type — the browser adds the boundary
     body: form,
@@ -520,9 +528,9 @@ export async function uploadBrandLogo(file: File): Promise<BrandSettings> {
   return response.json() as Promise<BrandSettings>
 }
 
-/** Render a live SAMPLE share-card from the org's currently-saved brand settings. */
-export async function renderBrandPreview(): Promise<{ image_url: string }> {
-  return fetchApi<{ image_url: string }>('/api/v1/brand/preview', {
+/** Render a live SAMPLE share-card from a domain's currently-saved brand settings. */
+export async function renderBrandPreview(domainId?: number | null): Promise<{ image_url: string }> {
+  return fetchApi<{ image_url: string }>(`/api/v1/brand/preview${brandQuery(domainId)}`, {
     method: 'POST',
     timeout: 30000,
   })

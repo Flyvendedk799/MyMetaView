@@ -35,7 +35,16 @@ class BrandSettings(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     organization_id = Column(Integer, ForeignKey("organizations.id"), index=True, nullable=True)
 
+    # Which site these settings describe. An organization can connect several
+    # domains and each is its own brand, so identity is scoped per domain.
+    #
+    # domain_id NULL is the organization-wide default: the row every account had
+    # before brands became per-domain, and the fallback for a domain that has not
+    # been customised yet.
+    domain_id = Column(Integer, ForeignKey("domains.id"), index=True, nullable=True)
+
     # Relationships
     user = relationship("User", back_populates="brand_settings")
     organization = relationship("Organization", back_populates="brand_settings")
+    domain = relationship("Domain", back_populates="brand_settings")
 

@@ -66,10 +66,14 @@ def get_analytics_summary(
     # Honest "brand setup" score (0-100) from real completeness signals, not a
     # fabricated baseline: has a domain, a verified domain, previews, and a
     # customised brand profile.
-    brand = db.query(BrandSettingsModel).filter(
+    # A user can own several brands (one per domain), so the score asks whether
+    # any of them has been customised rather than picking one arbitrarily.
+    brands = db.query(BrandSettingsModel).filter(
         BrandSettingsModel.user_id == current_user.id
-    ).first()
-    brand_customised = bool(brand and (brand.logo_url or (brand.primary_color not in (None, "", "#2979FF"))))
+    ).all()
+    brand_customised = any(
+        b.logo_url or (b.primary_color not in (None, "", "#2979FF")) for b in brands
+    )
     brand_score = (30 if total_domains else 0) + (25 if verified_domains else 0) \
         + (25 if total_previews else 0) + (20 if brand_customised else 0)
 

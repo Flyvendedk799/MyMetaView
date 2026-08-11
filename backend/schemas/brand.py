@@ -50,7 +50,10 @@ class BrandSettingsUpdate(BaseModel):
 class BrandSettings(BrandSettingsBase):
     """Brand settings schema with all fields."""
     id: int
-    
+    domain_id: Optional[int] = Field(
+        None, description="Domain these settings belong to; null is the organization default"
+    )
+
     class Config:
         from_attributes = True  # Pydantic v2: allows reading from SQLAlchemy ORM models
         json_schema_extra = {

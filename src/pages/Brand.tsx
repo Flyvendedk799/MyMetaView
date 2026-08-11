@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { PhotoIcon, ArrowPathIcon, TrashIcon, ArrowUpTrayIcon, LockClosedIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
@@ -11,6 +11,7 @@ import {
   getMyPlan,
 } from '../api/client'
 import type { BrandSettings, BrandSettingsUpdate } from '../api/types'
+import { useDomains } from '../hooks/useDomains'
 import { FEATURES } from '../lib/plans'
 
 const FONT_OPTIONS = ['Inter', 'Bricolage Grotesque', 'IBM Plex Sans', 'System']
@@ -180,6 +181,13 @@ function Select({
 }
 
 export default function Brand() {
+  // Each connected domain is its own site with its own brand. Until a domain is
+  // connected there is nothing to scope to, so we edit the account-wide default
+  // (domainId null) — which is exactly what this page did before.
+  const { domains, loading: domainsLoading } = useDomains()
+  const [domainId, setDomainId] = useState<number | null>(null)
+  const [domainPicked, setDomainPicked] = useState(false)
+
   const [settings, setSettings] = useState<BrandSettings | null>(null)
   const [form, setForm] = useState<BrandSettings | null>(null)
   const [loading, setLoading] = useState(true)
@@ -201,7 +209,7 @@ export default function Brand() {
     setPreviewLoading(true)
     setPreviewError(null)
     try {
-      const { image_url } = await renderBrandPreview()
+      const { image_url } = await renderBrandPreview(domainId)
       const bust = image_url + (image_url.includes('?') ? '&' : '?') + 't=' + Date.now()
       setPreviewUrl(bust)
     } catch (e) {
@@ -209,13 +217,50 @@ export default function Brand() {
     } finally {
       setPreviewLoading(false)
     }
-  }, [])
+  }, [domainId])
 
+  // The API returns domains newest-first; sort by name so the picker order and
+  // the default choice stay stable as domains are added.
+  const sortedDomains = useMemo(
+    () => [...domains].sort((a, b) => a.name.localeCompare(b.name)),
+    [domains]
+  )
+
+  // Pick the site to edit once the domain list arrives, preferring a verified
+  // one — those are the domains actually generating previews.
+  useEffect(() => {
+    if (domainsLoading || domainPicked) return
+    const verified = sortedDomains.find((d) => d.status === 'verified')
+    setDomainId((verified ?? sortedDomains[0])?.id ?? null)
+    setDomainPicked(true)
+  }, [sortedDomains, domainsLoading, domainPicked])
+
+  // Which card features this plan is entitled to (drives the locks below).
   useEffect(() => {
     let active = true
     ;(async () => {
       try {
-        const s = await fetchBrandSettings()
+        const plan = await getMyPlan()
+        if (active) setFeatures(plan.features || [])
+      } catch {
+        /* leave features empty → controls lock closed, which is the safe default */
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Load the selected site's brand. Waits for the domain choice so we don't
+  // fetch the org default first and flash the wrong brand.
+  useEffect(() => {
+    if (!domainPicked) return
+    let active = true
+    ;(async () => {
+      setLoading(true)
+      setLoadError(null)
+      try {
+        const s = await fetchBrandSettings(domainId)
         if (!active) return
         setSettings(s)
         setForm(s)
@@ -224,19 +269,12 @@ export default function Brand() {
       } finally {
         if (active) setLoading(false)
       }
-      // Which card features this plan is entitled to (drives the locks below).
-      try {
-        const plan = await getMyPlan()
-        if (active) setFeatures(plan.features || [])
-      } catch {
-        /* leave features empty → controls lock closed, which is the safe default */
-      }
-      refreshPreview()
+      if (active) refreshPreview()
     })()
     return () => {
       active = false
     }
-  }, [refreshPreview])
+  }, [domainId, domainPicked, refreshPreview])
 
   const dirty = !!(settings && form && JSON.stringify(settings) !== JSON.stringify(form))
   const set = (patch: Partial<BrandSettings>) => setForm((f) => (f ? { ...f, ...patch } : f))
@@ -264,7 +302,7 @@ export default function Brand() {
         force_brand_colors: form.force_brand_colors,
         hide_watermark: form.hide_watermark,
       }
-      const updated = await updateBrandSettings(payload)
+      const updated = await updateBrandSettings(payload, domainId)
       setSettings(updated)
       setForm(updated)
       setSaveSuccess(true)
@@ -282,7 +320,7 @@ export default function Brand() {
     setLogoBusy(true)
     setSaveError(null)
     try {
-      const updated = await uploadBrandLogo(file)
+      const updated = await uploadBrandLogo(file, domainId)
       setSettings(updated)
       setForm((f) => (f ? { ...f, logo_url: updated.logo_url } : updated))
       await refreshPreview()
@@ -298,7 +336,7 @@ export default function Brand() {
     setLogoBusy(true)
     setSaveError(null)
     try {
-      const updated = await updateBrandSettings({ logo_url: null })
+      const updated = await updateBrandSettings({ logo_url: null }, domainId)
       setSettings(updated)
       setForm((f) => (f ? { ...f, logo_url: null } : updated))
       await refreshPreview()
@@ -314,10 +352,53 @@ export default function Brand() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-secondary-900">My site — brand &amp; identity</h1>
         <p className="text-secondary-600 mt-1">
-          Who your site is and how it looks. Everything here feeds preview generation for your
-          verified domains: the identity shapes the words, the visuals shape the card.
+          Who your site is and how it looks. Everything here feeds preview generation for this
+          domain: the identity shapes the words, the visuals shape the card.
         </p>
       </div>
+
+      {sortedDomains.length > 0 && (
+        <Card className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex-1 min-w-[240px]">
+              <label
+                htmlFor="brand-domain"
+                className="block text-sm font-medium text-secondary-700 mb-1.5"
+              >
+                Site
+              </label>
+              <select
+                id="brand-domain"
+                value={domainId ?? ''}
+                onChange={(e) => {
+                  const next = e.target.value === '' ? null : Number(e.target.value)
+                  if (
+                    dirty &&
+                    !window.confirm('You have unsaved changes. Switch site and discard them?')
+                  ) {
+                    return
+                  }
+                  setDomainId(next)
+                }}
+                className={`${inputClass} font-mono`}
+              >
+                {sortedDomains.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                    {d.status !== 'verified' ? ' (unverified)' : ''}
+                  </option>
+                ))}
+                <option value="">All other sites (account default)</option>
+              </select>
+            </div>
+            <p className="text-xs text-secondary-500 max-w-sm">
+              {domainId === null
+                ? 'These settings apply to any domain that has not been given its own brand.'
+                : 'Each domain has its own brand. Changes here affect this domain only.'}
+            </p>
+          </div>
+        </Card>
+      )}
 
       {loadError && (
         <Card className="mb-6 bg-error-50 border-error-200">

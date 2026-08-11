@@ -1,14 +1,23 @@
-"""Brand settings routes."""
+"""Brand settings routes.
+
+Brands are scoped per domain: an organization can connect several sites and each
+has its own identity. Every endpoint here takes an optional ``domain_id``.
+Omitting it operates on the organization-wide default row, which is what these
+endpoints did before brands became per-domain.
+"""
+from typing import Optional
 from uuid import uuid4
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from backend.schemas.brand import BrandSettings, BrandSettingsUpdate, VOICE_CHOICES
 from backend.models.brand import BrandSettings as BrandSettingsModel
+from backend.models.domain import Domain as DomainModel
 from backend.models.user import User
 from backend.db.session import get_db
 from backend.core.deps import get_current_user, get_current_org, role_required
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
+from backend.services import brand_resolver
 from backend.services.cache import (
     get_cached_brand_settings,
     set_cached_brand_settings,
@@ -18,40 +27,27 @@ from backend.services.cache import (
 router = APIRouter(prefix="/brand", tags=["brand"])
 
 
-@router.get("", response_model=BrandSettings)
-def get_brand_settings(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    current_org: Organization = Depends(get_current_org)
-):
-    """Get brand settings for the current organization."""
-    # Try cache first
-    cached = get_cached_brand_settings(current_org.id)
-    if cached:
-        return BrandSettings(**cached)
-    
-    settings = db.query(BrandSettingsModel).filter(
-        BrandSettingsModel.organization_id == current_org.id
-    ).first()
-    
-    # If no settings exist, create default ones for this organization
-    if not settings:
-        settings = BrandSettingsModel(
-            primary_color="#2979FF",
-            secondary_color="#0A1A3C",
-            accent_color="#3FFFD3",
-            font_family="Inter",
-            logo_url=None,
-            user_id=current_user.id,
-            organization_id=current_org.id,
-        )
-        db.add(settings)
-        db.commit()
-        db.refresh(settings)
-    
-    # Cache the result
-    settings_dict = {
+def _checked_domain_id(
+    db: Session, current_org: Organization, domain_id: Optional[int]
+) -> Optional[int]:
+    """Reject a domain that is not the caller's, so brands cannot leak across orgs."""
+    if domain_id is None:
+        return None
+    owned = (
+        db.query(DomainModel)
+        .filter(DomainModel.id == domain_id, DomainModel.organization_id == current_org.id)
+        .first()
+    )
+    if not owned:
+        raise HTTPException(status_code=404, detail="Domain not found")
+    return domain_id
+
+
+def _as_dict(settings: BrandSettingsModel) -> dict:
+    """Cache-safe view of a row."""
+    return {
         "id": settings.id,
+        "domain_id": getattr(settings, "domain_id", None),
         "primary_color": settings.primary_color,
         "secondary_color": settings.secondary_color,
         "accent_color": settings.accent_color,
@@ -68,33 +64,54 @@ def get_brand_settings(
         "force_brand_colors": bool(getattr(settings, "force_brand_colors", False)),
         "hide_watermark": bool(getattr(settings, "hide_watermark", False)),
     }
-    set_cached_brand_settings(current_org.id, settings_dict)
-    
+
+
+@router.get("", response_model=BrandSettings)
+def get_brand_settings(
+    domain_id: Optional[int] = Query(None, description="Domain to read; omit for the organization default"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org)
+):
+    """Get brand settings for a domain, or for the organization when none is given.
+
+    A domain that has never been customised gets a row seeded from the
+    organization default, so it opens showing the account's existing brand
+    rather than stock colours.
+    """
+    domain_id = _checked_domain_id(db, current_org, domain_id)
+
+    cached = get_cached_brand_settings(current_org.id, domain_id)
+    if cached:
+        return BrandSettings(**cached)
+
+    settings = brand_resolver.get_or_create(
+        db, current_org.id, user_id=current_user.id, domain_id=domain_id
+    )
+
+    set_cached_brand_settings(current_org.id, _as_dict(settings), domain_id)
+
     return settings
 
 
 @router.put("", response_model=BrandSettings)
 def update_brand_settings(
     settings_update: BrandSettingsUpdate,
+    domain_id: Optional[int] = Query(None, description="Domain to update; omit for the organization default"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org),
     current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
 ):
-    """Update brand settings for the current organization (owner/admin/editor only)."""
-    settings = db.query(BrandSettingsModel).filter(
-        BrandSettingsModel.organization_id == current_org.id
-    ).first()
-    
-    # Create a defaulted row if none exists yet, then apply EVERY provided field
-    # (uniform path so the new preview-preference columns persist for new users too,
-    # not just the legacy colour/font fields).
-    if not settings:
-        settings = BrandSettingsModel(
-            primary_color="#2979FF", secondary_color="#0A1A3C", accent_color="#3FFFD3",
-            font_family="Inter", user_id=current_user.id, organization_id=current_org.id,
-        )
-        db.add(settings)
+    """Update brand settings for a domain (owner/admin/editor only)."""
+    domain_id = _checked_domain_id(db, current_org, domain_id)
+
+    # Creates the row if this is the first edit for the scope, seeded from the
+    # organization default, then applies EVERY provided field (uniform path so
+    # the preview-preference columns persist too, not just colour/font).
+    settings = brand_resolver.get_or_create(
+        db, current_org.id, user_id=current_user.id, domain_id=domain_id
+    )
 
     update_data = settings_update.model_dump(exclude_unset=True)
     if "voice" in update_data and update_data["voice"] not in VOICE_CHOICES:
@@ -112,9 +129,9 @@ def update_brand_settings(
 
     db.commit()
     db.refresh(settings)
-    
+
     # Invalidate cache
-    invalidate_brand_settings(current_org.id)
+    invalidate_brand_settings(current_org.id, domain_id)
 
     return settings
 
@@ -122,13 +139,16 @@ def update_brand_settings(
 @router.post("/logo", response_model=BrandSettings)
 async def upload_brand_logo(
     file: UploadFile = File(...),
+    domain_id: Optional[int] = Query(None, description="Domain to attach the logo to; omit for the organization default"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org),
     current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
 ):
-    """Upload a brand logo, store it in R2, and set logo_url on the org's brand settings."""
+    """Upload a brand logo, store it in R2, and set logo_url on that domain's brand settings."""
     from backend.services.r2_client import upload_file_to_r2
+
+    domain_id = _checked_domain_id(db, current_org, domain_id)
 
     content = await file.read()
     if not content:
@@ -146,38 +166,32 @@ async def upload_brand_logo(
     if not url:
         raise HTTPException(status_code=500, detail="Logo upload failed")
 
-    settings = db.query(BrandSettingsModel).filter(
-        BrandSettingsModel.organization_id == current_org.id
-    ).first()
-    if not settings:
-        settings = BrandSettingsModel(
-            primary_color="#2979FF", secondary_color="#0A1A3C", accent_color="#3FFFD3",
-            font_family="Inter", user_id=current_user.id, organization_id=current_org.id,
-        )
-        db.add(settings)
+    settings = brand_resolver.get_or_create(
+        db, current_org.id, user_id=current_user.id, domain_id=domain_id
+    )
     settings.logo_url = url
     db.commit()
     db.refresh(settings)
-    invalidate_brand_settings(current_org.id)
+    invalidate_brand_settings(current_org.id, domain_id)
     return settings
 
 
 @router.post("/preview")
 def render_brand_preview(
+    domain_id: Optional[int] = Query(None, description="Domain to sample; omit for the organization default"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org),
 ):
-    """Render a SAMPLE share-card from the org's brand settings + preview prefs so
+    """Render a SAMPLE share-card from a domain's brand settings + preview prefs so
     the user sees their customization live. Returns {"image_url": <r2 url>}."""
     import base64 as _b64
     import requests
     from backend.services.premium_card_renderer import render_premium_card
     from backend.services.r2_client import upload_file_to_r2
 
-    s = db.query(BrandSettingsModel).filter(
-        BrandSettingsModel.organization_id == current_org.id
-    ).first()
+    domain_id = _checked_domain_id(db, current_org, domain_id)
+    s = brand_resolver.resolve(db, current_org.id, domain_id)
 
     primary = getattr(s, "primary_color", None) or "#0B3B2E"
     secondary = getattr(s, "secondary_color", None) or "#12523F"
@@ -214,12 +228,20 @@ def render_brand_preview(
     # is visible on the card the moment it's saved.
     brand_name = (getattr(s, "brand_name", None) or current_org.name or "").strip() or None
     tagline = (getattr(s, "tagline", None) or "").strip() or None
-    org_slug = (brand_name or "yourdomain").lower().replace(" ", "")
+
+    # Show the real hostname on the sample when we know which site this is for.
+    sample_host = None
+    if domain_id is not None:
+        domain = db.query(DomainModel).filter(DomainModel.id == domain_id).first()
+        sample_host = domain.name if domain else None
+    if not sample_host:
+        sample_host = f"{(brand_name or 'yourdomain').lower().replace(' ', '')}.com"
+
     try:
         png = render_premium_card(
             title="Plans that scale with your team",
             subtitle=tagline or "Usage-based pricing that grows only when you do.",
-            url=f"{org_slug}.com/pricing",
+            url=f"{sample_host}/pricing",
             brand_name=brand_name,
             colors={"primary_color": primary, "secondary_color": secondary, "accent_color": accent},
             composition=composition,
