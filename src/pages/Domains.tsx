@@ -117,6 +117,9 @@ export default function Domains() {
             setTimeout(() => setSuccessMessage(''), 5000)
           } else {
             setAutoCheckStatus('not_found')
+            if (updatedDomain.verification_error) {
+              setVerificationError(updatedDomain.verification_error)
+            }
             setCheckAttempts(prev => prev + 1)
           }
         } catch {
@@ -259,7 +262,11 @@ export default function Domains() {
         setTimeout(() => setSuccessMessage(''), 5000)
       } else {
         setAutoCheckStatus('not_found')
-        setVerificationError('Record not found yet. DNS changes can take a few minutes to propagate. Auto-check will keep trying.')
+        setVerificationError(
+          updatedDomain.verification_error
+            ? `${updatedDomain.verification_error} Auto-check will keep trying.`
+            : 'Record not found yet. DNS changes can take a few minutes to propagate. Auto-check will keep trying.'
+        )
         // Go back to instructions so auto-check can continue
         setTimeout(() => setVerificationStep('instructions'), 1500)
       }

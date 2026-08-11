@@ -15,6 +15,8 @@ export interface Domain {
   snippet_installed_at?: string | null
   snippet_last_seen_at?: string | null
   snippet_version?: string | null
+  /** Why the last verification check failed. Only set on check responses. */
+  verification_error?: string | null
 }
 
 export interface DomainCreate {
