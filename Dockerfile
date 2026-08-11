@@ -28,6 +28,8 @@ COPY --from=builder /root/.local /root/.local
 # Copy application code
 COPY backend/ ./backend/
 COPY alembic.ini ./
+COPY backend-entrypoint.sh ./
+RUN chmod +x /app/backend-entrypoint.sh
 
 # Make sure scripts in .local are usable
 ENV PATH=/root/.local/bin:$PATH
@@ -48,6 +50,9 @@ EXPOSE 8000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
+
+# Run migrations once, then hand off to the command below
+ENTRYPOINT ["/app/backend-entrypoint.sh"]
 
 # Default command (can be overridden by Railway)
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "backend.main:app"]
