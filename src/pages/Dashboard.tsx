@@ -15,6 +15,7 @@ import EmptyState from '../components/ui/EmptyState'
 import { useDomains } from '../hooks/useDomains'
 import { usePreviews } from '../hooks/usePreviews'
 import { useAnalyticsSummary } from '../hooks/useAnalyticsSummary'
+import { isSnippetLive } from '../lib/snippet'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -42,6 +43,7 @@ export default function Dashboard() {
 
   const verifiedDomains = domains.filter(d => d.status === 'verified')
   const hasVerifiedDomain = verifiedDomains.length > 0
+  const hasSnippetInstalled = domains.some(d => isSnippetLive(d.snippet_last_seen_at))
 
   // Calculate new domains count (domains created in last 30 days)
   const newDomainsCount = useMemo(() => {
@@ -120,8 +122,8 @@ export default function Dashboard() {
       id: 4,
       title: 'Install the snippet on your site',
       description: 'Add our embed code to enable automatic previews',
-      completed: false, // This would require checking if snippet is installed
-      action: () => navigate('/app/previews'),
+      completed: hasSnippetInstalled,
+      action: () => navigate('/app/install'),
     },
   ]
 

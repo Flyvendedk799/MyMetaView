@@ -32,14 +32,19 @@ router = APIRouter(prefix="/api/v1/public", tags=["public"])
 def get_public_preview(
     full_url: str = Query(..., description="Full URL to generate preview for"),
     variant: str = Query(None, description="Variant key: 'a', 'b', or 'c' (optional)"),
+    site: str = Query(None, description="Registered domain to resolve against, when it differs from the URL's hostname"),
     request: Request = None,
     db: Session = Depends(get_db)
 ):
     """
     Get preview metadata for a given URL.
     This endpoint is public and does not require authentication.
-    
+
     If variant is provided, returns variant metadata instead of main preview.
+
+    If site is provided, the preview is resolved against that registered domain
+    instead of the URL's own hostname. This lets a subdomain (blog.example.com)
+    serve previews owned by the registered apex domain.
     """
     # Detect and log crawler user agents (prep work for future server-side interception)
     user_agent = request.headers.get("user-agent") if request else None
@@ -65,7 +70,21 @@ def get_public_preview(
             detail=str(e)
         )
     
-    return _get_preview_logic(full_url, db, variant, crawler_name)
+    return _get_preview_logic(full_url, db, variant, crawler_name, site)
+
+
+def _normalize_hostname(value: str) -> str:
+    """Reduce a hostname or URL to the bare lowercase host used for domain lookup."""
+    if not value:
+        return ""
+    candidate = value.strip().lower()
+    if "//" in candidate:
+        candidate = urlparse(candidate).netloc or candidate
+    # Drop any path, port, credentials or trailing dot.
+    candidate = candidate.split("/")[0].split("@")[-1].split(":")[0].rstrip(".")
+    if candidate.startswith("www."):
+        candidate = candidate[4:]
+    return candidate
 
 
 def _normalize_url_for_matching(url: str) -> str:
@@ -81,31 +100,33 @@ def _normalize_url_for_matching(url: str) -> str:
     return normalized
 
 
-def _get_preview_logic(full_url: str, db: Session, variant: str = None, crawler_name: str = None) -> PublicPreview:
+def _get_preview_logic(
+    full_url: str,
+    db: Session,
+    variant: str = None,
+    crawler_name: str = None,
+    site: str = None,
+) -> PublicPreview:
     """
     Core logic for getting preview metadata.
-    
+
     This function is deterministic: the same URL always returns the same preview
     (or fallback) for reliability and caching.
     """
     try:
         parsed = urlparse(full_url)
-        hostname = parsed.netloc or parsed.path.split('/')[0]
-        
-        # Remove port if present (e.g., "example.com:8000" -> "example.com")
-        if ':' in hostname:
-            hostname = hostname.split(':')[0]
-        
-        # Remove www. prefix for matching (optional, but helps with matching)
-        if hostname.startswith('www.'):
-            hostname = hostname[4:]
-        
+        hostname = _normalize_hostname(parsed.netloc or parsed.path.split('/')[0])
+
+        # An explicit `site` from the snippet's data-site attribute wins, so a
+        # subdomain can resolve against the registered apex domain.
+        lookup_hostname = _normalize_hostname(site) or hostname
+
         # Try cache first for domain lookup (we need org_id for cache key, so check cache after domain lookup)
         # Look up domain by hostname
         domain = db.query(DomainModel).filter(
-            DomainModel.name == hostname
+            DomainModel.name == lookup_hostname
         ).first()
-        
+
         # Cache domain if found
         if domain and domain.organization_id:
             domain_cache_data = {
@@ -114,8 +135,8 @@ def _get_preview_logic(full_url: str, db: Session, variant: str = None, crawler_
                 "status": domain.status,
                 "organization_id": domain.organization_id,
             }
-            set_cached_domain_by_name(domain.organization_id, hostname, domain_cache_data)
-        
+            set_cached_domain_by_name(domain.organization_id, lookup_hostname, domain_cache_data)
+
         if not domain:
             # No matching domain found - return fallback with placeholder
             return PublicPreview(
