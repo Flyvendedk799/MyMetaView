@@ -35,9 +35,11 @@ def generate_preview_job(user_id: int, url: str, domain: str) -> Dict:
         if not domain_obj:
             raise ValueError("Domain not found or not owned by the user")
         
-        # Step 2: Load brand settings
+        # Step 2: Load brand settings. Brands are per domain now, so pin this to
+        # the account-wide default row rather than whichever domain sorts first.
         brand_settings = db.query(BrandSettingsModel).filter(
-            BrandSettingsModel.user_id == user_id
+            BrandSettingsModel.user_id == user_id,
+            BrandSettingsModel.domain_id.is_(None),
         ).first()
         
         # If no brand settings exist, create default ones

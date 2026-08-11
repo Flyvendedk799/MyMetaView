@@ -24,7 +24,8 @@ class User(Base):
 
     # Relationships
     domains = relationship("Domain", back_populates="user", cascade="all, delete-orphan")
-    brand_settings = relationship("BrandSettings", back_populates="user", uselist=False)
+    # Brands are scoped per domain now, so a user can be the author of several.
+    brand_settings = relationship("BrandSettings", back_populates="user")
     previews = relationship("Preview", back_populates="user", cascade="all, delete-orphan")
     activity_logs = relationship("ActivityLog", back_populates="user")
     analytics_events = relationship("AnalyticsEvent", back_populates="user")

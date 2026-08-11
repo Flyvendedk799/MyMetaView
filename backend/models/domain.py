@@ -31,4 +31,5 @@ class Domain(Base):
     organization = relationship("Organization", back_populates="domains")
     analytics_events = relationship("AnalyticsEvent", back_populates="domain")
     analytics_aggregates = relationship("AnalyticsDailyAggregate", back_populates="domain")
+    brand_settings = relationship("BrandSettings", back_populates="domain", uselist=False)
 

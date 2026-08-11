@@ -25,6 +25,8 @@ export interface DomainCreate {
 
 export interface BrandSettings {
   id: number
+  /** Domain these settings belong to; null is the organization-wide default. */
+  domain_id?: number | null
   primary_color: string
   secondary_color: string
   accent_color: string

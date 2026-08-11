@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from backend.schemas.preview import Preview, PreviewCreate, PreviewUpdate
 from backend.models.preview import Preview as PreviewModel
 from backend.models.domain import Domain as DomainModel
-from backend.models.brand import BrandSettings as BrandSettingsModel
+from backend.services import brand_resolver
 from backend.models.user import User
 from backend.db.session import get_db
 from backend.core.deps import get_current_user, get_paid_user, get_current_org, role_required
@@ -266,26 +266,15 @@ def generate_preview_with_ai(
             detail="Domain must be verified before generating previews."
         )
     
-    # Step 2: Load brand settings for organization
-    brand_settings = db.query(BrandSettingsModel).filter(
-        BrandSettingsModel.organization_id == current_org.id
-    ).first()
-    
-    # If no brand settings exist, create default ones
+    # Step 2: Load brand settings for THIS domain, falling back to the
+    # organization default when the domain has not been customised.
+    brand_settings = brand_resolver.resolve(db, current_org.id, domain.id)
+
     if not brand_settings:
-        brand_settings = BrandSettingsModel(
-            primary_color="#2979FF",
-            secondary_color="#0A1A3C",
-            accent_color="#3FFFD3",
-            font_family="Inter",
-            logo_url=None,
-            user_id=current_user.id,
-            organization_id=current_org.id,
+        brand_settings = brand_resolver.get_or_create(
+            db, current_org.id, user_id=current_user.id, domain_id=domain.id
         )
-        db.add(brand_settings)
-        db.commit()
-        db.refresh(brand_settings)
-    
+
     # Step 3: Call AI preview generator
     try:
         from backend.schemas.brand import BrandSettings as BrandSettingsSchema

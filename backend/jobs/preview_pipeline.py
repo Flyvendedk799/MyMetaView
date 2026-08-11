@@ -2,8 +2,8 @@
 from typing import Dict
 from backend.db.session import SessionLocal
 from backend.models.domain import Domain as DomainModel
-from backend.models.brand import BrandSettings as BrandSettingsModel
 from backend.schemas.brand import BrandSettings as BrandSettingsSchema
+from backend.services import brand_resolver
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig, PreviewEngineResult
 from backend.services.preview_type_predictor import predict_preview_type
@@ -61,26 +61,17 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         # Step 2: Sanitize URL
         sanitized_url = sanitize_url(url, domain)
         
-        # Step 3: Load brand settings
-        brand_settings = db.query(BrandSettingsModel).filter(
-            BrandSettingsModel.organization_id == organization_id
-        ).first()
-        
-        # If no brand settings exist, create default ones
+        # Step 3: Load brand settings for THIS domain. Each connected domain is
+        # its own site with its own identity; a domain that has not been
+        # customised falls back to the organization default.
+        brand_settings = brand_resolver.resolve(db, organization_id, domain_obj.id)
+
+        # If the account has no brand settings at all, create the domain's row.
         if not brand_settings:
-            brand_settings = BrandSettingsModel(
-                primary_color="#2979FF",
-                secondary_color="#0A1A3C",
-                accent_color="#3FFFD3",
-                font_family="Inter",
-                logo_url=None,
-                user_id=user_id,
-                organization_id=organization_id,
+            brand_settings = brand_resolver.get_or_create(
+                db, organization_id, user_id=user_id, domain_id=domain_obj.id
             )
-            db.add(brand_settings)
-            db.commit()
-            db.refresh(brand_settings)
-        
+
         # Step 4: Convert to schema for brand rewriting
         brand_schema = BrandSettingsSchema.model_validate(brand_settings)
         

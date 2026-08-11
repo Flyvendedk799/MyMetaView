@@ -28,37 +28,41 @@ def _deserialize(value: str) -> Any:
     return json.loads(value)
 
 
-def get_cached_brand_settings(org_id: int) -> Optional[dict]:
-    """Get cached brand settings for an organization."""
+def _brand_settings_key(org_id: int, domain_id: Optional[int] = None) -> str:
+    """Brands are per domain; domain_id None is the organization-wide default."""
+    return _get_cache_key("brand_settings", org_id, domain_id if domain_id is not None else "org")
+
+
+def get_cached_brand_settings(org_id: int, domain_id: Optional[int] = None) -> Optional[dict]:
+    """Get cached brand settings for an organization's domain."""
     try:
         redis_client = get_redis_connection()
-        key = _get_cache_key("brand_settings", org_id)
-        cached = redis_client.get(key)
+        cached = redis_client.get(_brand_settings_key(org_id, domain_id))
         if cached:
             return _deserialize(cached)
     except Exception as e:
-        logger.warning(f"Cache get error for brand_settings:{org_id}: {e}")
+        logger.warning(f"Cache get error for brand_settings:{org_id}:{domain_id}: {e}")
     return None
 
 
-def set_cached_brand_settings(org_id: int, value: dict) -> None:
-    """Cache brand settings for an organization."""
+def set_cached_brand_settings(org_id: int, value: dict, domain_id: Optional[int] = None) -> None:
+    """Cache brand settings for an organization's domain."""
     try:
         redis_client = get_redis_connection()
-        key = _get_cache_key("brand_settings", org_id)
-        redis_client.setex(key, BRAND_SETTINGS_TTL, _serialize(value))
+        redis_client.setex(
+            _brand_settings_key(org_id, domain_id), BRAND_SETTINGS_TTL, _serialize(value)
+        )
     except Exception as e:
-        logger.warning(f"Cache set error for brand_settings:{org_id}: {e}")
+        logger.warning(f"Cache set error for brand_settings:{org_id}:{domain_id}: {e}")
 
 
-def invalidate_brand_settings(org_id: int) -> None:
-    """Invalidate cached brand settings for an organization."""
+def invalidate_brand_settings(org_id: int, domain_id: Optional[int] = None) -> None:
+    """Invalidate cached brand settings for an organization's domain."""
     try:
         redis_client = get_redis_connection()
-        key = _get_cache_key("brand_settings", org_id)
-        redis_client.delete(key)
+        redis_client.delete(_brand_settings_key(org_id, domain_id))
     except Exception as e:
-        logger.warning(f"Cache invalidate error for brand_settings:{org_id}: {e}")
+        logger.warning(f"Cache invalidate error for brand_settings:{org_id}:{domain_id}: {e}")
 
 
 def get_cached_domain_by_name(org_id: int, domain_name: str) -> Optional[dict]:

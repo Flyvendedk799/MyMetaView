@@ -26,7 +26,8 @@ class Organization(Base):
     members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
     domains = relationship("Domain", back_populates="organization")
     previews = relationship("Preview", back_populates="organization")
-    brand_settings = relationship("BrandSettings", back_populates="organization", uselist=False)
+    # One row per connected domain, plus the domain_id=NULL organization default.
+    brand_settings = relationship("BrandSettings", back_populates="organization")
     analytics_events = relationship("AnalyticsEvent", back_populates="organization")
     analytics_aggregates = relationship("AnalyticsDailyAggregate", back_populates="organization")
 
