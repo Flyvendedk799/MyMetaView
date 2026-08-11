@@ -2405,11 +2405,18 @@ class PreviewEngine:
                         and isinstance(vfocus, dict) and screenshot_bytes):
                     visual_uri = self._focal_crop(screenshot_bytes, vfocus)
 
+                # A brand name the user typed in beats whatever we scraped off the
+                # page — it's the one they want printed on every card. Same for the
+                # tagline, but only as a fallback: the page's own subtitle is more
+                # specific when the AI found one.
+                _brand_name = _p.get("brand_name") or (brand_elements or {}).get("brand_name")
+                _subtitle = ai_result.get("subtitle") or _p.get("tagline")
+
                 premium_png = render_premium_card(
                     title=ai_result.get("title") or "",
-                    subtitle=ai_result.get("subtitle"),
+                    subtitle=_subtitle,
                     url=url,
-                    brand_name=(brand_elements or {}).get("brand_name"),
+                    brand_name=_brand_name,
                     colors=blueprint_colors,
                     composition=composition,
                     logo_data_uri=logo_uri,

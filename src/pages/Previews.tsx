@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -6,6 +7,7 @@ import Modal from '../components/ui/Modal'
 import EmptyState from '../components/ui/EmptyState'
 import Alert from '../components/ui/Alert'
 import { SkeletonGrid } from '../components/ui/Skeleton'
+import { useToast } from '../components/ui/Toast'
 import { usePreviews } from '../hooks/usePreviews'
 import { useDomains } from '../hooks/useDomains'
 import {
@@ -16,7 +18,6 @@ import {
   getBulkJobStatus,
   getRecentBulkJobs,
   createPreviewJob,
-  getJobStatus,
 } from '../api/client'
 import type { PreviewCreate, PreviewUpdate, PreviewVariant, BulkJobStatus, BulkJobSummary } from '../api/types'
 
@@ -48,9 +49,11 @@ function relativeTime(iso: string | null): string {
 
 export default function Previews() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('All')
+  const [searchParams, setSearchParams] = useSearchParams()
   const filterType = filterToTypeMap[activeFilter]
-  const { previews, loading, error, createOrUpdatePreview, updatePreview, deletePreview, generatePreviewAsync, refetch } = usePreviews(filterType)
+  const { previews, loading, error, createOrUpdatePreview, updatePreview, deletePreview, refetch } = usePreviews(filterType)
   const { domains } = useDomains()
+  const toast = useToast()
   const verifiedDomains = useMemo(() => domains.filter((d) => d.status === 'verified'), [domains])
 
   // Bulk "cover your site" generation
@@ -60,19 +63,19 @@ export default function Previews() {
   const [bulkLoadingSitemap, setBulkLoadingSitemap] = useState(false)
   const [bulkSitemapNote, setBulkSitemapNote] = useState<string | null>(null)
   const [bulkError, setBulkError] = useState<string | null>(null)
-  const [bulkRunning, setBulkRunning] = useState(false)
-  const [bulkStatus, setBulkStatus] = useState<BulkJobStatus | null>(null)
-  const [bulkSkippedQuota, setBulkSkippedQuota] = useState(0)
+  const [bulkStarting, setBulkStarting] = useState(false)
   const bulkUrls = useMemo(
     () => bulkUrlText.split('\n').map((l) => l.trim()).filter(Boolean),
     [bulkUrlText]
   )
 
-  // Per-card regeneration
-  const [regeneratingIds, setRegeneratingIds] = useState<Record<number, boolean>>({})
+  // Per-card regeneration — keyed by the run it started, so the spinner clears
+  // when the server says that run is done (no client-side timeout to guess with).
+  const [regeneratingIds, setRegeneratingIds] = useState<Record<number, string>>({})
   const [regenError, setRegenError] = useState<string | null>(null)
 
-  // Generation activity — bulk runs, visible/resumable even after a tab close.
+  // Generation activity — every run (single + bulk), visible and resumable even
+  // after the tab that started it is closed. The work happens on the server.
   const [activityBatches, setActivityBatches] = useState<BulkJobSummary[]>([])
   const activityPrevStatus = useRef<Record<string, string>>({})
 
@@ -90,6 +93,17 @@ export default function Previews() {
         activityPrevStatus.current[b.batch_id] = b.status
       }
       setActivityBatches(batches)
+      // Release any card whose regeneration run has landed (or fallen off the list).
+      setRegeneratingIds((prev) => {
+        const next: Record<number, string> = {}
+        let changed = false
+        for (const [id, batchId] of Object.entries(prev)) {
+          const run = batches.find((b) => b.batch_id === batchId)
+          if (run && (run.status === 'queued' || run.status === 'running')) next[Number(id)] = batchId
+          else changed = true
+        }
+        return changed ? next : prev
+      })
       if (justFinished) {
         refetch(filterType)
       }
@@ -102,6 +116,35 @@ export default function Previews() {
     () => activityBatches.some((b) => b.status === 'queued' || b.status === 'running'),
     [activityBatches]
   )
+
+  // Per-URL detail for one run, on demand (which pages landed, which failed).
+  const [expandedBatch, setExpandedBatch] = useState<string | null>(null)
+  const [batchDetail, setBatchDetail] = useState<BulkJobStatus | null>(null)
+  const [batchDetailError, setBatchDetailError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!expandedBatch) {
+      setBatchDetail(null)
+      setBatchDetailError(null)
+      return
+    }
+    let active = true
+    getBulkJobStatus(expandedBatch)
+      .then((detail) => {
+        if (!active) return
+        setBatchDetail(detail)
+        setBatchDetailError(null)
+      })
+      .catch((err) => {
+        if (!active) return
+        setBatchDetail(null)
+        setBatchDetailError(err instanceof Error ? err.message : 'Could not load this run.')
+      })
+    return () => {
+      active = false
+    }
+    // activityBatches is in the deps so an open run refreshes as it progresses.
+  }, [expandedBatch, activityBatches])
 
   // Initial load once on mount.
   useEffect(() => {
@@ -119,17 +162,6 @@ export default function Previews() {
     return () => clearInterval(id)
   }, [hasActiveBatch, loadActivity])
 
-  // Debounce filter changes
-  const [debouncedFilter, setDebouncedFilter] = useState<FilterType>(activeFilter)
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedFilter(activeFilter)
-    }, 300) // 300ms debounce
-    
-    return () => clearTimeout(timer)
-  }, [activeFilter])
-  
   // Variant state
   const [previewVariants, setPreviewVariants] = useState<Record<number, PreviewVariant[]>>({})
   const [activeVariants, setActiveVariants] = useState<Record<number, 'main' | 'a' | 'b' | 'c'>>({})
@@ -148,9 +180,9 @@ export default function Previews() {
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
-  const [jobStatus, setJobStatus] = useState<'queued' | 'started' | 'finished' | 'failed' | null>(null)
-  
+  // Only covers handing the job to the server — generation itself continues without us.
+  const [isStartingGeneration, setIsStartingGeneration] = useState(false)
+
   // Load variants for previews
   useEffect(() => {
     const loadVariants = async () => {
@@ -183,7 +215,7 @@ export default function Previews() {
     return surfaces[type.toLowerCase()] || 'bg-secondary-900'
   }
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = useCallback(() => {
     setEditingPreview(null)
     setFormData({
       url: '',
@@ -194,7 +226,16 @@ export default function Previews() {
     })
     setFormError(null)
     setIsModalOpen(true)
-  }
+  }, [domains])
+
+  // /app/previews?new=1 opens the create dialog (used by the header quick action).
+  useEffect(() => {
+    if (searchParams.get('new') === null) return
+    handleOpenCreateModal()
+    const next = new URLSearchParams(searchParams)
+    next.delete('new')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams, handleOpenCreateModal])
 
   const handleOpenEditModal = (preview: typeof previews[0], variant: 'main' | 'a' | 'b' | 'c' = 'main') => {
     setEditingPreview(preview.id)
@@ -329,6 +370,8 @@ export default function Previews() {
     }
   }
 
+  // Hand the job to the server and get out of the way: generation runs in the
+  // background, so we close the dialog and let the activity list carry the run.
   const handleGenerateWithAI = async () => {
     if (!formData.url.trim() || !formData.domain.trim()) {
       setFormError('URL and Domain are required for AI generation')
@@ -336,41 +379,18 @@ export default function Previews() {
     }
 
     try {
-      setIsGeneratingAI(true)
+      setIsStartingGeneration(true)
       setFormError(null)
-      setJobStatus('queued')
-      
-      // Create job and poll status in parallel with hook's async function
-      const { createPreviewJob, getJobStatus } = await import('../api/client')
-      const { job_id } = await createPreviewJob({ url: formData.url, domain: formData.domain })
-      
-      // Poll for status updates (for UI feedback)
-      const statusPollInterval = setInterval(async () => {
-        try {
-          const status = await getJobStatus(job_id)
-          setJobStatus(status.status)
-        } catch (err) {
-          // Ignore polling errors, hook will handle completion
-        }
-      }, 1500)
-      
-      // Use hook's async function which handles completion and refresh
-      try {
-        await generatePreviewAsync(formData.url, formData.domain)
-        clearInterval(statusPollInterval)
-        setIsGeneratingAI(false)
-        setJobStatus(null)
-        handleCloseModal()
-      } catch (err) {
-        clearInterval(statusPollInterval)
-        setFormError(err instanceof Error ? err.message : 'Failed to generate preview')
-        setIsGeneratingAI(false)
-        setJobStatus('failed')
-      }
+      await createPreviewJob({ url: formData.url, domain: formData.domain })
+      handleCloseModal()
+      toast.info('Generating in the background', 'Track it under Generation activity — you can close this tab.')
+      loadActivity()
     } catch (err) {
+      // Quota / rate-limit / unverified-domain errors come back from this call,
+      // so they're still shown in the form the user is looking at.
       setFormError(err instanceof Error ? err.message : 'Failed to start preview generation')
-      setIsGeneratingAI(false)
-      setJobStatus(null)
+    } finally {
+      setIsStartingGeneration(false)
     }
   }
 
@@ -380,16 +400,11 @@ export default function Previews() {
     setBulkUrlText('')
     setBulkSitemapNote(null)
     setBulkError(null)
-    setBulkStatus(null)
-    setBulkSkippedQuota(0)
-    setBulkRunning(false)
+    setBulkStarting(false)
     setIsBulkOpen(true)
   }
 
-  const closeBulk = () => {
-    if (bulkRunning) return // don't abandon a batch mid-run
-    setIsBulkOpen(false)
-  }
+  const closeBulk = () => setIsBulkOpen(false)
 
   const handleLoadSitemap = async () => {
     if (!bulkDomain) return
@@ -414,39 +429,22 @@ export default function Previews() {
   const handleBulkGenerate = async () => {
     if (!bulkDomain || bulkUrls.length === 0) return
     setBulkError(null)
-    setBulkStatus(null)
-    setBulkSkippedQuota(0)
-    setBulkRunning(true)
+    setBulkStarting(true)
     try {
       const res = await createBulkPreviewJob(bulkDomain, bulkUrls, false)
-      setBulkSkippedQuota(res.skipped_quota || 0)
-      const batchId = res.batch_id
-      // Surface the run in the activity panel right away (and kick off its polling).
+      closeBulk()
+      const skipped = res.skipped_quota || 0
+      toast.info(
+        `Generating ${res.queued} preview${res.queued === 1 ? '' : 's'} in the background`,
+        skipped > 0
+          ? `${skipped} skipped — monthly quota reached. Track progress under Generation activity.`
+          : 'Track progress under Generation activity — you can close this tab.'
+      )
       loadActivity()
-      await new Promise<void>((resolve) => {
-        const poll = setInterval(async () => {
-          try {
-            const status = await getBulkJobStatus(batchId)
-            setBulkStatus(status)
-            if (status.status === 'completed' || status.status === 'failed') {
-              clearInterval(poll)
-              resolve()
-            }
-          } catch {
-            // batch may briefly be unreadable; keep polling
-          }
-        }, 2000)
-        // Safety stop after 30 minutes
-        setTimeout(() => {
-          clearInterval(poll)
-          resolve()
-        }, 1800000)
-      })
-      await refetch(filterType)
     } catch (err) {
       setBulkError(err instanceof Error ? err.message : 'Bulk generation failed to start.')
     } finally {
-      setBulkRunning(false)
+      setBulkStarting(false)
     }
   }
 
@@ -454,35 +452,14 @@ export default function Previews() {
   const handleRegenerate = async (preview: typeof previews[0]) => {
     if (regeneratingIds[preview.id]) return
     setRegenError(null)
-    setRegeneratingIds((prev) => ({ ...prev, [preview.id]: true }))
     try {
-      const { job_id } = await createPreviewJob({ url: preview.url, domain: preview.domain, force: true })
-      await new Promise<void>((resolve, reject) => {
-        const poll = setInterval(async () => {
-          try {
-            const status = await getJobStatus(job_id)
-            if (status.status === 'finished') {
-              clearInterval(poll)
-              resolve()
-            } else if (status.status === 'failed') {
-              clearInterval(poll)
-              reject(new Error(status.error || 'Regeneration failed'))
-            }
-          } catch (err) {
-            clearInterval(poll)
-            reject(err)
-          }
-        }, 1500)
-        setTimeout(() => {
-          clearInterval(poll)
-          reject(new Error('Regeneration timed out'))
-        }, 180000)
-      })
-      await refetch(filterType)
+      const { batch_id } = await createPreviewJob({ url: preview.url, domain: preview.domain, force: true })
+      // Tie the spinner to the server-side run; loadActivity clears it when done.
+      if (batch_id) setRegeneratingIds((prev) => ({ ...prev, [preview.id]: batch_id }))
+      toast.info('Regenerating in the background', 'The card updates here when the run finishes.')
+      loadActivity()
     } catch (err) {
-      setRegenError(err instanceof Error ? err.message : 'Regeneration failed')
-    } finally {
-      setRegeneratingIds((prev) => ({ ...prev, [preview.id]: false }))
+      setRegenError(err instanceof Error ? err.message : 'Regeneration failed to start')
     }
   }
 
@@ -525,59 +502,112 @@ export default function Previews() {
         </Card>
       )}
 
-      {/* Generation activity — persistent, tab-independent view of bulk runs */}
+      {/* Generation activity — persistent, tab-independent view of every run */}
       {activityBatches.length > 0 && (
         <Card className="mb-6" padding="md">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <RectangleStackIcon className="w-4 h-4 text-secondary-500" />
             <h2 className="text-sm font-semibold text-secondary-800">Generation activity</h2>
             {hasActiveBatch && (
               <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" title="A run is in progress" />
             )}
           </div>
+          <p className="text-xs text-secondary-500 mb-3">
+            Runs happen on our servers — you can close this tab and come back.
+          </p>
           <div className="divide-y divide-line">
             {activityBatches.slice(0, 6).map((b) => {
               const pct = b.total ? Math.round(((b.completed + b.failed) / b.total) * 100) : 0
               const active = b.status === 'queued' || b.status === 'running'
+              const expanded = expandedBatch === b.batch_id
               return (
-                <div key={b.batch_id} className="py-2.5 flex items-center gap-3">
-                  <span className="flex-shrink-0">
-                    {b.status === 'completed' && (
-                      <span className="pill bg-primary-500 text-paper inline-flex items-center gap-1">
-                        <CheckIcon className="w-3 h-3" /> Done
-                      </span>
-                    )}
-                    {b.status === 'failed' && (
-                      <span className="pill bg-error-50 text-error-700 inline-flex items-center gap-1">
-                        <XMarkIcon className="w-3 h-3" /> Failed
-                      </span>
-                    )}
-                    {b.status === 'running' && (
-                      <span className="pill bg-secondary-100 text-secondary-700 inline-flex items-center gap-1">
-                        <span className="w-3 h-3 border-2 border-secondary-400 border-t-transparent rounded-full animate-spin" /> Running
-                      </span>
-                    )}
-                    {b.status === 'queued' && (
-                      <span className="pill bg-secondary-100 text-secondary-500">Queued</span>
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-secondary-700 truncate">{b.domain || '—'}</span>
-                      <span className="text-xs text-secondary-400">·</span>
-                      <span className="text-xs text-secondary-500 whitespace-nowrap">
-                        {b.completed + b.failed} / {b.total}{b.failed > 0 ? ` · ${b.failed} failed` : ''}
-                      </span>
-                    </div>
-                    {active && (
-                      <div className="mt-1.5 w-full h-1.5 bg-secondary-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-500 transition-all" style={{ width: `${pct}%` }} />
+                <div key={b.batch_id} className="py-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedBatch(expanded ? null : b.batch_id)}
+                    aria-expanded={expanded}
+                    title={expanded ? 'Hide the pages in this run' : 'Show the pages in this run'}
+                    className="w-full flex items-center gap-3 text-left rounded-lg hover:bg-secondary-50 transition-colors"
+                  >
+                    <span className="flex-shrink-0">
+                      {b.status === 'completed' && (
+                        <span className="pill bg-primary-500 text-paper inline-flex items-center gap-1">
+                          <CheckIcon className="w-3 h-3" /> Done
+                        </span>
+                      )}
+                      {b.status === 'failed' && (
+                        <span className="pill bg-error-50 text-error-700 inline-flex items-center gap-1">
+                          <XMarkIcon className="w-3 h-3" /> Failed
+                        </span>
+                      )}
+                      {b.status === 'running' && (
+                        <span className="pill bg-secondary-100 text-secondary-700 inline-flex items-center gap-1">
+                          <span className="w-3 h-3 border-2 border-secondary-400 border-t-transparent rounded-full animate-spin" /> Running
+                        </span>
+                      )}
+                      {b.status === 'queued' && (
+                        <span className="pill bg-secondary-100 text-secondary-500">Queued</span>
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-secondary-700 truncate" title={b.label || b.domain || ''}>
+                          {b.label || b.domain || '—'}
+                        </span>
+                        <span className="text-xs text-secondary-400">·</span>
+                        <span className="text-xs text-secondary-500 whitespace-nowrap">
+                          {b.kind === 'single' && b.total === 1
+                            ? (b.failed > 0 ? 'failed' : b.completed > 0 ? '1 preview' : 'single page')
+                            : `${b.completed + b.failed} / ${b.total}${b.failed > 0 ? ` · ${b.failed} failed` : ''}`}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-secondary-400 whitespace-nowrap flex-shrink-0">
-                    {relativeTime(b.created_at)}
-                  </span>
+                      {active && (
+                        <div className="mt-1.5 w-full h-1.5 bg-secondary-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-primary-500 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-secondary-400 whitespace-nowrap flex-shrink-0">
+                      {relativeTime(b.created_at)}
+                    </span>
+                  </button>
+
+                  {expanded && (
+                    <div className="mt-2 pl-1">
+                      {batchDetailError && (
+                        <p className="text-xs text-secondary-500">{batchDetailError}</p>
+                      )}
+                      {!batchDetailError && !batchDetail && (
+                        <p className="text-xs text-secondary-500">Loading run…</p>
+                      )}
+                      {batchDetail && batchDetail.results.length === 0 && (
+                        <p className="text-xs text-secondary-500">
+                          No pages finished yet — results appear here as they land.
+                        </p>
+                      )}
+                      {batchDetail && batchDetail.results.length > 0 && (
+                        <div className="max-h-48 overflow-y-auto border border-line rounded-lg divide-y divide-line">
+                          {batchDetail.results.map((r, i) => (
+                            <div key={i} className="flex items-center gap-2 px-3 py-1.5">
+                              {r.status === 'finished' ? (
+                                <CheckIcon className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                              ) : (
+                                <XMarkIcon className="w-4 h-4 text-error-600 flex-shrink-0" />
+                              )}
+                              <span className="font-mono text-[11px] text-secondary-600 truncate flex-1" title={r.url}>
+                                {r.url}
+                              </span>
+                              {r.status === 'failed' && r.error && (
+                                <span className="text-[11px] text-error-600 truncate max-w-[40%]" title={r.error}>
+                                  {r.error}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -608,10 +638,14 @@ export default function Previews() {
         <Card>
           <EmptyState
             icon={<PhotoIcon className="w-8 h-8" />}
-            title="No previews generated yet"
-            description="Create your first AI-powered preview to see how your URLs will appear when shared on social media and messaging platforms."
+            title={hasActiveBatch ? 'Your first preview is generating' : 'No previews generated yet'}
+            description={
+              hasActiveBatch
+                ? "It runs on our servers and lands here when it's done — feel free to close the tab."
+                : 'Create your first AI-powered preview to see how your URLs will appear when shared on social media and messaging platforms.'
+            }
             action={{
-              label: 'Generate Your First Preview',
+              label: hasActiveBatch ? 'Generate another' : 'Generate Your First Preview',
               onClick: handleOpenCreateModal,
             }}
           />
@@ -930,52 +964,40 @@ export default function Previews() {
             </div>
           )}
 
-          {/* AI Generation Status */}
-          {isGeneratingAI && jobStatus && (
-            <div className="alert-info">
-              <div className="flex items-center space-x-3">
-                <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium">
-                    {jobStatus === 'queued' && 'Queued - Waiting to process...'}
-                    {jobStatus === 'started' && 'Processing - Capturing screenshot & analyzing with AI...'}
-                    {jobStatus === 'finished' && 'Complete!'}
-                    {jobStatus === 'failed' && 'Failed - Please try again'}
-                  </p>
-                  <p className="text-xs opacity-90 mt-1">
-                    AI is capturing a screenshot, detecting the focal region, and generating optimized preview content.
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* What "Generate with AI" does — set expectations before the click */}
+          {editingPreview === null && (
+            <p className="text-xs text-secondary-500">
+              Generation runs on our servers: we close this dialog as soon as the run starts, and
+              it keeps going even if you close the tab. Watch it under “Generation activity”.
+            </p>
           )}
 
           <div className="flex items-center justify-end space-x-3 pt-4">
-            <Button variant="secondary" onClick={handleCloseModal} disabled={isSubmitting || isGeneratingAI}>
+            <Button variant="secondary" onClick={handleCloseModal} disabled={isSubmitting || isStartingGeneration}>
               Cancel
             </Button>
             {editingPreview !== null ? (
-              <Button onClick={handleSubmit} disabled={isSubmitting || isGeneratingAI}>
+              <Button onClick={handleSubmit} disabled={isSubmitting || isStartingGeneration}>
                 {isSubmitting ? 'Saving...' : 'Update Preview'}
               </Button>
             ) : (
               <>
-                <Button 
-                  variant="secondary" 
-                  onClick={handleSubmit} 
-                  disabled={isSubmitting || isGeneratingAI}
+                <Button
+                  variant="secondary"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || isStartingGeneration}
                 >
                   {isSubmitting ? 'Saving...' : 'Create Manually'}
                 </Button>
                 <Button
                   variant="accent"
                   onClick={handleGenerateWithAI}
-                  disabled={isSubmitting || isGeneratingAI || !formData.url || !formData.domain}
+                  disabled={isSubmitting || isStartingGeneration || !formData.url || !formData.domain}
                 >
-                  {isGeneratingAI ? (
+                  {isStartingGeneration ? (
                     <div className="flex items-center space-x-2">
                       <div className="w-4 h-4 border-2 border-paper border-t-transparent rounded-full animate-spin" />
-                      <span>Generating...</span>
+                      <span>Starting…</span>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2">
@@ -1005,7 +1027,8 @@ export default function Previews() {
             <>
               <p className="text-[13px] text-secondary-600">
                 Cover your whole site at once — load your URLs from the site's sitemap or paste them in,
-                then generate an on-brand preview for each.
+                then generate an on-brand preview for each. The run happens on our servers, so you can
+                close this dialog (and the tab) once it starts.
               </p>
 
               <div>
@@ -1013,7 +1036,7 @@ export default function Previews() {
                 <select
                   value={bulkDomain}
                   onChange={(e) => setBulkDomain(e.target.value)}
-                  disabled={bulkRunning}
+                  disabled={bulkStarting}
                   className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all disabled:bg-secondary-50"
                 >
                   {verifiedDomains.map((d) => (
@@ -1026,7 +1049,7 @@ export default function Previews() {
                 <Button
                   variant="secondary"
                   onClick={handleLoadSitemap}
-                  disabled={bulkLoadingSitemap || bulkRunning || !bulkDomain}
+                  disabled={bulkLoadingSitemap || bulkStarting || !bulkDomain}
                 >
                   {bulkLoadingSitemap ? (
                     <div className="flex items-center space-x-2">
@@ -1047,7 +1070,7 @@ export default function Previews() {
                 <textarea
                   value={bulkUrlText}
                   onChange={(e) => setBulkUrlText(e.target.value)}
-                  disabled={bulkRunning}
+                  disabled={bulkStarting}
                   rows={8}
                   placeholder={`https://${bulkDomain || 'example.com'}/\nhttps://${bulkDomain || 'example.com'}/pricing`}
                   className="w-full px-4 py-2 border border-secondary-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all disabled:bg-secondary-50"
@@ -1057,70 +1080,19 @@ export default function Previews() {
                 </p>
               </div>
 
-              {bulkSkippedQuota > 0 && (
-                <Alert variant="warning">
-                  {bulkSkippedQuota} URL{bulkSkippedQuota === 1 ? '' : 's'} skipped — monthly quota reached.
-                </Alert>
-              )}
-
-              {bulkStatus && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-secondary-800">
-                      {bulkStatus.completed} of {bulkStatus.total} complete
-                      {bulkStatus.failed > 0 ? ` · ${bulkStatus.failed} failed` : ''}
-                    </span>
-                    <span className="text-xs text-secondary-500 capitalize">{bulkStatus.status}</span>
-                  </div>
-                  <div className="w-full h-2 bg-secondary-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary-500 transition-all"
-                      style={{
-                        width: `${
-                          bulkStatus.total
-                            ? Math.round(((bulkStatus.completed + bulkStatus.failed) / bulkStatus.total) * 100)
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-                  {bulkStatus.results.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto border border-line rounded-lg divide-y divide-line">
-                      {bulkStatus.results.map((r, i) => (
-                        <div key={i} className="flex items-center gap-2 px-3 py-1.5">
-                          {r.status === 'finished' ? (
-                            <CheckIcon className="w-4 h-4 text-primary-600 flex-shrink-0" />
-                          ) : (
-                            <XMarkIcon className="w-4 h-4 text-error-600 flex-shrink-0" />
-                          )}
-                          <span className="font-mono text-[11px] text-secondary-600 truncate flex-1" title={r.url}>
-                            {r.url}
-                          </span>
-                          {r.status === 'failed' && r.error && (
-                            <span className="text-[11px] text-error-600 truncate max-w-[40%]" title={r.error}>
-                              {r.error}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
               <div className="flex items-center justify-end space-x-3 pt-2">
-                <Button variant="secondary" onClick={closeBulk} disabled={bulkRunning}>
-                  {bulkStatus && !bulkRunning ? 'Close' : 'Cancel'}
+                <Button variant="secondary" onClick={closeBulk} disabled={bulkStarting}>
+                  Cancel
                 </Button>
                 <Button
                   variant="accent"
                   onClick={handleBulkGenerate}
-                  disabled={bulkRunning || bulkUrls.length === 0}
+                  disabled={bulkStarting || bulkUrls.length === 0}
                 >
-                  {bulkRunning ? (
+                  {bulkStarting ? (
                     <div className="flex items-center space-x-2">
                       <div className="w-4 h-4 border-2 border-paper border-t-transparent rounded-full animate-spin" />
-                      <span>Generating…</span>
+                      <span>Starting…</span>
                     </div>
                   ) : (
                     `Generate ${bulkUrls.length || ''} preview${bulkUrls.length === 1 ? '' : 's'}`.replace('  ', ' ').trim()

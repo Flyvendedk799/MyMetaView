@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   HomeIcon,
@@ -17,13 +17,7 @@ import {
   UserCircleIcon,
   DocumentTextIcon,
   EnvelopeIcon,
-  NewspaperIcon,
   ChevronDownIcon,
-  Cog6ToothIcon,
-  Bars3Icon,
-  DocumentIcon,
-  FolderIcon,
-  ArrowLeftIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../hooks/useAuth'
 import { CountBadge } from '../ui/Badge'
@@ -43,13 +37,13 @@ interface NavItem {
 
 const mainNavigation: NavItem[] = [
   { name: 'Dashboard', href: '/app', icon: HomeIcon },
-  { name: 'My Sites', href: '/app/sites', icon: NewspaperIcon },
+  // "My Site" = the brand identity previews are generated from (not a site builder).
+  { name: 'My Site', href: '/app/brand', icon: PaintBrushIcon },
   { name: 'Domains', href: '/app/domains', icon: GlobeAltIcon },
   { name: 'Preview Gallery', href: '/app/previews', icon: PhotoIcon },
 ]
 
 const settingsNavigation: NavItem[] = [
-  { name: 'Brand Settings', href: '/app/brand', icon: PaintBrushIcon },
   { name: 'Analytics', href: '/app/analytics', icon: ChartBarIcon },
   { name: 'Billing', href: '/app/billing', icon: CreditCardIcon },
   { name: 'Activity', href: '/app/activity', icon: ClockIcon },
@@ -70,28 +64,11 @@ const adminNavigation: NavItem[] = [
   { name: 'Errors', href: '/app/admin/errors', icon: ExclamationTriangleIcon },
 ]
 
-// Site-specific navigation when inside a site
-const getSiteNavigation = (siteId: string): NavItem[] => [
-  { name: 'Dashboard', href: `/app/sites/${siteId}`, icon: HomeIcon },
-  { name: 'Posts', href: `/app/sites/${siteId}/posts`, icon: DocumentTextIcon },
-  { name: 'Pages', href: `/app/sites/${siteId}/pages`, icon: DocumentIcon },
-  { name: 'Categories', href: `/app/sites/${siteId}/categories`, icon: FolderIcon },
-  { name: 'Media', href: `/app/sites/${siteId}/media`, icon: PhotoIcon },
-  { name: 'Menus', href: `/app/sites/${siteId}/menus`, icon: Bars3Icon },
-  { name: 'Branding', href: `/app/sites/${siteId}/branding`, icon: PaintBrushIcon },
-  { name: 'Settings', href: `/app/sites/${siteId}/settings`, icon: Cog6ToothIcon },
-]
-
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation()
-  const params = useParams()
   const { user } = useAuth()
   const [settingsExpanded, setSettingsExpanded] = useState(false)
   const [adminExpanded, setAdminExpanded] = useState(false)
-
-  // Check if we're in a site context
-  const siteId = params.siteId
-  const isInSiteContext = Boolean(siteId) && location.pathname.includes('/app/sites/')
 
   // Auto-expand sections based on current path
   useEffect(() => {
@@ -208,55 +185,33 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-hide">
-          {/* Site Context Navigation */}
-          {isInSiteContext ? (
-            <>
-              {/* Back to Sites Link */}
-              <Link
-                to="/app/sites"
-                className="flex items-center gap-2 px-3 py-2 mb-4 text-sm text-paper/50 hover:text-paper transition-colors"
-              >
-                <ArrowLeftIcon className="w-4 h-4" />
-                Back to Sites
-              </Link>
+          {/* Main Navigation */}
+          <span className="block px-3 pb-2 font-mono text-[10px] uppercase tracking-label text-paper/35">
+            Workspace
+          </span>
+          <div className="space-y-0.5">
+            {mainNavigation.map((item) => (
+              <NavLink key={item.name} item={item} />
+            ))}
+          </div>
 
-              <div className="space-y-0.5">
-                {getSiteNavigation(siteId!).map((item) => (
-                  <NavLink key={item.name} item={item} />
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Main Navigation */}
-              <span className="block px-3 pb-2 font-mono text-[10px] uppercase tracking-label text-paper/35">
-                Workspace
-              </span>
-              <div className="space-y-0.5">
-                {mainNavigation.map((item) => (
-                  <NavLink key={item.name} item={item} />
-                ))}
-              </div>
+          {/* Settings Section */}
+          <CollapsibleSection
+            title="Account"
+            items={settingsNavigation}
+            expanded={settingsExpanded}
+            onToggle={() => setSettingsExpanded(!settingsExpanded)}
+          />
 
-              {/* Settings Section */}
-              <CollapsibleSection
-                title="Account"
-                items={settingsNavigation}
-                expanded={settingsExpanded}
-                onToggle={() => setSettingsExpanded(!settingsExpanded)}
-              />
-
-              {/* Admin Section */}
-              {user?.is_admin && (
-                <CollapsibleSection
-                  title="Admin"
-                  items={adminNavigation}
-                  expanded={adminExpanded}
-                  onToggle={() => setAdminExpanded(!adminExpanded)}
-                  variant="admin"
-                />
-              )}
-            </>
+          {/* Admin Section */}
+          {user?.is_admin && (
+            <CollapsibleSection
+              title="Admin"
+              items={adminNavigation}
+              expanded={adminExpanded}
+              onToggle={() => setAdminExpanded(!adminExpanded)}
+              variant="admin"
+            />
           )}
         </nav>
 

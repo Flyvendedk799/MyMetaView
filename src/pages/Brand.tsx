@@ -14,6 +14,16 @@ import type { BrandSettings, BrandSettingsUpdate } from '../api/types'
 import { FEATURES } from '../lib/plans'
 
 const FONT_OPTIONS = ['Inter', 'Bricolage Grotesque', 'IBM Plex Sans', 'System']
+// Must match VOICE_CHOICES in backend/schemas/brand.py.
+const VOICE_OPTIONS: [string, string][] = [
+  ['auto', 'Auto — infer it from my brand'],
+  ['professional', 'Professional — precise, trustworthy'],
+  ['confident', 'Confident — direct, no hedging'],
+  ['friendly', 'Friendly — warm, plain-spoken'],
+  ['technical', 'Technical — specific, no fluff'],
+  ['playful', 'Playful — energetic, a little wit'],
+  ['luxury', 'Luxury — understated, premium'],
+]
 const LAYOUT_OPTIONS: [string, string][] = [
   ['auto', 'Auto — let the AI decide'],
   ['typographic', 'Typographic (headline only)'],
@@ -243,6 +253,11 @@ export default function Brand() {
         accent_color: form.accent_color,
         font_family: form.font_family,
         logo_url: form.logo_url ?? null,
+        brand_name: form.brand_name ?? null,
+        tagline: form.tagline ?? null,
+        brand_description: form.brand_description ?? null,
+        audience: form.audience ?? null,
+        voice: form.voice,
         preview_layout: form.preview_layout,
         preview_panel: form.preview_panel,
         preview_accent: form.preview_accent,
@@ -297,10 +312,10 @@ export default function Brand() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-secondary-900">Brand &amp; preview</h1>
+        <h1 className="text-2xl font-semibold text-secondary-900">My site — brand &amp; identity</h1>
         <p className="text-secondary-600 mt-1">
-          Control how your generated share-cards look. These settings apply to previews for your
-          verified domains.
+          Who your site is and how it looks. Everything here feeds preview generation for your
+          verified domains: the identity shapes the words, the visuals shape the card.
         </p>
       </div>
 
@@ -330,9 +345,84 @@ export default function Brand() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Controls */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Site identity — the words previews are written from */}
+            <Card>
+              <h3 className="text-lg font-semibold text-secondary-900 mb-1">Site identity</h3>
+              <p className="text-sm text-secondary-600 mb-5">
+                Tell us who you are in your own words. We use this when writing each preview's copy,
+                and the name is what we print on the card. Leave anything blank and we'll keep
+                inferring it from the page.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1.5">
+                    Site / brand name
+                  </label>
+                  <input
+                    type="text"
+                    value={form.brand_name ?? ''}
+                    onChange={(e) => set({ brand_name: e.target.value })}
+                    placeholder="Acme Analytics"
+                    maxLength={80}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1.5">
+                    Tagline
+                  </label>
+                  <input
+                    type="text"
+                    value={form.tagline ?? ''}
+                    onChange={(e) => set({ tagline: e.target.value })}
+                    placeholder="Product analytics without the setup"
+                    maxLength={120}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-secondary-700 mb-1.5">
+                  What you do
+                </label>
+                <textarea
+                  value={form.brand_description ?? ''}
+                  onChange={(e) => set({ brand_description: e.target.value })}
+                  placeholder="We help SaaS teams see which features drive retention, without a data engineer."
+                  rows={3}
+                  maxLength={500}
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1.5">
+                    Who it's for
+                  </label>
+                  <input
+                    type="text"
+                    value={form.audience ?? ''}
+                    onChange={(e) => set({ audience: e.target.value })}
+                    placeholder="Product managers at B2B SaaS companies"
+                    maxLength={200}
+                    className={inputClass}
+                  />
+                </div>
+                <Select
+                  label="Tone of voice"
+                  value={form.voice || 'auto'}
+                  options={VOICE_OPTIONS}
+                  onChange={(v) => set({ voice: v })}
+                />
+              </div>
+            </Card>
+
             {/* Brand identity */}
             <Card>
-              <h3 className="text-lg font-semibold text-secondary-900 mb-4">Brand identity</h3>
+              <h3 className="text-lg font-semibold text-secondary-900 mb-4">Logo &amp; colours</h3>
 
               {/* Logo */}
               <div className="flex items-center gap-6 mb-6">
