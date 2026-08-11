@@ -164,6 +164,11 @@ def track_social_visit(
             ip_address=client_ip,
         )
         db.add(event)
+        # Keep the denormalized counters (gallery cards, domain rows) in step
+        # with the event stream.
+        if preview:
+            preview.monthly_clicks = (preview.monthly_clicks or 0) + 1
+        domain_obj.monthly_clicks = (domain_obj.monthly_clicks or 0) + 1
         db.commit()
         return JSONResponse({"status": "ok"})
     except Exception as e:

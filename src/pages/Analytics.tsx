@@ -301,7 +301,7 @@ export default function Analytics() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-secondary-900 truncate">{item.domain_name}</p>
                         <p className="text-xs text-secondary-500">
-                          {item.impressions_30d.toLocaleString()} impressions · {item.clicks_30d.toLocaleString()} clicks
+                          {item.impressions_30d.toLocaleString()} impression{item.impressions_30d === 1 ? '' : 's'} · {item.clicks_30d.toLocaleString()} click{item.clicks_30d === 1 ? '' : 's'}
                         </p>
                       </div>
                       <div className="text-right ml-3">
