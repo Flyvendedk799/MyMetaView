@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import Seo from '../components/Seo'
 import SiteNav from '../components/SiteNav'
 import {
@@ -31,6 +31,7 @@ import PlatformPreviewCard from '../components/PlatformPreviewCard'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useDemoGeneration, GENERATION_STAGES } from '../hooks/useDemoGeneration'
 import { logger } from '../utils/logger'
+import { saveDemoContext } from '../lib/demoContext'
 
 type Step = 'input' | 'preview'
 
@@ -105,6 +106,19 @@ export default function Demo() {
     }
   }, [preview, isGeneratingPreview, emailSubscribed])
 
+  // The landing page hands its hero URL over as ?url= — start immediately
+  // instead of making the visitor retype it.
+  const [searchParams] = useSearchParams()
+  useEffect(() => {
+    const incoming = searchParams.get('url')
+    if (incoming && !preview && !isGeneratingPreview) {
+      const processed = incoming.startsWith('http') ? incoming : `https://${incoming}`
+      setUrl(processed)
+      generatePreviewWithUrl(processed)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Example URLs for quick start
   const EXAMPLE_URLS = [
     { url: 'https://stripe.com', label: 'Stripe' },
@@ -131,6 +145,9 @@ export default function Demo() {
       const newHistory = [preview.url, ...urlHistory.filter(u => u !== preview.url)].slice(0, 5)
       setUrlHistory(newHistory)
       localStorage.setItem('demo_url_history', JSON.stringify(newHistory))
+      // Carried into the app: after signup the dashboard offers to connect
+      // this exact domain.
+      saveDemoContext(preview.url)
     }
   }, [preview?.url])
 
@@ -1808,11 +1825,11 @@ export default function Demo() {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link
-                      to="/app"
+                      to="/signup"
                       className="btn-accent btn-lg group text-lg relative overflow-hidden"
                     >
                       <span className="relative z-10 flex items-center">
-                        Get Full Access
+                        Create free account
                         <ArrowRightIcon className="w-6 h-6 ml-2 group-hover:translate-x-1 transition-transform" />
                       </span>
                       <div className="absolute inset-0 hidden" />
@@ -1832,7 +1849,7 @@ export default function Demo() {
                     </button>
                   </div>
                   <p className="mt-6 text-xs text-paper/40">
-                    Save or customize this preview by creating an account
+                    Your account starts with this domain ready to connect
                   </p>
                 </div>
               </div>

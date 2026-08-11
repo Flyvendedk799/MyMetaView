@@ -33,7 +33,11 @@ import AccountSettings from '../pages/AccountSettings'
 import Blog from '../pages/Blog'
 import BlogPost from '../pages/BlogPost'
 import Demo from '../pages/Demo'
-import DemoGenerationPage from '../pages/DemoGenerationPage'
+import ForgotPassword from '../pages/ForgotPassword'
+import ResetPassword from '../pages/ResetPassword'
+import Terms from '../pages/legal/Terms'
+import Privacy from '../pages/legal/Privacy'
+import NotFound from '../pages/NotFound'
 
 export default function Router() {
   return (
@@ -42,8 +46,11 @@ export default function Router() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/demo" element={<Demo />} />
-      <Route path="/demo-generation" element={<DemoGenerationPage />} />
       
       {/* Public Blog routes */}
       <Route path="/blog" element={<Blog />} />
@@ -295,8 +302,11 @@ export default function Router() {
           surface (MyMetaView's own blog); for customers, "their site" means the
           brand identity that feeds preview generation. Old links land there. */}
       <Route path="/app/sites/*" element={<Navigate to="/app/brand" replace />} />
+      {/* Retired: the orphaned second demo implementation. */}
+      <Route path="/demo-generation" element={<Navigate to="/demo" replace />} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* An honest 404 beats silently teleporting people to the homepage. */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

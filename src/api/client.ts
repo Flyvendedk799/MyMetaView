@@ -362,6 +362,29 @@ export async function fetchCurrentUser(): Promise<User> {
   return fetchApi<User>('/api/v1/auth/me')
 }
 
+export async function requestPasswordReset(email: string): Promise<{ status: string; message: string }> {
+  return fetchApi(
+    '/api/v1/auth/forgot-password',
+    { method: 'POST', body: JSON.stringify({ email }) },
+    false
+  )
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ status: string; message: string }> {
+  return fetchApi(
+    '/api/v1/auth/reset-password',
+    { method: 'POST', body: JSON.stringify({ token, new_password: newPassword }) },
+    false
+  )
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ status: string; message: string }> {
+  return fetchApi(
+    '/api/v1/account/change-password',
+    { method: 'POST', body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }) }
+  )
+}
+
 // Domain endpoints
 export async function fetchDomains(): Promise<Domain[]> {
   return fetchApi<Domain[]>('/api/v1/domains')

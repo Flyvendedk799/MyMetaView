@@ -224,8 +224,11 @@ export interface TopDomain {
 export interface AnalyticsSummary {
   period: string
   total_clicks: number
+  total_impressions: number
+  ctr: number
   total_previews: number
   total_domains: number
+  verified_domains: number
   brand_score: number
   top_domains: TopDomain[]
 }

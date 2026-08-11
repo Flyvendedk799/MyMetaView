@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import {
   PlusIcon, 
@@ -38,6 +39,7 @@ interface DebugInfo {
 
 export default function Domains() {
   const { domains, loading, error: apiError, addDomain, removeDomain, refetch } = useDomains()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { previews } = usePreviews()
   // Real count of previews per domain (previews carry the domain name they belong to)
   const previewCountByDomain = useMemo(() => {
@@ -70,6 +72,19 @@ export default function Domains() {
   const [isDebugging, setIsDebugging] = useState(false)
   const [autoCheckStatus, setAutoCheckStatus] = useState<'checking' | 'found' | 'not_found' | null>(null)
   const [lastAutoCheckTime, setLastAutoCheckTime] = useState<Date | null>(null)
+
+  // ?add=example.com (from the dashboard's demo hand-off) opens the add
+  // modal with the domain prefilled, so the demo -> signup -> connect flow
+  // has zero retyping.
+  useEffect(() => {
+    const prefill = searchParams.get('add')
+    if (prefill) {
+      setDomainName(prefill)
+      setIsModalOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Auto-check verification every 15 seconds on the instructions step
   useEffect(() => {

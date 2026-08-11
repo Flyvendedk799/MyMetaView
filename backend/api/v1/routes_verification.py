@@ -11,6 +11,10 @@ from backend.core.deps import get_current_user, get_current_org, role_required
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
 from backend.schemas.domain import Domain
+from backend.schemas.domain import Domain as DomainSchema
+from backend.core.config import settings
+import logging
+logger = logging.getLogger(__name__)
 from backend.utils.verification_tokens import (
     generate_verification_token,
     get_dns_instructions,
@@ -222,7 +226,7 @@ def check_verification(
         domain.verified_at = datetime.utcnow()
         db.commit()
         db.refresh(domain)
-        
+
         # Log verification success
         log_activity(
             db,
@@ -231,7 +235,18 @@ def check_verification(
             metadata={"domain_id": domain.id, "domain_name": domain.name, "method": domain.verification_method},
             request=request
         )
-        
+
+        # Celebrate + point at the next step (fire-and-forget)
+        try:
+            from backend.services.email_service import send_domain_verified_email
+            send_domain_verified_email(
+                current_user.email,
+                domain.name,
+                f"{settings.FRONTEND_URL.rstrip('/')}/app/previews",
+            )
+        except Exception:
+            logger.exception("Failed to enqueue domain-verified email")
+
         return domain
     else:
         # Log verification failure
@@ -242,7 +257,10 @@ def check_verification(
             metadata={"domain_id": domain.id, "domain_name": domain.name, "method": domain.verification_method, "error": error_message},
             request=request
         )
-        
-        # Return domain with current status (not verified yet)
-        return domain
+
+        # Return the domain plus WHY the check failed, so the dashboard can
+        # tell "not propagated yet" apart from "wrong record".
+        payload = DomainSchema.model_validate(domain, from_attributes=True)
+        payload.verification_error = error_message or "Verification not confirmed yet."
+        return payload
 

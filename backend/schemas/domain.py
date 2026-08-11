@@ -38,6 +38,10 @@ class Domain(DomainBase):
     snippet_installed_at: Optional[datetime] = Field(None, description="When the embed snippet first reported in")
     snippet_last_seen_at: Optional[datetime] = Field(None, description="When the embed snippet was last seen")
     snippet_version: Optional[str] = Field(None, description="Version of the embed snippet last seen")
+    verification_error: Optional[str] = Field(
+        None,
+        description="Why the last verification check failed (only set on check responses)",
+    )
 
     class Config:
         json_schema_extra = {

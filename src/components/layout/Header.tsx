@@ -47,8 +47,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      // Navigate to search results
-      navigate(`/app/search?q=${encodeURIComponent(searchQuery)}`)
+      // The preview gallery owns search — it filters by URL/title/domain.
+      navigate(`/app/previews?q=${encodeURIComponent(searchQuery.trim())}`)
       setShowSearch(false)
       setSearchQuery('')
     }
