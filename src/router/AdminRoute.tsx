@@ -1,4 +1,4 @@
-﻿import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import Card from '../components/ui/Card'
 
@@ -12,6 +12,7 @@ interface AdminRouteProps {
  */
 export default function AdminRoute({ children }: AdminRouteProps) {
   const { user, loading } = useAuth()
+  const navigate = useNavigate()
 
   if (loading) {
     return (
@@ -38,7 +39,7 @@ export default function AdminRoute({ children }: AdminRouteProps) {
               You do not have permission to access this page. Admin access required.
             </p>
             <button
-              onClick={() => window.location.href = '/app'}
+              onClick={() => navigate('/app')}
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
             >
               Go to Dashboard

@@ -78,11 +78,9 @@ class ProductionSettings:
     
     # Screenshot system uses Playwright (no API key needed)
     
-    # Placeholder image fallback
-    PLACEHOLDER_IMAGE_URL: str = os.getenv(
-        "PLACEHOLDER_IMAGE_URL", 
-        "https://via.placeholder.com/1200x630/2979FF/FFFFFF?text=Preview+Not+Available"
-    )
+    # Placeholder image fallback. Empty -> self-hosted
+    # {PUBLIC_BASE_URL}/static/placeholder-preview.png (via placeholder_image_url()).
+    PLACEHOLDER_IMAGE_URL: str = os.getenv("PLACEHOLDER_IMAGE_URL", "")
     
     # Stripe - REQUIRED in production
     STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
@@ -100,7 +98,23 @@ class ProductionSettings:
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "")
     if not FRONTEND_URL:
         raise ValueError("FRONTEND_URL environment variable is required in production")
-    
+
+    # Public origin the embed snippet is served from and calls back to. Baked
+    # into every customer's <script> tag and every install artifact. Missing
+    # from this class previously, which made every /api/v1/install/* endpoint
+    # raise AttributeError (500) in production.
+    PUBLIC_BASE_URL: str = (
+        os.getenv("PUBLIC_BASE_URL", "")
+        or (f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}" if os.getenv("RAILWAY_PUBLIC_DOMAIN") else "")
+        or "https://mymetaview.com"
+    )
+
+    # Origin for locally stored assets (disk fallback when R2 fails).
+    ASSET_BASE_URL: str = os.getenv("ASSET_BASE_URL", "") or PUBLIC_BASE_URL
+
+    # Directory for locally stored media, served by the /static mount.
+    MEDIA_ROOT: str = os.getenv("MEDIA_ROOT", "backend/static/media")
+
     # Maximum request body size (10MB)
     MAX_REQUEST_SIZE: int = int(os.getenv("MAX_REQUEST_SIZE", "10485760"))
 

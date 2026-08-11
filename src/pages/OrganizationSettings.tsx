@@ -1,5 +1,5 @@
-﻿import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { BuildingOfficeIcon, CreditCardIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -107,10 +107,29 @@ export default function OrganizationSettings() {
             </div>
           </Card>
 
+          {/* Members */}
+          <Card>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-semibold text-secondary">Members</h2>
+              <Link
+                to={`/app/organizations/${org.id}/members`}
+                className="text-sm font-medium text-primary-600 hover:text-primary-700"
+              >
+                Manage members →
+              </Link>
+            </div>
+            <p className="text-sm text-secondary-600">
+              Invite teammates and manage their roles for this organization.
+            </p>
+          </Card>
+
           {/* Billing Status */}
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-secondary">Billing</h2>
+              <Link to="/app/billing" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+                Manage plan →
+              </Link>
             </div>
             <div className="space-y-4">
               <div>

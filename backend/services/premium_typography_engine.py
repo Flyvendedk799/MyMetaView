@@ -551,8 +551,10 @@ def format_text_for_display(
     import re
     text = re.sub(r'(\d+)-(\d+)', r'\1–\2', text)
     
-    # Add non-breaking space before units
-    text = re.sub(r'(\d+) (px|%|em|rem)', r'\1\u00A0\2', text)
+    # Add non-breaking space before units. The replacement must carry a real
+    # NBSP character: re's template parser rejects "\u"-style escapes, so a
+    # raw-string '\u00A0' here crashes every call with "bad escape \u".
+    text = re.sub(r'(\d+) (px|%|em|rem)', '\\1\u00A0\\2', text)
     
     return text
 

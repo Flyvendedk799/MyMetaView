@@ -1,14 +1,18 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { CheckIcon, EnvelopeIcon, LockClosedIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { LogoMark } from '../components/ui/Logo'
 import Seo from '../components/Seo'
+import { getDemoContext } from '../lib/demoContext'
 
 export default function Signup() {
   const { signup, error: authError, loading } = useAuth()
+  const [searchParams] = useSearchParams()
+  const next = searchParams.get('next') || undefined
+  const demoContext = useMemo(() => getDemoContext(), [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -29,14 +33,14 @@ export default function Signup() {
       return
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
 
     try {
       setIsSubmitting(true)
-      await signup(email, password)
+      await signup(email, password, next)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed')
     } finally {
@@ -45,10 +49,10 @@ export default function Signup() {
   }
 
   const features = [
-    'Unlimited link previews',
-    'Custom branding & themes',
-    'Analytics & insights',
-    'Priority support',
+    '14-day trial with Growth-plan limits',
+    'Branded preview cards for your pages',
+    'Impression, click & CTR analytics',
+    'No credit card required',
   ]
 
   return (
@@ -73,7 +77,9 @@ export default function Signup() {
           </h1>
           
           <p className="text-lg xl:text-xl text-white/75 max-w-md mb-10 leading-relaxed">
-            Join thousands of creators and businesses who use MetaView to make their links stand out.
+            {demoContext?.domain
+              ? `Your demo preview for ${demoContext.domain} is ready to become the real thing.`
+              : 'Turn every shared link into an on-brand preview that earns the click.'}
           </p>
           
           <ul className="space-y-4" aria-label="Included features">

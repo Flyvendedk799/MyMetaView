@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/install", tags=["install"])
 public_router = APIRouter(prefix="/api/v1/public/install", tags=["install"])
 
-SNIPPET_VERSION = "2.0.0"
+SNIPPET_VERSION = "2.1.0"
 SNIPPET_PATH = "/snippet.js"
 
 # A domain counts as "live" while its snippet has checked in recently.
@@ -532,11 +532,12 @@ def _php_escape(value: str) -> str:
 def _wordpress_plugin_source(domain_name: str) -> str:
     snippet_url = _php_escape(_snippet_url())
     site = _php_escape(domain_name)
+    api_origin = _php_escape(_public_origin())
     return f"""<?php
 /**
  * Plugin Name: MyMetaView Previews
  * Plugin URI:  https://mymetaview.com
- * Description: Adds the MyMetaView snippet to your site so shared links render rich preview cards.
+ * Description: Serves your MyMetaView preview cards as real server-rendered Open Graph tags, so every social crawler sees them.
  * Version:     {SNIPPET_VERSION}
  * Author:      MyMetaView
  * License:     GPLv2 or later
@@ -546,12 +547,88 @@ if ( ! defined( 'ABSPATH' ) ) {{
     exit;
 }}
 
+define( 'MYMETAVIEW_API_ORIGIN', '{api_origin}' );
 define( 'MYMETAVIEW_SNIPPET_URL', '{snippet_url}' );
 define( 'MYMETAVIEW_SITE', '{site}' );
+define( 'MYMETAVIEW_CACHE_SECONDS', 600 );
 
 /**
- * Print the snippet as early in <head> as WordPress allows, so crawlers that
- * only read the first part of the document still see it.
+ * Fetch the preview for the current URL from MyMetaView, server-side.
+ * Cached in a transient so at most one API call per URL per 10 minutes.
+ */
+function mymetaview_get_preview() {{
+    $url = home_url( add_query_arg( array(), $GLOBALS['wp']->request ?? '' ) );
+    if ( ! $url ) {{
+        return null;
+    }}
+
+    $cache_key = 'mmv_preview_' . md5( $url );
+    $cached    = get_transient( $cache_key );
+    if ( false !== $cached ) {{
+        return is_array( $cached ) ? $cached : null;
+    }}
+
+    $endpoint = MYMETAVIEW_API_ORIGIN . '/api/v1/public/preview?full_url=' . rawurlencode( $url )
+        . '&site=' . rawurlencode( MYMETAVIEW_SITE );
+    $response = wp_remote_get( $endpoint, array( 'timeout' => 3 ) );
+
+    if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {{
+        // Negative-cache briefly so a slow API can't slow down every render.
+        set_transient( $cache_key, array(), 60 );
+        return null;
+    }}
+
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    if ( ! is_array( $data ) || empty( $data['title'] ) || ( $data['status'] ?? '' ) === 'fallback' ) {{
+        set_transient( $cache_key, array(), 60 );
+        return null;
+    }}
+
+    set_transient( $cache_key, $data, MYMETAVIEW_CACHE_SECONDS );
+    return $data;
+}}
+
+/**
+ * Print real Open Graph / Twitter tags in <head>. This is server-rendered PHP,
+ * so it works for every crawler — including the ones that never run JavaScript
+ * (Facebook, X, LinkedIn, Slack, Discord, WhatsApp).
+ *
+ * Printed at priority 0 so these tags appear before any SEO plugin's; crawlers
+ * take the first occurrence of each property.
+ */
+function mymetaview_print_meta_tags() {{
+    $preview = mymetaview_get_preview();
+    if ( ! $preview ) {{
+        return;
+    }}
+
+    $og_types = array( 'product' => 'product', 'blog' => 'article', 'article' => 'article', 'landing' => 'website' );
+    $type     = $og_types[ $preview['type'] ?? '' ] ?? 'website';
+
+    echo "\\n<!-- MyMetaView Previews -->\\n";
+    printf( '<meta property="og:url" content="%s" />' . "\\n", esc_url( $preview['url'] ?? '' ) );
+    printf( '<meta property="og:title" content="%s" />' . "\\n", esc_attr( $preview['title'] ) );
+    if ( ! empty( $preview['description'] ) ) {{
+        printf( '<meta property="og:description" content="%s" />' . "\\n", esc_attr( $preview['description'] ) );
+        printf( '<meta name="twitter:description" content="%s" />' . "\\n", esc_attr( $preview['description'] ) );
+    }}
+    printf( '<meta property="og:type" content="%s" />' . "\\n", esc_attr( $type ) );
+    if ( ! empty( $preview['image_url'] ) ) {{
+        printf( '<meta property="og:image" content="%s" />' . "\\n", esc_url( $preview['image_url'] ) );
+        printf( '<meta name="twitter:image" content="%s" />' . "\\n", esc_url( $preview['image_url'] ) );
+        echo '<meta name="twitter:card" content="summary_large_image" />' . "\\n";
+    }}
+    if ( ! empty( $preview['site_name'] ) ) {{
+        printf( '<meta property="og:site_name" content="%s" />' . "\\n", esc_attr( $preview['site_name'] ) );
+    }}
+    printf( '<meta name="twitter:title" content="%s" />' . "\\n", esc_attr( $preview['title'] ) );
+    echo "<!-- /MyMetaView Previews -->\\n";
+}}
+add_action( 'wp_head', 'mymetaview_print_meta_tags', 0 );
+
+/**
+ * Keep the browser snippet too: it powers the install heartbeat ("Check
+ * installation" in the dashboard) and click analytics for social visitors.
  */
 function mymetaview_print_snippet() {{
     printf(
@@ -577,7 +654,9 @@ def _wordpress_readme(domain_name: str) -> str:
     return f"""=== MyMetaView Previews ===
 Stable tag: {SNIPPET_VERSION}
 
-Adds the MyMetaView snippet to {domain_name}.
+Serves MyMetaView preview cards for {domain_name} as server-rendered Open
+Graph tags (works for every social crawler), plus the browser snippet for
+install verification and click analytics.
 
 == Installation ==
 
@@ -699,7 +778,7 @@ function escapeHtml(value) {{
     .replace(/"/g, '&quot;');
 }}
 
-const OG_TYPES = {{ product: 'product', blog: 'article', landing: 'website' }};
+const OG_TYPES = {{ product: 'product', blog: 'article', article: 'article', landing: 'website' }};
 
 async function loadPreview(url) {{
   const endpoint = API_ORIGIN + '/api/v1/public/preview?full_url=' +

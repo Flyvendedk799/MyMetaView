@@ -1,12 +1,40 @@
 """Playwright-based screenshot service for capturing website screenshots."""
 import logging
 import json
+import os
 import threading
 import time
 from typing import Tuple, List, Dict, Any, Optional
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError, Page, Playwright, Browser
 
 logger = logging.getLogger(__name__)
+
+
+def chromium_launch_kwargs() -> Dict[str, Any]:
+    """Launch kwargs shared by every Chromium we start.
+
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE lets deployments point at a system
+    Chromium when the Playwright-managed download is absent (self-hosted
+    setups, dev sandboxes with a preinstalled browser).
+
+    CAPTURE_IGNORE_TLS_ERRORS=true adds --ignore-certificate-errors, for
+    development behind TLS-intercepting proxies. Never enable in production.
+    """
+    args = list(BrowserPool.BROWSER_ARGS)
+    if os.getenv("CAPTURE_IGNORE_TLS_ERRORS", "").lower() in ("1", "true", "yes"):
+        args.append("--ignore-certificate-errors")
+    kwargs: Dict[str, Any] = {"headless": True, "args": args}
+    executable = os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE", "").strip()
+    if executable and os.path.exists(executable):
+        kwargs["executable_path"] = executable
+    # Chromium ignores HTTP(S)_PROXY env vars; forward them explicitly when a
+    # deployment opts in (egress-proxied networks, dev sandboxes).
+    if os.getenv("CAPTURE_USE_ENV_PROXY", "").lower() in ("1", "true", "yes"):
+        proxy = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY") or ""
+        if proxy:
+            bypass = os.getenv("NO_PROXY") or os.getenv("no_proxy") or "localhost,127.0.0.1"
+            kwargs["proxy"] = {"server": proxy, "bypass": bypass}
+    return kwargs
 
 
 # =============================================================================
@@ -53,16 +81,23 @@ class BrowserPool:
             try:
                 self._playwright = sync_playwright().start()
                 for _ in range(self.POOL_SIZE):
-                    browser = self._playwright.chromium.launch(
-                        args=self.BROWSER_ARGS,
-                        headless=True
-                    )
+                    browser = self._playwright.chromium.launch(**chromium_launch_kwargs())
                     self._browsers.append(browser)
                 self._initialized = True
                 logger.info(f"BrowserPool initialized with {self.POOL_SIZE} browsers")
             except Exception as e:
                 logger.warning(f"BrowserPool init failed, will use on-demand browsers: {e}")
                 self._initialized = False
+                # Stop the half-started Playwright instance. Leaving it running
+                # makes the on-demand fallback's own sync_playwright() in this
+                # thread fail with "Sync API inside the asyncio loop".
+                if self._playwright is not None:
+                    try:
+                        self._playwright.stop()
+                    except Exception:
+                        pass
+                    self._playwright = None
+                self._browsers.clear()
 
     def acquire(self) -> Optional[Browser]:
         """Acquire a browser from the pool. Returns None if pool not available."""
@@ -84,10 +119,7 @@ class BrowserPool:
                     return browser
             # All browsers dead, try to recreate
             try:
-                browser = self._playwright.chromium.launch(
-                    args=self.BROWSER_ARGS,
-                    headless=True
-                )
+                browser = self._playwright.chromium.launch(**chromium_launch_kwargs())
                 self._browsers.append(browser)
                 return browser
             except Exception:
@@ -444,10 +476,7 @@ def capture_screenshot(url: str) -> bytes:
     try:
         with sync_playwright() as p:
             try:
-                browser = p.chromium.launch(
-                    args=BrowserPool.BROWSER_ARGS,
-                    headless=True
-                )
+                browser = p.chromium.launch(**chromium_launch_kwargs())
             except Exception as e:
                 logger.error(f"Failed to launch browser for {url}: {e}")
                 raise Exception(f"Failed to start browser: {str(e)}")
@@ -647,10 +676,22 @@ def _extract_scientific_dom(page: Page) -> Dict[str, Any]:
         return {}
 
 
+# Playwright's sync API objects are bound to the thread that created them.
+# All captures therefore run on ONE persistent worker thread: warm pool
+# browsers stay usable across requests instead of dying with "cannot switch
+# to a different thread" on every capture after the first.
+from concurrent.futures import ThreadPoolExecutor as _CaptureExecutorCls
+
+_capture_executor = _CaptureExecutorCls(max_workers=1, thread_name_prefix="mmv-capture")
+
+
 def capture_screenshot_and_html(url: str) -> Tuple[bytes, str, Dict[str, Any]]:
     """
     Capture screenshot, HTML content, and Scientific DOM Mapping from a webpage.
     Uses BrowserPool for warm browser reuse when available.
+
+    Thread-safe: dispatches to the dedicated capture thread, so callers may
+    invoke it from any thread (FastAPI worker threads, per-attempt executors).
 
     Args:
         url: URL to capture
@@ -661,6 +702,14 @@ def capture_screenshot_and_html(url: str) -> Tuple[bytes, str, Dict[str, Any]]:
     Raises:
         Exception: If capture fails with descriptive error message
     """
+    if threading.current_thread().name.startswith("mmv-capture"):
+        # Already on the capture thread (nested call) — run directly.
+        return _capture_screenshot_and_html_pinned(url)
+    return _capture_executor.submit(_capture_screenshot_and_html_pinned, url).result()
+
+
+def _capture_screenshot_and_html_pinned(url: str) -> Tuple[bytes, str, Dict[str, Any]]:
+    """Capture implementation; must only run on the dedicated capture thread."""
     # Try BrowserPool first for faster startup
     pool = BrowserPool.get_instance()
     pooled_browser = pool.acquire()
@@ -668,9 +717,6 @@ def capture_screenshot_and_html(url: str) -> Tuple[bytes, str, Dict[str, Any]]:
     if pooled_browser:
         try:
             return _capture_screenshot_and_html_with_browser(pooled_browser, url)
-        except Exception:
-            pool.release()
-            raise
         finally:
             pool.release()
 
@@ -678,10 +724,7 @@ def capture_screenshot_and_html(url: str) -> Tuple[bytes, str, Dict[str, Any]]:
     try:
         with sync_playwright() as p:
             try:
-                browser = p.chromium.launch(
-                    args=BrowserPool.BROWSER_ARGS,
-                    headless=True
-                )
+                browser = p.chromium.launch(**chromium_launch_kwargs())
             except Exception as e:
                 logger.error(f"Failed to launch browser for {url}: {e}")
                 raise Exception(f"Failed to start browser: {str(e)}")
@@ -698,11 +741,23 @@ def capture_screenshot_and_html(url: str) -> Tuple[bytes, str, Dict[str, Any]]:
         raise
 
 
+# A realistic browser identity: headless Chromium's default UA gets many sites
+# to serve bot walls, interstitials, or stripped-down pages, which then get
+# faithfully screenshotted and described.
+CAPTURE_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+CAPTURE_HEADERS = {"Accept-Language": "en-US,en;q=0.9"}
+
+
 def _capture_screenshot_and_html_with_browser(browser: Browser, url: str) -> Tuple[bytes, str, Dict[str, Any]]:
     """Core screenshot+HTML capture logic using an already-launched browser."""
     page = browser.new_page(
         viewport={"width": 1200, "height": 630},
-        device_scale_factor=2
+        device_scale_factor=2,
+        user_agent=CAPTURE_USER_AGENT,
+        extra_http_headers=CAPTURE_HEADERS,
     )
 
     try:
@@ -728,6 +783,8 @@ def _capture_screenshot_and_html_with_browser(browser: Browser, url: str) -> Tup
                     page = browser.new_page(
                         viewport={"width": 1200, "height": 630},
                         device_scale_factor=2,
+                        user_agent=CAPTURE_USER_AGENT,
+                        extra_http_headers=CAPTURE_HEADERS,
                         ignore_https_errors=True
                     )
                     page.goto(url, wait_until="domcontentloaded", timeout=20000)

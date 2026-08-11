@@ -108,7 +108,11 @@ def fallback_title_chain(
 
     parsed = urlparse(url) if url else None
     if parsed and parsed.netloc:
-        host = parsed.netloc.lstrip("www.")
+        # Strip a leading "www." label only; lstrip() strips a character SET,
+        # which mangles hosts like "w3.org" -> "3.org".
+        host = parsed.netloc
+        if host.startswith("www."):
+            host = host[4:]
         host_clean = host.split(":")[0]
         # Drop TLD for visual brand-y output ("notion.so" → "Notion")
         first_label = host_clean.split(".")[0]

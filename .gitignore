@@ -39,3 +39,9 @@ ENV/
 htmlcov/
 
 test-results/
+
+# Local media fallback storage (generated at runtime)
+backend/static/media/
+
+# Redis persistence dumps (written by any local redis-server)
+dump.rdb

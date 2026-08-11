@@ -78,11 +78,19 @@ class InputValidator:
         if not parsed.hostname:
             raise ValueError("URL must have a hostname")
 
-        # SSRF protection - block private IPs
+        # SSRF protection - block private IPs. ALLOW_PRIVATE_URLS is a
+        # development/test escape hatch (capture a locally served fixture);
+        # it is ignored in production.
+        import os
+        allow_private = (
+            os.getenv("ALLOW_PRIVATE_URLS", "").lower() in ("1", "true", "yes")
+            and os.getenv("ENV", "development").lower() != "production"
+        )
         hostname = parsed.hostname.lower()
-        for pattern in cls.PRIVATE_PATTERNS:
-            if pattern.match(hostname):
-                raise ValueError("URLs pointing to private/internal networks are not allowed")
+        if not allow_private:
+            for pattern in cls.PRIVATE_PATTERNS:
+                if pattern.match(hostname):
+                    raise ValueError("URLs pointing to private/internal networks are not allowed")
 
         # Must have a valid TLD (basic check)
         if "." not in hostname and hostname != "localhost":

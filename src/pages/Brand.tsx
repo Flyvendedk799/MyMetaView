@@ -27,8 +27,12 @@ const VOICE_OPTIONS: [string, string][] = [
 ]
 const LAYOUT_OPTIONS: [string, string][] = [
   ['auto', 'Auto — let the AI decide'],
-  ['typographic', 'Typographic (headline only)'],
+  ['typographic', 'Headline (type only)'],
   ['split', 'Split (headline + hero image)'],
+  ['stat', 'Stat (proof number as the hero)'],
+  ['editorial', 'Editorial (kicker, rule, deck)'],
+  ['product', 'Product (shot + price chip)'],
+  ['profile', 'Profile (avatar + name)'],
 ]
 const PANEL_OPTIONS: [string, string][] = [
   ['auto', 'Auto'],

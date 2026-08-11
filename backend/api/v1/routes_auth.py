@@ -2,6 +2,7 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from backend.schemas.user import User, UserCreate, Token
 from backend.core.security import create_access_token
@@ -126,6 +127,99 @@ def login(
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+def _reset_token_for(user: UserModel) -> str:
+    """A stateless, 30-minute reset token.
+
+    The claim includes a fragment of the current password hash, so the token
+    stops working the moment the password changes — no reset-token table
+    needed, and a used link cannot be replayed.
+    """
+    return create_access_token(
+        data={
+            "sub": user.email,
+            "purpose": "pwreset",
+            "pwf": (user.hashed_password or "")[-12:],
+        },
+        expires_delta=timedelta(minutes=30),
+    )
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    """Send a password reset link.
+
+    Always answers 202 so the endpoint cannot be used to probe which emails
+    have accounts.
+    """
+    client_ip = get_client_ip(request)
+    rate_limit_key = get_rate_limit_key_for_ip(client_ip, "forgot_password")
+    if not check_rate_limit(rate_limit_key, limit=5, window_seconds=900):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Please try again later."
+        )
+
+    user = db.query(UserModel).filter(UserModel.email == body.email).first()
+    if user and user.is_active:
+        token = _reset_token_for(user)
+        reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
+        try:
+            from backend.services.email_service import send_password_reset_email
+            send_password_reset_email(user.email, reset_url)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to enqueue reset email")
+        log_activity(db, user_id=user.id, action="user.password_reset_requested", request=request)
+
+    return {"status": "ok", "message": "If that email has an account, a reset link is on its way."}
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    """Set a new password using a reset token from email."""
+    from jose import jwt, JWTError
+    from backend.core.security import get_password_hash
+
+    if len(body.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters."
+        )
+
+    try:
+        payload = jwt.decode(body.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has expired. Request a new one."
+        )
+
+    if payload.get("purpose") != "pwreset":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token.")
+
+    user = db.query(UserModel).filter(UserModel.email == payload.get("sub")).first()
+    if not user or (user.hashed_password or "")[-12:] != payload.get("pwf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has already been used. Request a new one."
+        )
+
+    user.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+    log_activity(db, user_id=user.id, action="user.password_reset_completed", request=request)
+
+    return {"status": "ok", "message": "Password updated. You can now log in."}
 
 
 @router.get("/me", response_model=User)

@@ -21,7 +21,10 @@ class BrandSettingsBase(BaseModel):
     audience: Optional[str] = Field(None, description="Who the site is for")
     voice: str = Field(default="auto", description=" | ".join(VOICE_CHOICES))
     # Preview-card controls ("auto" = let the AI decide)
-    preview_layout: str = Field(default="auto", description="auto | typographic | split")
+    preview_layout: str = Field(
+        default="auto",
+        description="auto | typographic | split | stat | editorial | product | profile",
+    )
     preview_panel: str = Field(default="auto", description="auto | primary | secondary | dark | light")
     preview_accent: str = Field(default="auto", description="auto | bar | dot | shape")
     force_brand_colors: bool = Field(default=False, description="Always use these brand colours, ignore extracted")

@@ -19,6 +19,42 @@ from backend.models.brand import BrandSettings as BrandSettingsModel
 router = APIRouter(prefix="/account", tags=["account"])
 
 
+from pydantic import BaseModel
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+    request: Request = None,
+):
+    """Change the current user's password (requires the current one)."""
+    from backend.core.security import verify_password, get_password_hash
+    from backend.services.activity_logger import log_activity
+
+    if len(body.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters.",
+        )
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect.",
+        )
+
+    current_user.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+    log_activity(db, user_id=current_user.id, action="user.password_changed", request=request)
+    return {"status": "ok", "message": "Password updated."}
+
+
 @router.get("/export")
 def export_user_data(
     db: Session = Depends(get_db),

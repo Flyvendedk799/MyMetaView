@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { CheckCircleIcon, XCircleIcon, EyeIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -186,7 +186,7 @@ export default function AdminUsers() {
                 onClick={() => setIsDetailOpen(false)}
                 className="text-secondary-500 hover:text-secondary-700"
               >
-                âœ•
+                ✕
               </button>
             </div>
             <div className="space-y-4">

@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon, SwatchIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon, SwatchIcon, EyeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import Modal from '../components/ui/Modal'
+import Modal, { ConfirmDialog } from '../components/ui/Modal'
 import EmptyState from '../components/ui/EmptyState'
 import Alert from '../components/ui/Alert'
 import { SkeletonGrid } from '../components/ui/Skeleton'
+import PreviewDetailModal from '../components/PreviewDetailModal'
 import { useToast } from '../components/ui/Toast'
 import { usePreviews } from '../hooks/usePreviews'
 import { useDomains } from '../hooks/useDomains'
@@ -21,6 +22,7 @@ import {
   restylePreview,
 } from '../api/client'
 import type {
+  Preview,
   PreviewCreate,
   PreviewUpdate,
   PreviewVariant,
@@ -29,6 +31,7 @@ import type {
   PreviewRestyleRequest,
   CardLayout,
   CardPanel,
+  CardAccent,
 } from '../api/types'
 
 const filters = ['All', 'Product', 'Blog', 'Landing Page'] as const
@@ -68,6 +71,12 @@ const PANEL_CHOICES: { value: CardPanel; label: string }[] = [
   { value: 'light', label: 'Light' },
 ]
 
+const ACCENT_CHOICES: { value: CardAccent; label: string; hint: string }[] = [
+  { value: 'bar', label: 'Bar', hint: 'A small accent bar under the headline' },
+  { value: 'shape', label: 'Shape', hint: 'A soft corner shape in the accent color' },
+  { value: 'dot', label: 'Dot', hint: 'A small accent dot' },
+]
+
 // Map filter display names to backend type values
 const filterToTypeMap: Record<string, string | undefined> = {
   'All': undefined,
@@ -98,6 +107,23 @@ export default function Previews() {
   const { previews, loading, error, createOrUpdatePreview, updatePreview, deletePreview, replacePreview, refetch } = usePreviews(filterType)
   const { domains } = useDomains()
   const toast = useToast()
+  // ?q= from the header search — filters by title, URL, or domain.
+  const searchQuery = (searchParams.get('q') || '').trim().toLowerCase()
+  const visiblePreviews = useMemo(() => {
+    if (!searchQuery) return previews
+    return previews.filter((p) =>
+      [p.title, p.url, p.domain, p.description || '']
+        .some((field) => (field || '').toLowerCase().includes(searchQuery))
+    )
+  }, [previews, searchQuery])
+  const clearSearch = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('q')
+    setSearchParams(next, { replace: true })
+  }
+  // Detail modal — platform mockups, meta tags, downloads.
+  const [detailPreview, setDetailPreview] = useState<Preview | null>(null)
+  const [previewToDelete, setPreviewToDelete] = useState<number | null>(null)
   const verifiedDomains = useMemo(() => domains.filter((d) => d.status === 'verified'), [domains])
 
   // Bulk "cover your site" generation
@@ -231,26 +257,45 @@ export default function Previews() {
   // Only covers handing the job to the server — generation itself continues without us.
   const [isStartingGeneration, setIsStartingGeneration] = useState(false)
 
-  // Load variants for previews
+  // Load variants for previews — in parallel; the old serial loop made a
+  // 30-card gallery wait through 30 sequential requests.
   useEffect(() => {
-    const loadVariants = async () => {
-      for (const preview of previews) {
-        if (!previewVariants[preview.id] && !loadingVariants[preview.id]) {
-          setLoadingVariants(prev => ({ ...prev, [preview.id]: true }))
-          try {
-            const variants = await fetchPreviewVariants(preview.id)
-            setPreviewVariants(prev => ({ ...prev, [preview.id]: variants }))
-            // Set default active variant to 'main'
-            setActiveVariants(prev => ({ ...prev, [preview.id]: 'main' }))
-          } catch (err) {
-            console.error(`Failed to load variants for preview ${preview.id}:`, err)
-          } finally {
-            setLoadingVariants(prev => ({ ...prev, [preview.id]: false }))
-          }
-        }
+    const missing = previews.filter(
+      (preview) => !previewVariants[preview.id] && !loadingVariants[preview.id]
+    )
+    if (missing.length === 0) return
+    setLoadingVariants(prev => {
+      const next = { ...prev }
+      for (const p of missing) next[p.id] = true
+      return next
+    })
+    Promise.allSettled(
+      missing.map(async (preview) => {
+        const variants = await fetchPreviewVariants(preview.id)
+        return { id: preview.id, variants }
+      })
+    ).then((results) => {
+      const loaded: Record<number, PreviewVariant[]> = {}
+      for (const r of results) {
+        if (r.status === 'fulfilled') loaded[r.value.id] = r.value.variants
       }
-    }
-    loadVariants()
+      if (Object.keys(loaded).length > 0) {
+        setPreviewVariants(prev => ({ ...prev, ...loaded }))
+        setActiveVariants(prev => {
+          const next = { ...prev }
+          for (const id of Object.keys(loaded)) {
+            if (!(Number(id) in next)) next[Number(id)] = 'main'
+          }
+          return next
+        })
+      }
+      setLoadingVariants(prev => {
+        const next = { ...prev }
+        for (const p of missing) next[p.id] = false
+        return next
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previews])
 
   // Solid evergreen placeholder surface per preview type (no gradients in the identity)
@@ -409,12 +454,12 @@ export default function Previews() {
   }
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this preview?')) {
-      try {
-        await deletePreview(id)
-      } catch (err) {
-        // Error is handled by hook
-      }
+    try {
+      await deletePreview(id)
+    } catch (err) {
+      // Error is handled by hook
+    } finally {
+      setPreviewToDelete(null)
     }
   }
 
@@ -693,7 +738,7 @@ export default function Previews() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         {filters.map((filter) => (
           <button
             key={filter}
@@ -707,6 +752,15 @@ export default function Previews() {
             {filter}
           </button>
         ))}
+        {searchQuery && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-secondary-100 text-[13px] text-secondary-700">
+            <MagnifyingGlassIcon className="w-4 h-4" />
+            "{searchQuery}"
+            <button onClick={clearSearch} className="ml-1 text-secondary-500 hover:text-secondary-800" aria-label="Clear search">
+              <XMarkIcon className="w-3.5 h-3.5" />
+            </button>
+          </span>
+        )}
       </div>
 
       {loading ? (
@@ -727,11 +781,28 @@ export default function Previews() {
             }}
           />
         </Card>
+      ) : visiblePreviews.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<MagnifyingGlassIcon className="w-8 h-8" />}
+            title={searchQuery ? `Nothing matches "${searchQuery}"` : `No ${activeFilter.toLowerCase()} previews`}
+            description={
+              searchQuery
+                ? 'Try a different search, or clear it to see every preview.'
+                : 'Previews of this type will appear here once generated.'
+            }
+            action={
+              searchQuery
+                ? { label: 'Clear search', onClick: clearSearch }
+                : { label: 'Show all previews', onClick: () => setActiveFilter('All') }
+            }
+          />
+        </Card>
       ) : (
         <>
           {/* Preview Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {previews.map((preview) => {
+              {visiblePreviews.map((preview) => {
                 const displayData = getDisplayData(preview)
                 const variants = previewVariants[preview.id] || []
                 const hasVariants = variants.length > 0
@@ -843,6 +914,13 @@ export default function Previews() {
                           )}
                         </div>
                         <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setDetailPreview(preview)}
+                            className="text-primary-500 hover:text-accent-500 transition-colors p-1"
+                            title="See how it looks on each platform"
+                          >
+                            <EyeIcon className="w-4 h-4" />
+                          </button>
                           {/* Restyling only exists for cards that carry a render
                               spec. Older ones have to be regenerated once first,
                               so the control is hidden rather than shown broken. */}
@@ -878,7 +956,7 @@ export default function Previews() {
                             <PencilIcon className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(preview.id)}
+                            onClick={() => setPreviewToDelete(preview.id)}
                             className="text-error-600 hover:text-error-700 transition-colors p-1"
                             title="Delete preview"
                           >
@@ -928,6 +1006,24 @@ export default function Previews() {
                               ))}
                             </div>
                           </div>
+                          <div>
+                            <p className="text-[11px] font-mono uppercase tracking-wider text-secondary-500 mb-1.5">
+                              Accent
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {ACCENT_CHOICES.map((choice) => (
+                                <button
+                                  key={choice.value}
+                                  onClick={() => handleRestyle(preview, { accent: choice.value })}
+                                  disabled={!!restylingIds[preview.id]}
+                                  title={choice.hint}
+                                  className="px-2 py-1 text-xs rounded-md border border-secondary-200 text-secondary-600 hover:border-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {choice.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                           <p className="text-[11px] text-secondary-500">
                             {restylingIds[preview.id]
                               ? 'Rendering…'
@@ -949,6 +1045,19 @@ export default function Previews() {
             </div>
         </>
       )}
+
+      <PreviewDetailModal
+        preview={detailPreview}
+        variant={
+          detailPreview
+            ? (previewVariants[detailPreview.id] || []).find(
+                (v) => v.variant_key === (activeVariants[detailPreview.id] || 'main')
+              ) || null
+            : null
+        }
+        isOpen={detailPreview !== null}
+        onClose={() => setDetailPreview(null)}
+      />
 
       {/* Create/Edit Preview Modal */}
       <Modal
@@ -1275,6 +1384,20 @@ export default function Previews() {
           )}
         </div>
       </Modal>
+
+      {/* Delete Preview Confirmation */}
+      <ConfirmDialog
+        isOpen={previewToDelete !== null}
+        onClose={() => setPreviewToDelete(null)}
+        onConfirm={() => {
+          if (previewToDelete !== null) handleDelete(previewToDelete)
+        }}
+        title="Delete preview?"
+        message="The preview and its variants will be removed, and its URL will fall back to the page's own tags."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }

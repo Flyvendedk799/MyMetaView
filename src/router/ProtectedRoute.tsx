@@ -1,4 +1,4 @@
-﻿import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 interface ProtectedRouteProps {
@@ -7,6 +7,7 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -20,9 +21,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    // Preserve the full destination (path + query) so deep links — most
+    // importantly org invite links carrying ?token= — survive the login
+    // round-trip instead of dumping the user on the dashboard.
+    const next = `${location.pathname}${location.search}`
+    return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
 
   return <>{children}</>
 }
-

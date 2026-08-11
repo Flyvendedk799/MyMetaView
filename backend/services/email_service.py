@@ -182,6 +182,64 @@ def send_welcome_email(to_email: str, name: str | None = None) -> None:
     send_email_async(to_email, "Welcome to MetaView", html)
 
 
+def send_password_reset_email(to_email: str, reset_url: str) -> None:
+    """Send a password reset link (fire-and-forget)."""
+    body_html = (
+        '<p style="margin:0 0 14px 0;">Someone asked to reset the password for '
+        f'the MetaView account <strong>{to_email}</strong>.</p>'
+        '<p style="margin:0 0 18px 0;">If that was you, use the button below. '
+        'The link is valid for 30 minutes. If it was not you, you can safely '
+        'ignore this email — your password stays unchanged.</p>'
+    )
+    html = _wrap_email(
+        "Reset your password",
+        body_html,
+        button={"label": "Choose a new password", "url": reset_url},
+    )
+    send_email_async(to_email, "Reset your MetaView password", html)
+
+
+def send_domain_verified_email(to_email: str, domain_name: str, dashboard_url: str) -> None:
+    """Celebrate a verified domain and point at the next step (fire-and-forget)."""
+    body_html = (
+        f'<p style="margin:0 0 14px 0;"><strong>{domain_name}</strong> is verified. '
+        'Previews you generate for it can now be served to social platforms.</p>'
+        '<p style="margin:0 0 18px 0;">Next: generate previews for your most-shared '
+        'pages and install the snippet so shared links use them.</p>'
+    )
+    html = _wrap_email(
+        f"{domain_name} is verified",
+        body_html,
+        button={"label": "Generate previews", "url": dashboard_url},
+    )
+    send_email_async(to_email, f"{domain_name} is verified on MetaView", html)
+
+
+def send_bulk_run_finished_email(
+    to_email: str,
+    domain_name: str,
+    succeeded: int,
+    failed: int,
+    dashboard_url: str,
+) -> None:
+    """Tell the owner a bulk generation run finished (fire-and-forget)."""
+    summary = f"{succeeded} preview{'s' if succeeded != 1 else ''} generated"
+    if failed:
+        summary += f", {failed} failed"
+    body_html = (
+        f'<p style="margin:0 0 14px 0;">Your bulk run for '
+        f'<strong>{domain_name}</strong> just finished: {summary}.</p>'
+        '<p style="margin:0 0 18px 0;">Review the results, tweak any card you '
+        'want to improve, and they are live wherever your links are shared.</p>'
+    )
+    html = _wrap_email(
+        "Bulk generation finished",
+        body_html,
+        button={"label": "Review previews", "url": dashboard_url},
+    )
+    send_email_async(to_email, f"Your previews for {domain_name} are ready", html)
+
+
 def send_org_invite_email(
     to_email: str,
     org_name: str,

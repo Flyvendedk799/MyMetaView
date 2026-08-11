@@ -26,7 +26,7 @@ from backend.services.card_rerender import (
 )
 from backend.services.activity_logger import log_activity
 from backend.utils.url_sanitizer import sanitize_url
-from backend.services.cache import invalidate_preview
+from backend.services.cache import invalidate_preview, invalidate_public_preview_for_url
 from backend.services.rate_limiter import check_rate_limit, get_rate_limit_key_for_org
 
 router = APIRouter(prefix="/previews", tags=["previews"])
@@ -104,6 +104,7 @@ def create_or_update_preview(
         
         # Invalidate cache
         invalidate_preview(existing_preview.id)
+        invalidate_public_preview_for_url(existing_preview.url)
         
         # Log preview update
         log_activity(
@@ -181,6 +182,7 @@ def update_preview(
     
     # Invalidate cache
     invalidate_preview(preview_id)
+    invalidate_public_preview_for_url(preview.url)
     
     # Log preview edit
     log_activity(
@@ -222,6 +224,7 @@ def delete_preview(
     
     # Invalidate cache
     invalidate_preview(preview_id)
+    invalidate_public_preview_for_url(preview_url)
     
     # Log preview deletion
     log_activity(
@@ -428,6 +431,7 @@ def restyle_preview(
     db.refresh(preview)
 
     invalidate_preview(preview_id)
+    invalidate_public_preview_for_url(preview.url)
     log_activity(
         db,
         user_id=current_user.id,

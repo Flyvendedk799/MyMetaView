@@ -432,9 +432,10 @@ def get_system_overview(
     # Total users
     total_users = db.query(func.count(User.id)).scalar() or 0
     
-    # Active subscribers
-    active_subscribers = db.query(func.count(User.id)).filter(
-        User.subscription_status.in_(['active', 'trialing'])
+    # Active subscribers (subscriptions are organization-level)
+    from backend.models.organization import Organization as OrgModel
+    active_subscribers = db.query(func.count(OrgModel.id)).filter(
+        OrgModel.subscription_status.in_(['active', 'trialing'])
     ).scalar() or 0
     
     # Total domains
@@ -494,9 +495,10 @@ def get_admin_analytics_overview(
     # Total users
     total_users = db.query(func.count(User.id)).scalar() or 0
     
-    # Active subscribers
-    active_subscribers = db.query(func.count(User.id)).filter(
-        User.subscription_status.in_(['active', 'trialing'])
+    # Active subscribers (subscriptions are organization-level)
+    from backend.models.organization import Organization as OrgModel
+    active_subscribers = db.query(func.count(OrgModel.id)).filter(
+        OrgModel.subscription_status.in_(['active', 'trialing'])
     ).scalar() or 0
     
     # Total domains
@@ -807,9 +809,12 @@ def deploy_merge_claude_branch(
         # Try to find git in common installation locations
         # On Railway, git is usually in /usr/bin/git
         return "git"  # Fallback to just "git" and let subprocess handle the error
-    
-        output_lines = []  # Initialize early to avoid UnboundLocalError
-    
+
+    # Collected progress lines returned to the admin UI. Must be bound before
+    # the try block — it previously sat unreachable inside find_git(), so every
+    # call died with NameError on the first append.
+    output_lines = []
+
     try:
         # Log admin action
         log_activity(

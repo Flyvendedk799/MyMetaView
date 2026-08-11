@@ -8,7 +8,6 @@ from backend.middleware.error_handler import error_handler_middleware
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.middleware.request_id import RequestIDMiddleware
 from backend.middleware.request_logging import RequestLoggingMiddleware
-from backend.middleware.domain_routing import DomainRoutingMiddleware
 from backend.middleware.public_cors import PublicCorsMiddleware
 from backend.utils.logger import setup_logging
 from backend.api.v1 import routes_auth, routes_domains, routes_brand, routes_previews, routes_analytics, routes_public_preview, routes_jobs, routes_verification, routes_billing, routes_webhooks, routes_activity, routes_tracking, routes_analytics_extended, routes_organizations, routes_preview_variants, routes_account, routes_blog, routes_preview_debug, routes_newsletter, routes_demo, routes_demo_optimized, routes_export, routes_health, routes_sitemap, routes_preview_enhancements, routes_sites, routes_site_cms, routes_public_site, routes_preview_diagnosis, routes_plans
@@ -94,6 +93,13 @@ def on_startup():
         logger.error(f"Failed to initialize database tables: {e}", exc_info=True)
         raise
 
+    # Local media fallback storage (used when R2 is unconfigured or down).
+    # Lives under backend/static so the existing /static mount serves it.
+    try:
+        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+    except Exception as e:
+        logger.warning(f"Could not create MEDIA_ROOT {settings.MEDIA_ROOT}: {e}")
+
     # create_all() above only creates missing *tables*. Columns added to an
     # existing table arrive via Alembic — which nothing in the deploy path runs,
     # so they were never applied. Reconcile them here instead of serving 500s.
@@ -147,9 +153,6 @@ app.add_middleware(RequestIDMiddleware)
 
 # Add request logging middleware (after request ID, before security headers)
 app.add_middleware(RequestLoggingMiddleware)
-
-# Add domain routing middleware (before security headers to allow domain checks)
-app.add_middleware(DomainRoutingMiddleware)
 
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)

@@ -7,10 +7,11 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   error: string | null
-  login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, next?: string) => Promise<void>
+  signup: (email: string, password: string, next?: string) => Promise<void>
   logout: () => void
   hasActiveSubscription: () => boolean
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,7 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth()
   }, [])
 
-  const login = async (email: string, password: string) => {
+  // Only in-app destinations are honored, so a crafted ?next= can never
+  // bounce someone to another origin after login.
+  const safeNext = (next?: string): string =>
+    next && next.startsWith('/') && !next.startsWith('//') ? next : '/app'
+
+  const login = async (email: string, password: string, next?: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -47,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthToken(tokenData.access_token)
       const userData = await fetchCurrentUser()
       setUser(userData)
-      navigate('/app')
+      navigate(safeNext(next))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
       throw err
@@ -56,13 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signup = async (email: string, password: string) => {
+  const signup = async (email: string, password: string, next?: string) => {
     try {
       setLoading(true)
       setError(null)
       await apiSignup(email, password)
       // Auto-login after signup
-      await login(email, password)
+      await login(email, password, next)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed')
       throw err
@@ -75,6 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     removeAuthToken()
     setUser(null)
     navigate('/')
+  }
+
+  // Re-fetch the current user so subscription/trial state updates without a
+  // hard reload (e.g. right after returning from Stripe checkout).
+  const refreshUser = async () => {
+    if (!getAuthToken()) return
+    try {
+      const userData = await fetchCurrentUser()
+      setUser(userData)
+    } catch {
+      // Keep the existing user; a transient failure shouldn't log anyone out.
+    }
   }
 
   const hasActiveSubscription = (): boolean => {
@@ -97,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, signup, logout, hasActiveSubscription }}>
+    <AuthContext.Provider value={{ user, loading, error, login, signup, logout, hasActiveSubscription, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

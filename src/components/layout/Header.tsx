@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Bars3Icon,
-  BellIcon,
+  BuildingOfficeIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   ChevronDownIcon,
@@ -11,7 +11,7 @@ import {
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../hooks/useAuth'
-import { CountBadge } from '../ui/Badge'
+import { useOrganization } from '../../hooks/useOrganization'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -20,6 +20,9 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { organizations, currentOrg, setCurrentOrg } = useOrganization()
+  const [showOrgMenu, setShowOrgMenu] = useState(false)
+  const orgMenuRef = useRef<HTMLDivElement>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -31,6 +34,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false)
+      }
+      if (orgMenuRef.current && !orgMenuRef.current.contains(event.target as Node)) {
+        setShowOrgMenu(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -47,8 +53,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      // Navigate to search results
-      navigate(`/app/search?q=${encodeURIComponent(searchQuery)}`)
+      // The preview gallery owns search — it filters by URL/title/domain.
+      navigate(`/app/previews?q=${encodeURIComponent(searchQuery.trim())}`)
       setShowSearch(false)
       setSearchQuery('')
     }
@@ -111,11 +117,45 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <span>New Preview</span>
           </button>
           
-          {/* Notifications */}
-          <button className="relative p-2 text-secondary-500 hover:text-secondary-700 hover:bg-secondary-100 rounded-lg transition-colors">
-            <BellIcon className="w-5 h-5" />
-            <CountBadge count={3} className="absolute -top-0.5 -right-0.5" />
-          </button>
+          {/* Organization switcher — the request header follows this choice */}
+          {organizations.length > 1 && (
+            <div className="relative hidden sm:block" ref={orgMenuRef}>
+              <button
+                onClick={() => setShowOrgMenu(!showOrgMenu)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-secondary-600 hover:text-secondary-900 hover:bg-secondary-100 rounded-lg transition-colors max-w-[200px]"
+                title="Switch organization"
+              >
+                <BuildingOfficeIcon className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{currentOrg?.name || 'Organization'}</span>
+                <ChevronDownIcon className="w-3.5 h-3.5 flex-shrink-0" />
+              </button>
+              {showOrgMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-surface border border-line rounded-xl shadow-overlay py-1.5 z-40">
+                  {organizations.map((org) => (
+                    <button
+                      key={org.id}
+                      onClick={() => {
+                        setShowOrgMenu(false)
+                        if (org.id !== currentOrg?.id) {
+                          setCurrentOrg(org)
+                          // Every page's data is org-scoped; a clean reload is
+                          // the reliable way to swap tenants.
+                          window.location.reload()
+                        }
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm truncate transition-colors ${
+                        org.id === currentOrg?.id
+                          ? 'text-primary-600 font-semibold bg-brand-50'
+                          : 'text-secondary-700 hover:bg-secondary-50'
+                      }`}
+                    >
+                      {org.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Divider */}
           <div className="w-px h-8 bg-secondary-200 mx-2 hidden sm:block" />

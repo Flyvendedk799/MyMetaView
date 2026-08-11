@@ -22,7 +22,7 @@ import {
   type BlogPostListItem,
   type BlogCategory,
 } from '../api/client'
-import Toast from '../components/Toast'
+import { useToast } from '../components/ui/Toast'
 
 // Clean markdown renderer - requires proper markdown syntax
 function renderContent(content: string, featuredImageUrl?: string, contentImageUrl?: string): JSX.Element {
@@ -598,7 +598,7 @@ export default function BlogPost() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [readingProgress, setReadingProgress] = useState(0)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const toast = useToast()
   const [toc, setToc] = useState<TocItem[]>([])
   const articleRef = useRef<HTMLDivElement>(null)
 
@@ -713,9 +713,9 @@ export default function BlogPost() {
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href)
-      setToast({ message: 'Link copied to clipboard!', type: 'success' })
+      toast.success('Link copied to clipboard!')
     } catch (err) {
-      setToast({ message: 'Failed to copy link', type: 'error' })
+      toast.error('Failed to copy link')
     }
   }
 
@@ -899,15 +899,6 @@ export default function BlogPost() {
             style={{ width: `${readingProgress}%` }}
           />
         </div>
-
-        {/* Toast Notification */}
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
 
         {/* Navigation */}
         <nav className="fixed top-1 left-0 right-0 z-50 bg-white/90  border-b border-secondary-100/80">

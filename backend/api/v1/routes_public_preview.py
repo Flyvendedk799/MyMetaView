@@ -1,31 +1,42 @@
-"""Public preview API routes (no authentication required)."""
+"""Public preview API routes (no authentication required).
+
+This is the endpoint customer sites (snippet, Cloudflare Worker, WordPress
+plugin) and social crawlers ultimately depend on. Design goals:
+
+- Fast: one Redis GET satisfies repeat human/snippet traffic for 3 minutes.
+- Honest: fallbacks never fabricate marketing copy; description stays empty
+  so integrations can keep the page's own tags.
+- Measured: a crawler fetch is the closest observable proxy for "this link
+  was shared and a platform rendered its card", so crawler hits are recorded
+  as impression events (best-effort, never blocking the response).
+"""
 from urllib.parse import urlparse
-from fastapi import APIRouter, Query, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Query, Depends, Request, Response, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.schemas.public_preview import PublicPreview
 from backend.models.domain import Domain as DomainModel
 from backend.models.preview import Preview as PreviewModel
 from backend.models.preview_variant import PreviewVariant as PreviewVariantModel
 from backend.db.session import get_db
-from backend.core.config import settings
+from backend.core.config import settings, placeholder_image_url
 from backend.services.cache import (
-    get_cached_domain_by_name,
-    set_cached_domain_by_name,
-    get_cached_preview_metadata,
-    set_cached_preview_metadata,
+    get_cached_public_preview,
+    set_cached_public_preview,
 )
 from backend.services.rate_limiter import check_rate_limit, get_rate_limit_key_for_ip
 from backend.services.activity_logger import get_client_ip
 from backend.utils.crawler_detection import (
     detect_crawler,
     log_crawler_detection,
-    get_crawler_metadata
 )
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
+
+# How long integrations and browsers may reuse a response before revalidating.
+PUBLIC_PREVIEW_MAX_AGE = 300
 
 
 @router.get("/preview", response_model=PublicPreview)
@@ -34,6 +45,7 @@ def get_public_preview(
     variant: str = Query(None, description="Variant key: 'a', 'b', or 'c' (optional)"),
     site: str = Query(None, description="Registered domain to resolve against, when it differs from the URL's hostname"),
     request: Request = None,
+    response: Response = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -46,11 +58,10 @@ def get_public_preview(
     instead of the URL's own hostname. This lets a subdomain (blog.example.com)
     serve previews owned by the registered apex domain.
     """
-    # Detect and log crawler user agents (prep work for future server-side interception)
     user_agent = request.headers.get("user-agent") if request else None
     crawler_name, platform = detect_crawler(user_agent)
     log_crawler_detection(user_agent, full_url, crawler_name, platform)
-    
+
     # Rate limiting: 200 requests per 5 minutes per IP
     client_ip = get_client_ip(request)
     rate_limit_key = get_rate_limit_key_for_ip(client_ip, "public_preview")
@@ -59,7 +70,7 @@ def get_public_preview(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Rate limit exceeded. Please try again later."
         )
-    
+
     # Validate URL security
     from backend.utils.url_sanitizer import validate_url_security
     try:
@@ -69,8 +80,26 @@ def get_public_preview(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    
-    return _get_preview_logic(full_url, db, variant, crawler_name, site)
+
+    if response is not None:
+        response.headers["Cache-Control"] = f"public, max-age={PUBLIC_PREVIEW_MAX_AGE}"
+
+    variant_key = variant.lower() if variant and variant.lower() in ("a", "b", "c") else None
+    cache_key = (site or "", full_url, variant_key or "")
+
+    # Response-level cache for repeat snippet/browser traffic. Crawler hits
+    # deliberately bypass it so every crawler fetch is observed and recorded.
+    if not crawler_name:
+        cached = get_cached_public_preview(*cache_key)
+        if cached:
+            return PublicPreview(**cached)
+
+    result = _get_preview_logic(full_url, db, variant_key, crawler_name, platform, site, user_agent)
+
+    if not crawler_name:
+        set_cached_public_preview(*cache_key, value=result.model_dump())
+
+    return result
 
 
 def _normalize_hostname(value: str) -> str:
@@ -90,7 +119,7 @@ def _normalize_hostname(value: str) -> str:
 def _normalize_url_for_matching(url: str) -> str:
     """
     Normalize URL for deterministic matching.
-    
+
     This ensures the same URL always matches the same preview,
     regardless of query params, fragments, or trailing slashes.
     """
@@ -100,12 +129,63 @@ def _normalize_url_for_matching(url: str) -> str:
     return normalized
 
 
+def _record_impression(
+    db: Session,
+    domain: DomainModel,
+    preview: PreviewModel,
+    crawler_name: str,
+    platform: str,
+    user_agent: str,
+) -> None:
+    """Record a crawler fetch as an impression event. Best-effort only."""
+    try:
+        from backend.models.analytics_event import AnalyticsEvent
+        event = AnalyticsEvent(
+            user_id=domain.user_id,
+            organization_id=domain.organization_id,
+            domain_id=domain.id,
+            preview_id=preview.id if preview else None,
+            event_type="impression",
+            referrer=platform or crawler_name,
+            user_agent=(user_agent or "")[:500],
+        )
+        db.add(event)
+        db.commit()
+    except Exception as e:  # pragma: no cover - metrics must never break serving
+        logger.warning(f"Failed to record impression: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+
+def _fallback(full_url: str, hostname: str, reason: str) -> PublicPreview:
+    """A safe fallback that never invents copy.
+
+    The description is intentionally empty: integrations run in "fill"
+    spirit — an empty field means "keep whatever the page already has",
+    while a fabricated sentence like "Domain not verified." would end up
+    as the og:description users actually share.
+    """
+    return PublicPreview(
+        url=full_url,
+        title=hostname or "Untitled Page",
+        description="",
+        image_url=placeholder_image_url(),
+        site_name=hostname,
+        status="fallback",
+        version=reason,
+    )
+
+
 def _get_preview_logic(
     full_url: str,
     db: Session,
     variant: str = None,
     crawler_name: str = None,
+    platform: str = None,
     site: str = None,
+    user_agent: str = None,
 ) -> PublicPreview:
     """
     Core logic for getting preview metadata.
@@ -121,164 +201,106 @@ def _get_preview_logic(
         # subdomain can resolve against the registered apex domain.
         lookup_hostname = _normalize_hostname(site) or hostname
 
-        # Try cache first for domain lookup (we need org_id for cache key, so check cache after domain lookup)
-        # Look up domain by hostname
         domain = db.query(DomainModel).filter(
             DomainModel.name == lookup_hostname
         ).first()
 
-        # Cache domain if found
-        if domain and domain.organization_id:
-            domain_cache_data = {
-                "id": domain.id,
-                "name": domain.name,
-                "status": domain.status,
-                "organization_id": domain.organization_id,
-            }
-            set_cached_domain_by_name(domain.organization_id, lookup_hostname, domain_cache_data)
-
         if not domain:
-            # No matching domain found - return fallback with placeholder
-            return PublicPreview(
-                url=full_url,
-                title=hostname or "Untitled Page",
-                description="Preview not configured yet.",
-                image_url=settings.PLACEHOLDER_IMAGE_URL,
-                site_name=hostname,
-                status="fallback"
-            )
-        
-        # Domain found - check if verified
+            return _fallback(full_url, hostname, "no_domain")
+
         if domain.status != "verified":
-            # Domain not verified - return fallback with placeholder
-            return PublicPreview(
-                url=full_url,
-                title=hostname or "Untitled Page",
-                description="Domain not verified.",
-                image_url=settings.PLACEHOLDER_IMAGE_URL,
-                site_name=hostname,
-                type=None,
-                status="fallback"
-            )
-        
-        # Domain found - get organization_id
+            return _fallback(full_url, hostname, "unverified")
+
         organization_id = domain.organization_id
-        
         if organization_id is None:
-            # Domain exists but has no organization (legacy data) - return fallback with placeholder
-            return PublicPreview(
-                url=full_url,
-                title=hostname or "Untitled Page",
-                description="Preview not configured yet.",
-                image_url=settings.PLACEHOLDER_IMAGE_URL,
-                site_name=hostname,
-                status="fallback"
-            )
-        
-        # Try cache first for preview metadata
-        preview = None
-        preview_cache_key = None
-        
+            return _fallback(full_url, hostname, "no_org")
+
         # Normalize URL for deterministic matching
         normalized_url = _normalize_url_for_matching(full_url)
-        
+
         # Try to find a matching preview for this organization and URL
-        # Match on normalized URL first (most deterministic)
         preview = db.query(PreviewModel).filter(
             PreviewModel.organization_id == organization_id,
             PreviewModel.url == normalized_url
         ).first()
-        
-        # If no normalized match, try exact URL match
+
         if not preview:
             preview = db.query(PreviewModel).filter(
                 PreviewModel.organization_id == organization_id,
                 PreviewModel.url == full_url
             ).first()
-        
-        # If still no match, try matching on path only (for legacy URLs)
+
         if not preview and parsed.path:
             path_only = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip('/')
             preview = db.query(PreviewModel).filter(
                 PreviewModel.organization_id == organization_id,
                 PreviewModel.url == path_only
             ).first()
-        
-        if preview:
-            # Cache preview metadata
-            preview_cache_data = {
-                "id": preview.id,
-                "title": preview.title,
-                "description": preview.description,
-                "image_url": preview.image_url,
-                "type": preview.type,
-            }
-            set_cached_preview_metadata(preview.id, preview_cache_data)
-            # Check if variant is requested
-            if variant and variant.lower() in ['a', 'b', 'c']:
-                variant_obj = db.query(PreviewVariantModel).filter(
-                    PreviewVariantModel.preview_id == preview.id,
-                    PreviewVariantModel.variant_key == variant.lower()
-                ).first()
-                
-                if variant_obj:
-                    # Use variant data
-                    # Determine status: fully_generated if has AI content, otherwise pending_ai
-                    preview_status = "fully_generated" if preview.ai_reasoning else "pending_ai"
-                    
-                    # Use composited_image_url if available (designed UI card), otherwise fall back to variant or preview images
-                    image_url = preview.composited_image_url or variant_obj.image_url or preview.highlight_image_url or preview.image_url or settings.PLACEHOLDER_IMAGE_URL
-                    
-                    return PublicPreview(
-                        url=full_url,
-                        title=variant_obj.title,
-                        description=variant_obj.description if variant_obj.description else "No preview description available.",
-                        image_url=image_url,
-                        site_name=domain.name,
-                        type=preview.type,
-                        status=preview_status,
-                        version=variant_obj.variant_key  # Use variant key as version for A/B testing
-                    )
-                # Variant not found, fall through to main preview
-            
-            # Use main preview data
-            # Determine status: fully_generated if has AI content, otherwise pending_ai
-            preview_status = "fully_generated" if preview.ai_reasoning else "pending_ai"
-            
-            # Use composited_image_url if available (designed UI card), otherwise fall back to highlight_image_url or image_url
-            image_url = preview.composited_image_url or preview.highlight_image_url or preview.image_url or settings.PLACEHOLDER_IMAGE_URL
-            
-            return PublicPreview(
-                url=full_url,
-                title=preview.title,
-                description=preview.description if preview.description else "No preview description available.",
-                image_url=image_url,
-                site_name=domain.name,
-                type=preview.type,
-                status=preview_status,
-                version="main"  # Main preview version
-            )
-        else:
-            # Domain exists but no preview found - return fallback with placeholder
-            path_display = parsed.path if parsed.path else "/"
-            return PublicPreview(
-                url=full_url,
-                title=hostname or "Untitled Page",
-                description="Preview not generated yet.",
-                image_url=settings.PLACEHOLDER_IMAGE_URL,
-                site_name=hostname,
-                status="fallback"
-            )
-            
+
+        # A crawler fetching this URL means a share is being rendered.
+        if crawler_name:
+            _record_impression(db, domain, preview, crawler_name, platform, user_agent)
+
+        if not preview:
+            return _fallback(full_url, hostname, "no_preview")
+
+        preview_status = "fully_generated" if preview.ai_reasoning else "pending_ai"
+
+        if variant:
+            variant_obj = db.query(PreviewVariantModel).filter(
+                PreviewVariantModel.preview_id == preview.id,
+                PreviewVariantModel.variant_key == variant
+            ).first()
+
+            if variant_obj:
+                # The variant's own rendered card must win — serving the main
+                # image under variant copy silently breaks A/B comparisons.
+                image_url = (
+                    variant_obj.image_url
+                    or preview.composited_image_url
+                    or preview.highlight_image_url
+                    or preview.image_url
+                    or placeholder_image_url()
+                )
+                return PublicPreview(
+                    url=full_url,
+                    title=variant_obj.title,
+                    description=variant_obj.description or preview.description or "",
+                    image_url=image_url,
+                    site_name=domain.name,
+                    type=preview.type,
+                    status=preview_status,
+                    version=variant_obj.variant_key
+                )
+            # Variant not found, fall through to main preview
+
+        image_url = (
+            preview.composited_image_url
+            or preview.highlight_image_url
+            or preview.image_url
+            or placeholder_image_url()
+        )
+
+        return PublicPreview(
+            url=full_url,
+            title=preview.title,
+            description=preview.description or "",
+            image_url=image_url,
+            site_name=domain.name,
+            type=preview.type,
+            status=preview_status,
+            version="main"
+        )
+
     except Exception as e:
         # On any error, return a safe fallback with placeholder
         logger.error(f"Error generating preview for {full_url}: {e}", exc_info=True)
         return PublicPreview(
             url=full_url,
             title="Untitled Page",
-            description="Preview not available.",
-            image_url=settings.PLACEHOLDER_IMAGE_URL,
+            description="",
+            image_url=placeholder_image_url(),
             site_name=None,
-            status="fallback"
+            status="fallback",
+            version="error",
         )
-

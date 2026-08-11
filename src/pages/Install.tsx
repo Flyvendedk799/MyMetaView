@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowDownTrayIcon,
   ArrowTopRightOnSquareIcon,
@@ -284,6 +284,7 @@ function InstallBadge({ domain }: { domain: InstallDomainStatus | undefined }) {
 // ---------------------------------------------------------------------------
 
 export default function Install() {
+  const navigate = useNavigate()
   const [config, setConfig] = useState<InstallConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -404,7 +405,7 @@ export default function Install() {
             action={{
               label: 'Go to Domains',
               onClick: () => {
-                window.location.href = '/app/domains'
+                navigate('/app/domains')
               },
             }}
           />

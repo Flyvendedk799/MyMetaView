@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import {
   PlusIcon, 
@@ -15,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
-import Modal from '../components/ui/Modal'
+import Modal, { ConfirmDialog } from '../components/ui/Modal'
 import EmptyState from '../components/ui/EmptyState'
 import Alert from '../components/ui/Alert'
 import CodeBlock from '../components/ui/CodeBlock'
@@ -38,6 +39,7 @@ interface DebugInfo {
 
 export default function Domains() {
   const { domains, loading, error: apiError, addDomain, removeDomain, refetch } = useDomains()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { previews } = usePreviews()
   // Real count of previews per domain (previews carry the domain name they belong to)
   const previewCountByDomain = useMemo(() => {
@@ -48,6 +50,7 @@ export default function Domains() {
     return counts
   }, [previews])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null)
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
   const [verifyingDomain, setVerifyingDomain] = useState<Domain | null>(null)
   const [verificationMethod, setVerificationMethod] = useState<'dns' | 'html' | 'meta' | null>(null)
@@ -70,6 +73,19 @@ export default function Domains() {
   const [isDebugging, setIsDebugging] = useState(false)
   const [autoCheckStatus, setAutoCheckStatus] = useState<'checking' | 'found' | 'not_found' | null>(null)
   const [lastAutoCheckTime, setLastAutoCheckTime] = useState<Date | null>(null)
+
+  // ?add=example.com (from the dashboard's demo hand-off) opens the add
+  // modal with the domain prefilled, so the demo -> signup -> connect flow
+  // has zero retyping.
+  useEffect(() => {
+    const prefill = searchParams.get('add')
+    if (prefill) {
+      setDomainName(prefill)
+      setIsModalOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Auto-check verification every 15 seconds on the instructions step
   useEffect(() => {
@@ -101,6 +117,9 @@ export default function Domains() {
             setTimeout(() => setSuccessMessage(''), 5000)
           } else {
             setAutoCheckStatus('not_found')
+            if (updatedDomain.verification_error) {
+              setVerificationError(updatedDomain.verification_error)
+            }
             setCheckAttempts(prev => prev + 1)
           }
         } catch {
@@ -172,15 +191,15 @@ export default function Domains() {
     }
   }
 
-  const handleDeleteDomain = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this domain? This action cannot be undone.')) {
-      try {
-        await removeDomain(id)
-        setSuccessMessage('Domain deleted successfully')
-        setTimeout(() => setSuccessMessage(''), 3000)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete domain')
-      }
+  const handleDeleteDomain = async (domain: Domain) => {
+    try {
+      await removeDomain(domain.id)
+      setSuccessMessage('Domain deleted successfully')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete domain')
+    } finally {
+      setDomainToDelete(null)
     }
   }
 
@@ -243,7 +262,11 @@ export default function Domains() {
         setTimeout(() => setSuccessMessage(''), 5000)
       } else {
         setAutoCheckStatus('not_found')
-        setVerificationError('Record not found yet. DNS changes can take a few minutes to propagate. Auto-check will keep trying.')
+        setVerificationError(
+          updatedDomain.verification_error
+            ? `${updatedDomain.verification_error} Auto-check will keep trying.`
+            : 'Record not found yet. DNS changes can take a few minutes to propagate. Auto-check will keep trying.'
+        )
         // Go back to instructions so auto-check can continue
         setTimeout(() => setVerificationStep('instructions'), 1500)
       }
@@ -484,7 +507,7 @@ export default function Domains() {
                           </Button>
                         )}
                         <button
-                          onClick={() => handleDeleteDomain(domain.id)}
+                          onClick={() => setDomainToDelete(domain)}
                           className="text-error-600 hover:text-error-800 transition-colors inline-flex items-center space-x-1.5 px-2 py-1 rounded hover:bg-error-50"
                           title="Delete domain"
                         >
@@ -1046,6 +1069,20 @@ export default function Domains() {
           )}
         </div>
       </Modal>
+
+      {/* Delete Domain Confirmation */}
+      <ConfirmDialog
+        isOpen={domainToDelete !== null}
+        onClose={() => setDomainToDelete(null)}
+        onConfirm={() => {
+          if (domainToDelete) handleDeleteDomain(domainToDelete)
+        }}
+        title="Delete domain?"
+        message={`Deleting ${domainToDelete?.name || 'this domain'} stops previews from being served for it. This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }

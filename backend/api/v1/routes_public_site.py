@@ -91,9 +91,18 @@ def serve_homepage(
 ):
     """Serve site homepage."""
     site = get_site_from_host(request, db)
-    
+
     if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
+        # Not a published customer site — this is the product/API domain.
+        # This router registers before the API's own root handler, so answer
+        # with the API info payload instead of 404ing the platform's root.
+        from fastapi.responses import JSONResponse
+        from backend.core.config import settings as app_settings
+        return JSONResponse({
+            "message": "MetaView API",
+            "version": app_settings.APP_VERSION,
+            "docs": "/docs",
+        })
     
     # Get homepage page or latest posts
     homepage_page = db.query(SitePage).filter(

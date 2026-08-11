@@ -135,16 +135,30 @@ def generate_demo_preview(
     logger.info(f"Using unified preview engine for: {url_str}")
 
     try:
+        # Same quality profile and cache namespace as the demo-v2 job path, so
+        # this legacy sync route can never serve a lower-grade preview of the
+        # same URL than the main demo does.
+        from backend.services.quality_profiles import get_quality_profile
+        profile = get_quality_profile("ultra")
         config = PreviewEngineConfig(
             is_demo=True,
             enable_brand_extraction=True,
-            enable_ai_reasoning=True,
+            enable_ai_reasoning=profile.ai_reasoning,
             enable_composited_image=True,
-            enable_cache=not cache_disabled
+            enable_cache=not cache_disabled,
+            enable_multi_agent=profile.multi_agent,
+            enable_ui_element_extraction=profile.ui_extraction,
+            quality_threshold=profile.threshold,
+            max_quality_iterations=profile.iterations,
+            allow_soft_pass=profile.allow_soft_pass,
+            enforce_target_quality=profile.enforce_target_quality,
+            min_soft_pass_overall=profile.min_soft_pass_overall,
+            min_soft_pass_visual=profile.min_soft_pass_visual,
+            min_soft_pass_fidelity=profile.min_soft_pass_fidelity,
         )
 
         engine = PreviewEngine(config)
-        engine_result = engine.generate(url_str, cache_key_prefix="demo:preview:")
+        engine_result = engine.generate(url_str, cache_key_prefix="demo:preview:v3:ultra:")
 
     except ValueError as e:
         error_msg = str(e)
