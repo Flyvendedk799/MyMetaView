@@ -7,6 +7,8 @@ from backend.services import brand_resolver
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig, PreviewEngineResult
 from backend.services.preview_type_predictor import predict_preview_type
+from backend.services.quality_profiles import get_quality_profile
+from backend.services.generation_lane import LaneDecision, record_ai_generation, resolve_lane
 from backend.jobs.preview_upsert import upsert_preview
 from backend.services.brand_rewriter import rewrite_to_brand_voice
 from backend.models.preview_variant import PreviewVariant as PreviewVariantModel
@@ -84,14 +86,49 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         _can_hide_watermark = bool(_org and has_feature(_org, F_HIDE_WATERMARK))
         _can_card_controls = bool(_org and has_feature(_org, F_CARD_CONTROLS))
 
-        # Step 5: Use unified preview engine for core generation
-        logger.info(f"Using unified preview engine for: {sanitized_url}")
+        # Step 4.5: AI lane or template lane?
+        # The AI lane is the product — the art director reads this page and
+        # designs a card for it. It is metered per plan; past the allowance the
+        # account still gets a card, built from the page's own metadata.
+        lane = resolve_lane(db, _org) if _org else LaneDecision("ai", 0, None)
+        if lane.lane == "ai":
+            record_ai_generation(
+                db,
+                organization_id=organization_id,
+                user_id=user_id,
+                url=sanitized_url,
+                domain=domain,
+            )
+        else:
+            logger.info(
+                "Template lane for %s — org %s has spent %s/%s AI previews this month",
+                sanitized_url, organization_id, lane.used, lane.limit,
+            )
+
+        # Step 5: Use unified preview engine for core generation.
+        # The profile comes from the same table the demo reads, pinned to
+        # `ultra`, so a customer's preview is generated exactly as well as the
+        # one they saw on the landing page before they signed up.
+        profile = get_quality_profile("ultra" if lane.lane == "ai" else "template")
+        logger.info(
+            f"Using unified preview engine for: {sanitized_url} "
+            f"(lane={lane.lane}, profile={profile.quality_mode})"
+        )
         config = PreviewEngineConfig(
             is_demo=False,  # SaaS mode
             enable_brand_extraction=True,
-            enable_ai_reasoning=True,
+            enable_ai_reasoning=profile.ai_reasoning,
             enable_composited_image=True,
             enable_cache=not force_regenerate,
+            enable_multi_agent=profile.multi_agent,
+            enable_ui_element_extraction=profile.ui_extraction,
+            quality_threshold=profile.threshold,
+            max_quality_iterations=profile.iterations,
+            allow_soft_pass=profile.allow_soft_pass,
+            enforce_target_quality=profile.enforce_target_quality,
+            min_soft_pass_overall=profile.min_soft_pass_overall,
+            min_soft_pass_visual=profile.min_soft_pass_visual,
+            min_soft_pass_fidelity=profile.min_soft_pass_fidelity,
             brand_settings={
                 "primary_color": brand_schema.primary_color,
                 "secondary_color": brand_schema.secondary_color,
@@ -116,7 +153,12 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         )
         
         engine = PreviewEngine(config)
-        engine_result = engine.generate(sanitized_url, cache_key_prefix="saas:preview:")
+        # Separate cache namespaces per lane. Sharing one would let a template
+        # card served during an exhausted month keep being returned after the
+        # account upgrades — the customer pays and sees the same generic image.
+        engine_result = engine.generate(
+            sanitized_url, cache_key_prefix=f"saas:preview:{lane.lane}:"
+        )
         
         # Step 6: Apply brand voice rewriting to description
         rewritten_description = rewrite_to_brand_voice(engine_result.description, brand_schema)
@@ -168,7 +210,8 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             organization_id=organization_id,
             keywords=keywords_str,
             tone=None,  # Can be extracted from blueprint if needed
-            ai_reasoning=engine_result.blueprint.get("layout_reasoning") or engine_result.message
+            ai_reasoning=engine_result.blueprint.get("layout_reasoning") or engine_result.message,
+            generation_mode=lane.lane
         )
         
         # Step 10: Create preview variants from engine result

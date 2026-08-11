@@ -715,9 +715,22 @@ export default function Previews() {
                       
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <h3 className="font-semibold text-secondary-900 truncate">{displayData.title}</h3>
-                        <span className="pill bg-secondary-100 text-secondary-600 capitalize flex-shrink-0">
-                          {preview.type}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {/* Older backends omit generation_mode; those previews
+                              all came from the AI lane, so absent reads as 'ai'
+                              and only an explicit 'template' shows the badge. */}
+                          {preview.generation_mode === 'template' && (
+                            <span
+                              className="pill bg-amber-50 text-amber-700"
+                              title="Built from this page's metadata — your plan's monthly AI allowance is spent. Upgrade for an AI-designed card."
+                            >
+                              Template
+                            </span>
+                          )}
+                          <span className="pill bg-secondary-100 text-secondary-600 capitalize">
+                            {preview.type}
+                          </span>
+                        </div>
                       </div>
                       <p className="font-mono text-xs text-secondary-500 mb-2 truncate">{preview.url}</p>
                       {displayData.description && (

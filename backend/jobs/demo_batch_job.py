@@ -20,7 +20,7 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig
-from backend.services.demo_quality_profiles import get_quality_profile
+from backend.services.quality_profiles import get_quality_profile
 from backend.services.preview_cache import (
     get_redis_client,
     is_demo_cache_disabled,
@@ -131,13 +131,13 @@ def _process_single_url(
     Process one URL; runs in worker thread. Returns (index, result_dict).
     Each worker creates its own engine for thread safety.
     """
-    from backend.services.demo_quality_profiles import get_quality_profile
+    from backend.services.quality_profiles import get_quality_profile
 
     profile = get_quality_profile(quality_mode, url_str)
     config = PreviewEngineConfig(
         is_demo=True,
         enable_brand_extraction=True,
-        enable_ai_reasoning=True,
+        enable_ai_reasoning=profile.ai_reasoning,
         enable_composited_image=True,
         enable_cache=not cache_disabled,
         enable_multi_agent=profile.multi_agent,

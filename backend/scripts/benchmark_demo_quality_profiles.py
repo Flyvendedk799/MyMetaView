@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from statistics import mean
 
-from backend.services.demo_quality_profiles import get_quality_profile, resolve_quality_mode
+from backend.services.quality_profiles import get_quality_profile, resolve_quality_mode
 
 
 SAMPLE_URLS = [

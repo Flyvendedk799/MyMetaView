@@ -77,6 +77,12 @@ export interface Preview {
   keywords?: string | null
   tone?: string | null
   ai_reasoning?: string | null
+  /**
+   * Lane that produced this card. 'ai' means the art director read the page and
+   * designed for it; 'template' means it was built from the page's own metadata
+   * because the plan's monthly AI allowance was spent. Absent on older backends.
+   */
+  generation_mode?: 'ai' | 'template'
   created_at: string // ISO datetime
   monthly_clicks: number
 }
@@ -210,6 +216,8 @@ export interface PublicPlan {
   price: number
   domains: number | null
   previews_month: number | null
+  /** Previews per month that get the full AI treatment; the rest use templates. */
+  ai_previews_month?: number | null
   team_seats: number | null
   features: string[]
 }
@@ -223,12 +231,14 @@ export interface MyPlan {
   limits: {
     domains: number | null
     previews_month: number | null
+    ai_previews_month?: number | null
     team_seats: number | null
   }
   features: string[]
   usage: {
     domains: number
     previews_month: number
+    ai_previews_month?: number
   }
 }
 

@@ -210,16 +210,34 @@ export default function Billing() {
                 </div>
               )}
 
-              {/* Usage meters */}
+              {/* Usage meters. The two preview meters are different things:
+                  `previews_month` is how many previews the account may hold,
+                  `ai_previews_month` is how many get the art director. Past the
+                  AI allowance generation continues on the template lane. */}
               {myPlan && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <UsageMeter label="Domains" used={myPlan.usage.domains} limit={myPlan.limits.domains} />
-                  <UsageMeter
-                    label="AI previews this month"
-                    used={myPlan.usage.previews_month}
-                    limit={myPlan.limits.previews_month}
-                  />
-                </div>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <UsageMeter label="Domains" used={myPlan.usage.domains} limit={myPlan.limits.domains} />
+                    <UsageMeter
+                      label="Previews this month"
+                      used={myPlan.usage.previews_month}
+                      limit={myPlan.limits.previews_month}
+                    />
+                  </div>
+                  {myPlan.limits.ai_previews_month !== undefined && (
+                    <div className="pt-4">
+                      <UsageMeter
+                        label="AI-designed previews this month"
+                        used={myPlan.usage.ai_previews_month ?? 0}
+                        limit={myPlan.limits.ai_previews_month ?? null}
+                      />
+                      <p className="text-xs text-secondary-500 mt-2">
+                        Every preview past this allowance is still generated — from your
+                        page&rsquo;s own metadata instead of a fresh AI design.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {isActive && (

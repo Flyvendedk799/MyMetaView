@@ -38,11 +38,12 @@ def upsert_preview(
     tone: Optional[str] = None,
     ai_reasoning: Optional[str] = None,
     highlight_image_url: Optional[str] = None,
-    composited_image_url: Optional[str] = None
+    composited_image_url: Optional[str] = None,
+    generation_mode: str = "ai"
 ) -> PreviewModel:
     """
     Upsert preview record in database.
-    
+
     Args:
         db: Database session
         url: Preview URL
@@ -53,7 +54,8 @@ def upsert_preview(
         preview_type: Preview type
         user_id: User ID
         organization_id: Organization ID
-        
+        generation_mode: Lane that produced this card — "ai" or "template"
+
     Returns:
         Preview model instance
     """
@@ -74,6 +76,7 @@ def upsert_preview(
         existing_preview.keywords = keywords
         existing_preview.tone = tone
         existing_preview.ai_reasoning = ai_reasoning
+        existing_preview.generation_mode = generation_mode
         if not existing_preview.type:
             existing_preview.type = preview_type
         
@@ -94,6 +97,7 @@ def upsert_preview(
             keywords=keywords,
             tone=tone,
             ai_reasoning=ai_reasoning,
+            generation_mode=generation_mode,
             user_id=user_id,
             organization_id=organization_id,
             created_at=datetime.utcnow(),

@@ -1,6 +1,6 @@
 """Tests for adaptive demo quality profile selection."""
 
-from backend.services.demo_quality_profiles import (
+from backend.services.quality_profiles import (
     estimate_url_complexity,
     get_cache_prefix_for_mode,
     get_quality_profile,

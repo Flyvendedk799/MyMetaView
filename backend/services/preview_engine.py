@@ -359,7 +359,15 @@ class PreviewEngineConfig:
     enable_ui_element_extraction: bool = True  # Extract actual UI components
     
     # UPGRADED: New feature flags for enhanced pipeline
-    enable_multi_agent: bool = True  # Use real multi-agent orchestration
+    # Multi-agent orchestration is OFF by default and stays that way until the
+    # orchestrator earns its place back. It fuses HTML metadata into a generic
+    # payload with no composition spec, so the premium renderer falls back to
+    # its neutral defaults and every page comes out looking like the same
+    # template. The single-pass art director (`preview_reasoning`) reads the
+    # captured page and authors both the copy and the composition, which is the
+    # product. Any caller that flips this on is still held to that bar — see
+    # `_orchestrator_result_is_usable`.
+    enable_multi_agent: bool = False  # Use real multi-agent orchestration
     enable_design_dna_application: bool = True  # Apply Design DNA to rendering
     enable_dynamic_templates: bool = True  # Use dynamic template selection
     enable_quality_iteration: bool = True  # Enable quality critic loop
@@ -1779,9 +1787,20 @@ class PreviewEngine:
                             "composition_notes": str(fused_design.get("design_philosophy", ""))
                         },
                         "reasoning_confidence": orchestration_result.quality_score,
-                        "design_dna": fused_data.get("design_dna", {})
+                        "design_dna": fused_data.get("design_dna", {}),
+                        # The orchestrator's agents do not author a composition
+                        # spec; carry through whatever the fusion produced so the
+                        # usability check below can see it (usually nothing).
+                        "composition": fused_data.get("composition") or {},
                     }
-                    return result_dict
+                    if self._orchestrator_result_is_usable(result_dict):
+                        self._reasoning_path = "multi_agent"
+                        return result_dict
+                    self.logger.warning(
+                        "⚠️ Orchestrator returned a result with no composition spec — "
+                        "falling through to the art director so the card is designed "
+                        "for this page instead of rendered from template defaults"
+                    )
                 else:
                     self.logger.warning(f"⚠️ Orchestrator failed gracefully: {orchestration_result.errors}")
             except Exception as e:
@@ -1858,6 +1877,27 @@ class PreviewEngine:
             # Fallback to HTML-only extraction
             return self._extract_from_html_only(html_content, url, screenshot_bytes=getattr(self, '_last_screenshot_bytes', None))
     
+    @staticmethod
+    def _orchestrator_result_is_usable(result: Dict[str, Any]) -> bool:
+        """Is this multi-agent result good enough to skip the art director?
+
+        The premium card is only page-specific because the art director hands the
+        renderer a composition: which layout, whether to use a visual, which
+        colour carries the panel, where the accent lands. A result without that
+        renders from neutral defaults — the same card shape for every site, which
+        is exactly the "it just looks like a template" failure. So a result has
+        to carry a real spec AND real copy to win; anything less falls through.
+        """
+        composition = result.get("composition")
+        if not isinstance(composition, dict) or not composition.get("layout"):
+            return False
+
+        title = str(result.get("title") or "").strip()
+        if len(title) < 5 or title.lower() in ("untitled", "none", "null", "n/a"):
+            return False
+
+        return True
+
     def _map_quality_level(self, confidence: float) -> str:
         """Map confidence score to quality level."""
         if confidence >= 0.9:

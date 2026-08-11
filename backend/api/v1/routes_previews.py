@@ -14,6 +14,7 @@ from backend.core.deps import get_current_user, get_paid_user, get_current_org, 
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
 from backend.services.preview_generator import generate_ai_preview
+from backend.services.generation_lane import record_ai_generation
 from backend.services.activity_logger import log_activity
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.cache import invalidate_preview
@@ -275,7 +276,19 @@ def generate_preview_with_ai(
             db, current_org.id, user_id=current_user.id, domain_id=domain.id
         )
 
-    # Step 3: Call AI preview generator
+    # Step 3: Call AI preview generator.
+    # This is the legacy synchronous path: it predates the unified engine and
+    # does not run the art director or the premium card renderer, so it cannot
+    # honour the template lane. It still costs a vision call, so it spends from
+    # the account's monthly AI allowance rather than quietly bypassing the meter.
+    # The metered, engine-backed path the dashboard uses is POST /jobs/preview.
+    record_ai_generation(
+        db,
+        organization_id=current_org.id,
+        user_id=current_user.id,
+        url=request.url,
+        domain=request.domain,
+    )
     try:
         from backend.schemas.brand import BrandSettings as BrandSettingsSchema
         brand_schema = BrandSettingsSchema.model_validate(brand_settings)

@@ -3,12 +3,14 @@ Background job for demo preview generation (public, no auth required).
 This job uses the unified preview engine for consistent, high-quality previews.
 """
 from typing import Dict, Any
+from dataclasses import asdict
 from uuid import uuid4
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rq.job import Job, get_current_job
 from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig, PreviewEngineResult
+from backend.services.quality_profiles import get_quality_profile
 from backend.services.r2_client import upload_file_to_r2
 from backend.services.preview_cache import (
     generate_cache_key,
@@ -68,27 +70,16 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
         # Update initial progress
         _update_job_progress(0.05, "Starting preview generation...")
 
-        quality_profiles = {
-            "fast": {
-                "multi_agent": False, "ui_extraction": False, "threshold": 0.78, "iterations": 2,
-                "allow_soft_pass": True, "enforce_target_quality": False, "min_soft_pass_overall": 0.66, "min_soft_pass_visual": 0.52, "min_soft_pass_fidelity": 0.50
-            },
-            "balanced": {
-                "multi_agent": True, "ui_extraction": True, "threshold": 0.82, "iterations": 3,
-                "allow_soft_pass": True, "enforce_target_quality": False, "min_soft_pass_overall": 0.74, "min_soft_pass_visual": 0.62, "min_soft_pass_fidelity": 0.60
-            },
-            "ultra": {
-                "multi_agent": True, "ui_extraction": True, "threshold": 0.88, "iterations": 4,
-                "allow_soft_pass": False, "enforce_target_quality": True, "min_soft_pass_overall": 0.85, "min_soft_pass_visual": 0.75, "min_soft_pass_fidelity": 0.72
-            },
-        }
-        selected_profile = quality_profiles.get((quality_mode or "ultra").lower(), quality_profiles["ultra"])
-        
+        # Profiles come from the shared table so the demo and a signed-in
+        # customer's dashboard can never drift onto different settings again.
+        profile = get_quality_profile(quality_mode or "ultra")
+        selected_profile = asdict(profile)
+
         # Configure engine for demo mode (optimized for speed)
         config = PreviewEngineConfig(
             is_demo=True,
             enable_brand_extraction=True,
-            enable_ai_reasoning=True,
+            enable_ai_reasoning=profile.ai_reasoning,
             enable_composited_image=True,
             enable_cache=not cache_disabled,
             # The demo runs the single-pass art-director brain (preview_reasoning),
@@ -97,15 +88,15 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
             # model behind the gateway rejects with a 400) and it bypasses our
             # authored-copy + composition prompt. Single-pass gives clean, on-brand
             # copy and the composition spec the premium renderer needs.
-            enable_multi_agent=False,
-            enable_ui_element_extraction=selected_profile["ui_extraction"],
-            quality_threshold=selected_profile["threshold"],
-            max_quality_iterations=selected_profile["iterations"],
-            allow_soft_pass=selected_profile["allow_soft_pass"],
-            enforce_target_quality=selected_profile["enforce_target_quality"],
-            min_soft_pass_overall=selected_profile["min_soft_pass_overall"],
-            min_soft_pass_visual=selected_profile["min_soft_pass_visual"],
-            min_soft_pass_fidelity=selected_profile["min_soft_pass_fidelity"],
+            enable_multi_agent=profile.multi_agent,
+            enable_ui_element_extraction=profile.ui_extraction,
+            quality_threshold=profile.threshold,
+            max_quality_iterations=profile.iterations,
+            allow_soft_pass=profile.allow_soft_pass,
+            enforce_target_quality=profile.enforce_target_quality,
+            min_soft_pass_overall=profile.min_soft_pass_overall,
+            min_soft_pass_visual=profile.min_soft_pass_visual,
+            min_soft_pass_fidelity=profile.min_soft_pass_fidelity,
             progress_callback=_update_job_progress
         )
         

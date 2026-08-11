@@ -1,4 +1,16 @@
-"""Shared quality profile selection for demo preview generation."""
+"""Quality profiles for preview generation — shared by the demo and the app.
+
+One table, both surfaces. The public demo and a signed-in customer's dashboard
+run the *same* engine at the *same* settings; the demo picks its profile from
+URL complexity, the app pins ``ultra`` because a paying customer's card is the
+product. Keeping the numbers here is deliberate: when these lived in two places
+the app silently drifted onto weaker settings and its previews came out looking
+generic next to the demo's.
+
+The ``template`` profile is the deliberately cheap lane: no AI reasoning at all,
+just the page's own metadata rendered through the same premium card. It backs
+the previews beyond an account's monthly AI allowance.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +19,7 @@ from urllib.parse import parse_qsl, urlparse
 
 
 @dataclass(frozen=True)
-class DemoQualityProfile:
+class QualityProfile:
     quality_mode: str
     multi_agent: bool
     ui_extraction: bool
@@ -18,10 +30,34 @@ class DemoQualityProfile:
     min_soft_pass_overall: float
     min_soft_pass_visual: float
     min_soft_pass_fidelity: float
+    # Template lane: skip vision reasoning entirely and build the card from the
+    # page's own metadata. Cheap, generic, and never the default.
+    ai_reasoning: bool = True
 
 
-_QUALITY_PROFILES: dict[str, DemoQualityProfile] = {
-    "fast": DemoQualityProfile(
+# Backwards-compatible alias — this type used to be demo-only.
+DemoQualityProfile = QualityProfile
+
+
+# multi_agent is False everywhere. The orchestrator fuses HTML metadata into a
+# payload with no composition spec, which renders as the same neutral card for
+# every page; `PreviewEngine._orchestrator_result_is_usable` rejects such a
+# result anyway, so turning it on only buys latency.
+_QUALITY_PROFILES: dict[str, QualityProfile] = {
+    "template": QualityProfile(
+        quality_mode="template",
+        multi_agent=False,
+        ui_extraction=False,
+        threshold=0.55,
+        iterations=1,
+        allow_soft_pass=True,
+        enforce_target_quality=False,
+        min_soft_pass_overall=0.35,
+        min_soft_pass_visual=0.0,
+        min_soft_pass_fidelity=0.0,
+        ai_reasoning=False,
+    ),
+    "fast": QualityProfile(
         quality_mode="fast",
         multi_agent=False,
         ui_extraction=False,
@@ -33,9 +69,9 @@ _QUALITY_PROFILES: dict[str, DemoQualityProfile] = {
         min_soft_pass_visual=0.52,
         min_soft_pass_fidelity=0.50,
     ),
-    "balanced": DemoQualityProfile(
+    "balanced": QualityProfile(
         quality_mode="balanced",
-        multi_agent=True,
+        multi_agent=False,
         ui_extraction=True,
         threshold=0.82,
         iterations=3,
@@ -45,9 +81,9 @@ _QUALITY_PROFILES: dict[str, DemoQualityProfile] = {
         min_soft_pass_visual=0.62,
         min_soft_pass_fidelity=0.60,
     ),
-    "ultra": DemoQualityProfile(
+    "ultra": QualityProfile(
         quality_mode="ultra",
-        multi_agent=True,
+        multi_agent=False,
         ui_extraction=True,
         threshold=0.88,
         iterations=4,
@@ -75,12 +111,13 @@ def resolve_quality_mode(requested_mode: str | None, url: str | None = None) -> 
     return "fast"
 
 
-def get_quality_profile(requested_mode: str | None, url: str | None = None) -> DemoQualityProfile:
+def get_quality_profile(requested_mode: str | None, url: str | None = None) -> QualityProfile:
     resolved_mode = resolve_quality_mode(requested_mode, url=url)
     return _QUALITY_PROFILES[resolved_mode]
 
 
 def get_cache_prefix_for_mode(requested_mode: str | None, url: str | None = None) -> str:
+    """Cache namespace for the public demo. Signed-in generations use their own."""
     resolved_mode = resolve_quality_mode(requested_mode, url=url)
     return f"demo:preview:v3:{resolved_mode}:"
 

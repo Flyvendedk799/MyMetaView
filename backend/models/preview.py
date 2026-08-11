@@ -21,6 +21,11 @@ class Preview(Base):
     keywords = Column(String, nullable=True)  # Comma-separated string for now
     tone = Column(String, nullable=True)
     ai_reasoning = Column(String, nullable=True)
+    # Which lane produced this card: "ai" (the art director designed it for this
+    # page) or "template" (built from the page's own metadata, past the plan's
+    # monthly AI allowance). Rows predating the split read as "ai", which is what
+    # they were.
+    generation_mode = Column(String, nullable=False, server_default="ai", default="ai")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     monthly_clicks = Column(Integer, default=0, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)

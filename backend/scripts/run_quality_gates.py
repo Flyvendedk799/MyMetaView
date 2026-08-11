@@ -33,7 +33,7 @@ def gate_regression_tests() -> Tuple[bool, str]:
                 "backend/tests/test_demo_throughput.py",
                 "backend/tests/test_preview_reasoning.py",
                 "backend/tests/test_brand_extractor.py",
-                "backend/tests/test_demo_quality_profiles.py",
+                "backend/tests/test_quality_profiles.py",
                 "backend/tests/test_preview_cache_quality_policy.py",
                 "-v",
                 "--tb=short",
