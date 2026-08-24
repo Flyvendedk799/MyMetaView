@@ -113,15 +113,14 @@ def extract_logo_with_ai(screenshot_bytes: bytes, url: str = "") -> Optional[Dic
         image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
         
         # Call GPT-4o vision
-        client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=30)
+        from backend.services.preview.reasoning.models import spec_for
+        from backend.services.reasoning_client import get_client
+
+        spec = spec_for("logo_detection")
+        client = get_client(timeout=spec.timeout_s)
         
-        try:
-            from backend.prompts.loader import MODEL_BRAND_EXTRACTION
-            model = MODEL_BRAND_EXTRACTION
-        except ImportError:
-            model = "gpt-4o"
         response = client.chat.completions.create(
-            model=model,
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -142,7 +141,6 @@ def extract_logo_with_ai(screenshot_bytes: bytes, url: str = "") -> Optional[Dic
                 }
             ],
             max_tokens=1000,
-            temperature=0.1  # Low temperature for consistent detection
         )
         
         content = response.choices[0].message.content.strip()

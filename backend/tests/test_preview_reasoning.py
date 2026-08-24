@@ -4,6 +4,20 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 
+@pytest.fixture(autouse=True)
+def _closed_breaker():
+    """The reasoning breaker is now shared across stages and processes.
+
+    A test that simulates a failure would otherwise leave it open and every
+    later test in the file would skip its model call and take the fallback.
+    """
+    from backend.services.reasoning_client import reasoning_breaker
+
+    reasoning_breaker().reset()
+    yield
+    reasoning_breaker().reset()
+
+
 class TestStage123OutputParsing:
     """Test that Stage 1-2-3 outputs are correctly parsed."""
 
@@ -13,9 +27,9 @@ class TestStage123OutputParsing:
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = json.dumps(sample_stage_1_2_3_response)
 
-        with patch('backend.services.preview_reasoning.OpenAI') as mock_cls:
+        with patch('backend.services.preview_reasoning.get_client') as mock_factory:
             mock_client = MagicMock()
-            mock_cls.return_value = mock_client
+            mock_factory.return_value = mock_client
             mock_client.chat.completions.create.return_value = mock_response
 
             from backend.services.preview_reasoning import run_stages_1_2_3
@@ -36,9 +50,9 @@ class TestStage123OutputParsing:
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = wrapped
 
-        with patch('backend.services.preview_reasoning.OpenAI') as mock_cls:
+        with patch('backend.services.preview_reasoning.get_client') as mock_factory:
             mock_client = MagicMock()
-            mock_cls.return_value = mock_client
+            mock_factory.return_value = mock_client
             mock_client.chat.completions.create.return_value = mock_response
 
             from backend.services.preview_reasoning import run_stages_1_2_3
@@ -53,9 +67,9 @@ class TestStage123OutputParsing:
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = "This is not JSON at all"
 
-        with patch('backend.services.preview_reasoning.OpenAI') as mock_cls:
+        with patch('backend.services.preview_reasoning.get_client') as mock_factory:
             mock_client = MagicMock()
-            mock_cls.return_value = mock_client
+            mock_factory.return_value = mock_client
             mock_client.chat.completions.create.return_value = mock_response
 
             from backend.services.preview_reasoning import run_stages_1_2_3
@@ -81,9 +95,9 @@ class TestStage123OutputParsing:
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = json.dumps(response_data)
 
-        with patch('backend.services.preview_reasoning.OpenAI') as mock_cls:
+        with patch('backend.services.preview_reasoning.get_client') as mock_factory:
             mock_client = MagicMock()
-            mock_cls.return_value = mock_client
+            mock_factory.return_value = mock_client
             mock_client.chat.completions.create.return_value = mock_response
 
             from backend.services.preview_reasoning import run_stages_1_2_3
@@ -124,9 +138,9 @@ class TestStage456MergedOutput:
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = json.dumps(response_data)
 
-        with patch('backend.services.preview_reasoning.OpenAI') as mock_cls:
+        with patch('backend.services.preview_reasoning.get_client') as mock_factory:
             mock_client = MagicMock()
-            mock_cls.return_value = mock_client
+            mock_factory.return_value = mock_client
             mock_client.chat.completions.create.return_value = mock_response
 
             from backend.services.preview_reasoning import run_stages_4_5_6, _extract_quality_from_merged

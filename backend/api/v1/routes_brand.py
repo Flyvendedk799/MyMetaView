@@ -43,6 +43,13 @@ def _checked_domain_id(
     return domain_id
 
 
+def _invalidate_previews(db, organization_id: int, domain_id, reason: str) -> None:
+    """Bust the preview caches a brand change makes stale."""
+    from backend.services.preview.caching.invalidation import invalidate_org_previews
+
+    invalidate_org_previews(db, organization_id, domain_id=domain_id, reason=reason)
+
+
 def _as_dict(settings: BrandSettingsModel) -> dict:
     """Cache-safe view of a row."""
     return {
@@ -130,8 +137,11 @@ def update_brand_settings(
     db.commit()
     db.refresh(settings)
 
-    # Invalidate cache
+    # Invalidate the settings row *and* the previews built from it. Clearing
+    # only the row is why a customer could change their colors and keep seeing
+    # the old card until the preview TTL ran out.
     invalidate_brand_settings(current_org.id, domain_id)
+    _invalidate_previews(db, current_org.id, domain_id, "brand settings updated")
 
     return settings
 
@@ -173,6 +183,10 @@ async def upload_brand_logo(
     db.commit()
     db.refresh(settings)
     invalidate_brand_settings(current_org.id, domain_id)
+    # A new logo changes every card this org will serve. Without this the
+    # customer waits out the cache TTL and reasonably concludes the upload
+    # silently failed.
+    _invalidate_previews(db, current_org.id, domain_id, "brand logo uploaded")
     return settings
 
 

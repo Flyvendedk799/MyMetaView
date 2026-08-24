@@ -37,6 +37,10 @@ class GoldenURL:
     expected_template_type: Optional[str] = None
     expected_social_proof_present: bool = False
     notes: str = ""
+    # Which writing system the page's copy is in. The corpus skewed entirely
+    # Latin, which meant every typography rule was validated against the one
+    # script where counting characters happens to approximate visual width.
+    script: str = "latin"
 
     def matches_title(self, title: str) -> bool:
         """Fidelity helper: any expected keyword appears in title."""
@@ -219,9 +223,51 @@ SHADOW_CORPUS: List[GoldenURL] = [
 ]
 
 
+# ---- Non-Latin scripts (12) ------------------------------------------------
+# The typography rules — headline sizing, truncation, line breaking, direction —
+# are all width-based rather than character-based, and this is the slice that
+# proves it. CJK is twice as wide per glyph, Arabic and Hebrew read the other
+# way, and German compounds are single tokens wider than the column: three
+# different ways for a character-count rule to be wrong.
+I18N_CORPUS: List[GoldenURL] = [
+    GoldenURL("https://www.rakuten.co.jp", GoldenCorpusCategory.ECOMMERCE,
+              ["楽天", "rakuten"], "product", True, "Japanese e-commerce", "cjk"),
+    GoldenURL("https://www.nintendo.co.jp", GoldenCorpusCategory.SAAS_LANDING,
+              ["任天堂", "nintendo"], "landing", False, "Japanese corporate", "cjk"),
+    GoldenURL("https://www.sony.jp", GoldenCorpusCategory.ECOMMERCE,
+              ["sony", "ソニー"], "product", False, "Japanese product", "cjk"),
+    GoldenURL("https://www.naver.com", GoldenCorpusCategory.SAAS_LANDING,
+              ["naver", "네이버"], "landing", False, "Korean portal", "cjk"),
+    GoldenURL("https://www.kakaocorp.com", GoldenCorpusCategory.SAAS_LANDING,
+              ["kakao", "카카오"], "landing", False, "Korean corporate", "cjk"),
+    GoldenURL("https://www.alibaba.com", GoldenCorpusCategory.ECOMMERCE,
+              ["alibaba"], "product", True, "Chinese marketplace", "cjk"),
+    GoldenURL("https://www.aljazeera.net", GoldenCorpusCategory.DOCS,
+              ["الجزيرة", "aljazeera"], "article", False, "Arabic news (RTL)", "arabic"),
+    GoldenURL("https://www.emirates.com/ae/arabic/",
+              GoldenCorpusCategory.LOCAL_BUSINESS,
+              ["emirates", "طيران"], "landing", False, "Arabic airline (RTL)", "arabic"),
+    GoldenURL("https://www.calcalist.co.il", GoldenCorpusCategory.DOCS,
+              ["כלכליסט", "calcalist"], "article", False, "Hebrew business news (RTL)", "hebrew"),
+    GoldenURL("https://www.sap.com/germany/index.html",
+              GoldenCorpusCategory.SAAS_LANDING,
+              ["sap"], "saas", True, "German compounds", "latin-long"),
+    GoldenURL("https://www.allianz.de", GoldenCorpusCategory.LOCAL_BUSINESS,
+              ["allianz"], "landing", True, "German insurance compounds", "latin-long"),
+    GoldenURL("https://www.bahn.de", GoldenCorpusCategory.LOCAL_BUSINESS,
+              ["bahn", "deutsche"], "landing", False, "German rail compounds", "latin-long"),
+]
+
+
 def get_corpus(include_shadow: bool = False) -> List[GoldenURL]:
-    """Return the corpus, optionally including the shadow rotation."""
-    return GOLDEN_CORPUS + SHADOW_CORPUS if include_shadow else list(GOLDEN_CORPUS)
+    """Return the corpus, optionally including the shadow rotation.
+
+    The i18n slice is part of the main corpus rather than an extra: a
+    typography change that breaks CJK should fail the ordinary run, not a run
+    somebody has to remember to ask for.
+    """
+    base = GOLDEN_CORPUS + I18N_CORPUS
+    return base + SHADOW_CORPUS if include_shadow else base
 
 
 def get_corpus_by_category(
@@ -231,6 +277,19 @@ def get_corpus_by_category(
     """Filter the corpus to a single category."""
     pool = get_corpus(include_shadow=include_shadow)
     return [u for u in pool if u.category == category]
+
+
+def get_corpus_by_script(script: str, include_shadow: bool = False) -> List[GoldenURL]:
+    """The URLs written in one script — the i18n regression slice."""
+    return [u for u in get_corpus(include_shadow=include_shadow) if u.script == script]
+
+
+def script_counts(include_shadow: bool = False) -> Dict[str, int]:
+    """How many URLs per writing system, for stratification checks."""
+    counts: Dict[str, int] = {}
+    for entry in get_corpus(include_shadow=include_shadow):
+        counts[entry.script] = counts.get(entry.script, 0) + 1
+    return counts
 
 
 def category_counts(include_shadow: bool = False) -> Dict[str, int]:

@@ -557,10 +557,14 @@ def extract_design_dna(
     logger.info(f"🧬 Extracting Design DNA for: {url[:50]}...")
     
     try:
-        client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=timeout)
+        from backend.services.preview.reasoning.models import spec_for
+        from backend.services.reasoning_client import get_client
+
+        spec = spec_for("design_dna")
+        client = get_client(timeout=spec.timeout_s)
         
         response = client.chat.completions.create(
-            model="gpt-4o",
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -584,8 +588,6 @@ def extract_design_dna(
                 }
             ],
             max_tokens=2500,
-            temperature=0.0,  # Fully deterministic for consistent results
-            seed=42  # Deterministic seed for reproducibility
         )
         
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -871,10 +873,14 @@ def extract_quick_dna(
 }"""
     
     try:
-        client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=30)
+        from backend.services.preview.reasoning.models import spec_for
+        from backend.services.reasoning_client import get_client
+
+        spec = spec_for("design_dna")
+        client = get_client(timeout=spec.timeout_s)
         
         response = client.chat.completions.create(
-            model="gpt-4o",
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "user",
@@ -891,7 +897,6 @@ def extract_quick_dna(
                 }
             ],
             max_tokens=500,
-            temperature=0.1
         )
         
         content = response.choices[0].message.content.strip()

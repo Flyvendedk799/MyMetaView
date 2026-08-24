@@ -79,50 +79,30 @@ class TestHasRichOgMetadata:
         assert engine._has_rich_og_metadata("<html></html>") is False
 
 
-class TestOrchestratorResultIsUsable:
-    """The multi-agent orchestrator may only skip the art director when it
-    actually replaces it.
+class TestTheMultiAgentOrchestratorIsGone:
+    """It was off in every profile and rejected when forced on.
 
-    The card is only page-specific because the art director hands the renderer a
-    composition — layout, whether to use a visual, which colour carries the
-    panel. A result without one renders from neutral defaults, which is the same
-    card for every site: the "it just looks like a template" bug.
+    Its agents fused HTML metadata into a payload with no composition spec, so
+    the renderer fell back to neutral defaults and every page came out as the
+    same card — the "it just looks like a template" bug. The single-pass art
+    director authors both the copy and the composition, which is the product.
+    These tests exist so nobody quietly reintroduces the second brain.
     """
 
-    def test_rejects_result_with_no_composition_spec(self):
-        assert PreviewEngine._orchestrator_result_is_usable({
-            "title": "Acme — Ship Faster",
-            "composition": {},
-        }) is False
+    def test_config_has_no_multi_agent_switch(self):
+        assert not hasattr(PreviewEngineConfig(), "enable_multi_agent")
 
-    def test_rejects_result_missing_composition_entirely(self):
-        assert PreviewEngine._orchestrator_result_is_usable({
-            "title": "Acme — Ship Faster",
-        }) is False
+    def test_engine_has_no_orchestrator_usability_check(self):
+        """The check only existed to reject the orchestrator's own output."""
+        assert not hasattr(PreviewEngine, "_orchestrator_result_is_usable")
 
-    def test_rejects_composition_that_is_not_a_dict(self):
-        assert PreviewEngine._orchestrator_result_is_usable({
-            "title": "Acme — Ship Faster",
-            "composition": "split",
-        }) is False
+    def test_profiles_carry_no_multi_agent_column(self):
+        from backend.services.quality_profiles import get_quality_profile
 
-    def test_rejects_placeholder_title(self):
-        assert PreviewEngine._orchestrator_result_is_usable({
-            "title": "Untitled",
-            "composition": {"layout": "split", "use_visual": True},
-        }) is False
-
-    def test_accepts_a_complete_result(self):
-        assert PreviewEngine._orchestrator_result_is_usable({
-            "title": "Acme — Ship Faster",
-            "composition": {"layout": "split", "use_visual": True},
-        }) is True
+        for mode in ("template", "fast", "balanced", "ultra"):
+            assert not hasattr(get_quality_profile(mode), "multi_agent")
 
 
-class TestMultiAgentIsOffByDefault:
-    def test_default_config_does_not_enable_the_orchestrator(self):
-        """Production reached it only by inheriting a True default."""
-        assert PreviewEngineConfig().enable_multi_agent is False
-
+class TestEngineDefaults:
     def test_default_config_keeps_ai_reasoning_on(self):
         assert PreviewEngineConfig().enable_ai_reasoning is True

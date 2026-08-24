@@ -1,18 +1,22 @@
-"""LLM-gateway compatibility shim.
+"""LLM-gateway compatibility net — now a detector, not a workaround.
 
-The chat calls across this codebase go through the SubGate gateway, which routes
-to an Anthropic model that returns HTTP 400 for parameters it considers
-unsupported/deprecated — notably ``temperature`` ("deprecated for this model")
-and ``seed``. Dozens of call sites (the multi-agent orchestrator, UI-element
-extractor, design/brand extractors, reasoning stages, …) still pass these, so
-they fail and fall back to weaker output.
+The gateway routes to a model that returns HTTP 400 for ``temperature`` and
+``seed``. This module was the fix: patch the SDK once, drop those parameters
+before every request, and stop dozens of call sites from failing.
 
-Rather than edit every call site, we patch the OpenAI SDK once to drop these
-params before the request is sent. This is a no-op for providers that DO accept
-them (we simply omit and let the model default), and it is safe/idempotent.
+It worked, and it hid the problem. A call site that passed ``temperature``
+looked fine, because the patch quietly removed it — so nobody knew which code
+depended on the patch, and "the orchestrator is broken" was the shape the
+incident took rather than "one parameter needs a config change".
 
-Install is triggered on import (see bottom) and also exposed as
-``install_openai_gateway_compat()`` for explicit calls from entry points.
+The real fix is now upstream: ``ModelSpec.supports_temperature`` declares what
+each model accepts and the call sites simply do not send what it rejects
+(``preview/reasoning/models.py``). Every preview call site has been converted.
+
+What remains here is a net for the paths that have not — ``ai_provider``'s own
+request model, and any future code — and it now **logs a warning naming the
+caller** whenever it actually drops something. A silent workaround becomes a
+signal that one more call site needs converting.
 """
 
 from __future__ import annotations
@@ -37,8 +41,23 @@ _MARKER = "_gateway_compat_patched"
 
 def _wrap(original):
     def _patched(self, *args, **kwargs):
-        for key in _DROP_PARAMS:
-            if key in kwargs:
+        dropped = [key for key in _DROP_PARAMS if key in kwargs]
+        if dropped:
+            # Name the caller: the point is that this should stop happening,
+            # and it cannot stop happening if nobody knows where it happens.
+            import traceback
+
+            caller = "unknown"
+            for frame in reversed(traceback.extract_stack()[:-1]):
+                if "openai" not in frame.filename and "site-packages" not in frame.filename:
+                    caller = f"{frame.filename.rsplit('/', 1)[-1]}:{frame.lineno}"
+                    break
+            logger.warning(
+                "openai_compat dropped %s from a request made at %s — that call "
+                "site should take its parameters from a ModelSpec instead",
+                ", ".join(dropped), caller,
+            )
+            for key in dropped:
                 kwargs.pop(key, None)
         return original(self, *args, **kwargs)
     _patched.__name__ = getattr(original, "__name__", "create")

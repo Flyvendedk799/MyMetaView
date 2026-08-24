@@ -88,10 +88,10 @@ class TestUsageWindow:
 
 
 class TestQualityProfiles:
-    def test_no_profile_uses_the_multi_agent_orchestrator(self):
-        """It returns no composition spec, so every card renders the same."""
+    def test_the_multi_agent_column_is_gone(self):
+        """The orchestrator it gated is deleted; the column would be a lie."""
         for mode in ("template", "fast", "balanced", "ultra"):
-            assert get_quality_profile(mode).multi_agent is False
+            assert not hasattr(get_quality_profile(mode), "multi_agent")
 
     def test_only_the_template_profile_skips_ai_reasoning(self):
         assert get_quality_profile("template").ai_reasoning is False
@@ -143,7 +143,6 @@ class TestDemoAndAppParity:
         ultra = get_quality_profile("ultra")
 
         assert config.enable_ai_reasoning is True
-        assert config.enable_multi_agent is False
         assert config.quality_threshold == ultra.threshold
         assert config.max_quality_iterations == ultra.iterations
         assert config.enforce_target_quality == ultra.enforce_target_quality
@@ -153,7 +152,6 @@ class TestDemoAndAppParity:
     def test_template_lane_makes_no_ai_calls(self):
         config = self._engine_config("template")
         assert config.enable_ai_reasoning is False
-        assert config.enable_multi_agent is False
         assert config.enable_ui_element_extraction is False
 
     def test_lanes_do_not_share_a_cache_namespace(self):

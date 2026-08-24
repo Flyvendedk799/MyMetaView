@@ -14,14 +14,14 @@ the previews beyond an account's monthly AI allowance.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Mapping
 from urllib.parse import parse_qsl, urlparse
 
 
 @dataclass(frozen=True)
 class QualityProfile:
     quality_mode: str
-    multi_agent: bool
     ui_extraction: bool
     threshold: float
     iterations: int
@@ -34,19 +34,21 @@ class QualityProfile:
     # page's own metadata. Cheap, generic, and never the default.
     ai_reasoning: bool = True
 
+    # Per-purpose model overrides, resolved by `preview/reasoning/models.py`.
+    # The one-table principle holds: this is that table gaining a column, not a
+    # second place where model choices live.
+    model_overrides: Mapping[str, str] = field(default_factory=dict)
+
 
 # Backwards-compatible alias — this type used to be demo-only.
 DemoQualityProfile = QualityProfile
 
 
-# multi_agent is False everywhere. The orchestrator fuses HTML metadata into a
-# payload with no composition spec, which renders as the same neutral card for
-# every page; `PreviewEngine._orchestrator_result_is_usable` rejects such a
-# result anyway, so turning it on only buys latency.
+# `model_overrides` lets a lane name a cheaper model for a purpose without a
+# second table (see `preview/reasoning/models.py`). Empty means "use the map".
 _QUALITY_PROFILES: dict[str, QualityProfile] = {
     "template": QualityProfile(
         quality_mode="template",
-        multi_agent=False,
         ui_extraction=False,
         threshold=0.55,
         iterations=1,
@@ -59,7 +61,6 @@ _QUALITY_PROFILES: dict[str, QualityProfile] = {
     ),
     "fast": QualityProfile(
         quality_mode="fast",
-        multi_agent=False,
         ui_extraction=False,
         threshold=0.78,
         iterations=2,
@@ -71,7 +72,6 @@ _QUALITY_PROFILES: dict[str, QualityProfile] = {
     ),
     "balanced": QualityProfile(
         quality_mode="balanced",
-        multi_agent=False,
         ui_extraction=True,
         threshold=0.82,
         iterations=3,
@@ -83,7 +83,6 @@ _QUALITY_PROFILES: dict[str, QualityProfile] = {
     ),
     "ultra": QualityProfile(
         quality_mode="ultra",
-        multi_agent=False,
         ui_extraction=True,
         threshold=0.88,
         iterations=4,

@@ -55,7 +55,17 @@ def on_startup():
     from alembic import command
     
     logger = logging.getLogger(__name__)
-    
+
+    # Traces are written in RQ workers and read here, so the store has to be
+    # shared. Without this the admin "why" view can only ever see traces this
+    # very process produced — which is none of them.
+    try:
+        from backend.services.preview.observability.redis_store import install as install_trace_store
+
+        install_trace_store()
+    except Exception as trace_err:  # noqa: BLE001
+        logger.warning("JobTrace Redis store unavailable: %s", trace_err)
+
     # Run database migrations automatically on startup (production)
     # Migrations are idempotent and safe to run multiple times
     if os.getenv("ENV", "development").lower() == "production":
