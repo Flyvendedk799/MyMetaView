@@ -107,6 +107,9 @@ def render_spec_from(
         "proof": spec.proof,
         "cta_text": spec.cta_text,
         "hide_watermark": spec.hide_watermark,
+        # The site's display font, so a re-render or a platform size is drawn in
+        # the same typeface as the card it re-renders.
+        "font_family": spec.font_family,
         "logo_url": _stash(state, spec.logo_data_uri, "logo"),
         "visual_url": _stash(state, spec.visual_data_uri, "visual"),
         "rendered_layout": rendered_layout,

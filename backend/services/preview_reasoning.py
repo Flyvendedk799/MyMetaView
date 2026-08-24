@@ -1611,7 +1611,23 @@ def _parse_variants(raw: Any, *, main_title: str) -> List[Dict[str, Any]]:
     return out
 
 
-def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> ReasonedPreview:
+_BRAND_BRIEF_HEADER = """
+=== THE SITE OWNER'S OWN BRIEF ===
+This page belongs to a MetaView customer who told us who they are. Treat it as
+context for the copy — who is speaking, to whom, in what register — not as
+content to copy onto the card. The page still decides what is true: never assert
+anything from this brief that the screenshot does not support, and if the brief
+and the page disagree about what the page offers, the page wins. Write the card
+in the page's own language regardless of the language used here.
+
+"""
+
+
+def generate_reasoned_preview(
+    screenshot_bytes: bytes,
+    url: str = "",
+    brand_context: str = "",
+) -> ReasonedPreview:
     """
     Generate a preview using a single, focused AI vision call.
 
@@ -1622,6 +1638,10 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
     Args:
         screenshot_bytes: Raw PNG screenshot
         url: URL for context
+        brand_context: The customer's own identity brief from the My Site tab
+            (name, tagline, what they do, audience, tone). Empty for the demo
+            and for anyone who has not filled it in — the prompt is then exactly
+            what it was before, so nothing about the demo changes.
 
     Returns:
         ReasonedPreview with extracted content
@@ -1640,6 +1660,11 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
     spec = spec_for("art_director")
     client = get_client(timeout=spec.timeout_s)
 
+    brief = (brand_context or "").strip()
+    prompt_text = (
+        f"{SINGLE_PASS_PROMPT}\n{_BRAND_BRIEF_HEADER}{brief}\n" if brief else SINGLE_PASS_PROMPT
+    )
+
     try:
         response = client.chat.completions.create(
             **spec.request_kwargs_without_tokens(),
@@ -1657,7 +1682,7 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": SINGLE_PASS_PROMPT},
+                        {"type": "text", "text": prompt_text},
                         {
                             "type": "image_url",
                             "image_url": {"url": f"data:image/jpeg;base64,{image_base64}", "detail": "high"},

@@ -95,6 +95,34 @@ answered from pixels, and no threshold argues a broken card into acceptability.
 still soft-pass, because a slightly weak real card beats a fallback that is
 generic by construction.
 
+## The customer's brand
+
+Brand settings are configured per connected domain on the app's **My Site** tab,
+and the SaaS job resolves the row for the domain being previewed (falling back
+to the organization default) before it builds the engine config. `preview/
+branding.py` names the fields that actually change a card, and everything that
+consumes them goes through it, so the list cannot drift:
+
+| what the user set | where it lands |
+|---|---|
+| name, tagline, what they do, audience, voice | the art director's brief (`identity_brief`), and the wordmark / subtitle on the card |
+| palette | forced when *always use my brand colours* is on; otherwise used when the page yielded no real palette of its own |
+| logo | fetched and drawn in place of the scraped mark |
+| font | the card's display and body stacks (`_font_stacks`) |
+| layout / panel / accent | composition overrides, on the authored card *and* the deterministic fallback |
+| hide the MetaView mark | the watermark, when the plan includes it |
+
+The demo has no brand settings, so none of this touches it: an empty payload
+takes every path exactly where it went before.
+
+**Disregarding it.** A page that is not really the site's — a guest post, a
+co-branded landing page — can be generated from the page alone: the gallery's
+create/edit dialog carries a *disregard my site branding* toggle, the job takes
+`ignore_site_branding`, and the flag is stored on the preview so a re-roll or a
+bulk re-run does not quietly re-brand the card. It is recorded on the trace as
+`brand_settings_disregarded`. The white-label entitlement is the one thing it
+does not switch off — hiding the mark is paid for, not a styling preference.
+
 ## Models
 
 `preview/reasoning/models.py` is the one table. Purposes name what they need;
@@ -117,13 +145,21 @@ Four layers, each keyed by what actually determines it:
 |---|---|---|
 | screenshot | URL | 6h |
 | brand | **domain** | 7d |
-| reasoning | content hash + model + prompt version | 14d |
-| result | URL + lane | 24h / 48h demo |
+| reasoning | content hash + model + prompt version + **identity brief** | 14d |
+| result | URL + lane, matched on **brand signature** | 24h / 48h demo |
 
 Keying brand by domain is what makes a bulk job over one site extract its brand
 once rather than once per URL. Saving brand settings or uploading a logo clears
 the domain's brand cache and the org's cached previews — before that, a customer
 who uploaded a logo waited out the TTL and reasonably concluded it had failed.
+
+The result cache is keyed by URL, which was safe only while every card for a URL
+looked the same. It no longer is: the customer's palette, mark, font, card
+preferences and identity all reach the render, so a stored card is served only
+when `branding.brand_signature` matches the branding this generation is running
+with — otherwise it is a miss, recorded as `result_cache_brand_changed`. The
+identity brief is likewise part of the reasoning key, because it is part of the
+prompt: copy written for one brand must never be served to another.
 
 The reasoning cache doubles as an eval asset: every entry is a real page's
 art-director output under the current prompt. `replay_reasoning` reads them as a
@@ -201,3 +237,6 @@ wordmark rather than failing.
   baseline and the first run establishes one rather than failing.
 - **`enable_multi_agent` is gone.** So is the orchestrator. Tests assert its
   absence; that is deliberate.
+- **Anything new that changes a card from brand settings belongs in
+  `branding.SIGNIFICANT_FIELDS`**, or the result cache will keep serving cards
+  generated before the customer changed it.

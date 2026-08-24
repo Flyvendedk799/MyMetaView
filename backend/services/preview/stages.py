@@ -198,6 +198,8 @@ class CompositionSpec:
     proof: Optional[str] = None
     cta_text: Optional[str] = None
     hide_watermark: bool = False
+    # The display font chosen on the My Site tab. None means the house font.
+    font_family: Optional[str] = None
     size: str = "wide"
     minimal: bool = False  # built by the deterministic fallback, not the AI
 
@@ -213,6 +215,7 @@ class CompositionSpec:
             "logo_data_uri": self.logo_data_uri,
             "visual_data_uri": self.visual_data_uri,
             "hide_watermark": self.hide_watermark,
+            "font_family": self.font_family,
             "proof": self.proof,
             "cta_text": self.cta_text,
             "size": self.size,

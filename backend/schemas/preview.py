@@ -19,6 +19,11 @@ class PreviewBase(BaseModel):
 
 class PreviewCreate(BaseModel):
     """Schema for creating a new preview."""
+    ignore_site_branding: bool = Field(
+        False,
+        description="Design this preview from the page alone, disregarding the "
+                    "domain's My Site branding when it is generated",
+    )
     url: str = Field(..., description="Full URL of the preview")
     domain: str = Field(..., description="Domain name")
     title: str = Field(..., description="Preview title")
@@ -32,6 +37,11 @@ class PreviewCreate(BaseModel):
 
 class PreviewUpdate(BaseModel):
     """Schema for updating an existing preview."""
+    ignore_site_branding: Optional[bool] = Field(
+        None,
+        description="Whether the next generation of this preview should "
+                    "disregard the domain's My Site branding",
+    )
     title: Optional[str] = Field(None, description="Preview title")
     type: Optional[str] = Field(None, description="Preview type: 'product', 'blog', or 'landing'")
     image_url: Optional[str] = Field(None, description="URL to preview image")
@@ -60,6 +70,11 @@ class Preview(PreviewBase):
         description="Card layout that rendered: typographic, split, stat, "
                     "profile, editorial or product. Null for older previews.",
     )
+    ignore_site_branding: bool = Field(
+        False,
+        description="Whether this card was designed from the page alone, with "
+                    "the domain's My Site branding disregarded",
+    )
     # Read off Preview.can_rerender. The spec it derives from is deliberately
     # not exposed: it is large and carries internal crop URLs.
     can_rerender: bool = Field(
@@ -83,6 +98,7 @@ class Preview(PreviewBase):
                 "tone": "professional",
                 "ai_reasoning": "Detected product page based on metadata signals",
                 "generation_mode": "ai",
+                "ignore_site_branding": False,
                 "created_at": "2024-01-15T10:00:00",
                 "monthly_clicks": 1234,
             }

@@ -4,6 +4,7 @@ from backend.db.session import SessionLocal
 from backend.models.domain import Domain as DomainModel
 from backend.schemas.brand import BrandSettings as BrandSettingsSchema
 from backend.services import brand_resolver
+from backend.services.preview.branding import DISREGARD_KEY
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig, PreviewEngineResult
 from backend.services.preview_type_predictor import predict_preview_type
@@ -98,7 +99,14 @@ def _replace_variants(
         db.add(row)
 
 
-def generate_preview_job(user_id: int, organization_id: int, url: str, domain: str, force_regenerate: bool = False) -> Dict:
+def generate_preview_job(
+    user_id: int,
+    organization_id: int,
+    url: str,
+    domain: str,
+    force_regenerate: bool = False,
+    ignore_site_branding: bool = False,
+) -> Dict:
     """
     Main background job to generate preview for a URL.
 
@@ -111,6 +119,11 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         domain: Domain name
         force_regenerate: If True, bypass the engine cache so a fresh preview is
             produced (used by the "regenerate / re-roll" action and bulk re-runs).
+        ignore_site_branding: If True, design this card from the page alone —
+            the domain's My Site brand (identity, palette, logo, font, card
+            preferences) is not applied. Set per preview from the gallery's
+            "disregard my site branding" toggle; the white-label entitlement is
+            deliberately still honoured.
 
     Returns:
         Dictionary with preview_id and preview data
@@ -198,6 +211,12 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             min_soft_pass_visual=profile.min_soft_pass_visual,
             min_soft_pass_fidelity=profile.min_soft_pass_fidelity,
             brand_settings={
+                # A preview added with branding disregarded carries the flag into
+                # the engine rather than arriving with an empty payload: the
+                # stages read it to explain the choice in the job trace, and it
+                # is part of the cache signature, so a disregarded card and a
+                # branded one for the same URL never stand in for each other.
+                DISREGARD_KEY: bool(ignore_site_branding),
                 "primary_color": brand_schema.primary_color,
                 "secondary_color": brand_schema.secondary_color,
                 "accent_color": brand_schema.accent_color,
@@ -234,8 +253,13 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             sanitized_url, cache_key_prefix=f"saas:preview:{lane.lane}:"
         )
         
-        # Step 6: Apply brand voice rewriting to description
-        rewritten_description = rewrite_to_brand_voice(engine_result.description, brand_schema)
+        # Step 6: Apply brand voice rewriting to description. Disregarding the
+        # site's branding means the page speaks for itself, voice included.
+        rewritten_description = (
+            engine_result.description
+            if ignore_site_branding
+            else rewrite_to_brand_voice(engine_result.description, brand_schema)
+        )
         
         # Step 7: Predict preview type (for database storage)
         # Use blueprint template_type from engine, or fallback to predictor
@@ -288,6 +312,7 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             generation_mode=lane.lane,
             layout=engine_result.rendered_layout,
             render_spec=engine_result.render_spec or None,
+            ignore_site_branding=ignore_site_branding,
         )
 
         # Step 10: Variants — one card per distinct angle the art director found.
@@ -322,6 +347,7 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
                 "type": preview_type,
                 "lane": lane.lane,
                 "layout": engine_result.rendered_layout,
+                "ignore_site_branding": bool(ignore_site_branding),
                 # Which fallbacks fired, and the id that opens the full trace.
                 # Without these a support question about a generic-looking card
                 # has no answer short of re-running the generation.
@@ -371,6 +397,7 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         decision = _schedule_retry_if_transient(
             e, url=url, domain=domain, user_id=user_id,
             organization_id=organization_id,
+            ignore_site_branding=ignore_site_branding,
         )
 
         # Save to Dead Letter Queue (DLQ)
@@ -418,6 +445,7 @@ def _schedule_retry_if_transient(
     domain: str,
     user_id: int,
     organization_id: int,
+    ignore_site_branding: bool = False,
 ):
     """Re-enqueue a failed job when its reason code says that could help.
 
@@ -454,7 +482,7 @@ def _schedule_retry_if_transient(
         queue.enqueue_in(
             __import__("datetime").timedelta(seconds=decision.delay_s),
             generate_preview_job,
-            user_id, organization_id, url, domain,
+            user_id, organization_id, url, domain, False, ignore_site_branding,
             job_timeout=900,
         )
         logger.info("Retrying %s: %s", url, decision.reason)

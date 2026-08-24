@@ -201,6 +201,48 @@ def _font_head() -> str:
     return _FONT_HEAD_CACHE
 
 
+# The customer picks a font on the My Site tab; these are the stacks that pick
+# resolves to. Only three families are embedded (premium_fonts.css), so a choice
+# we cannot embed keeps its name at the front of the stack — Chromium uses it if
+# the container has it — and falls back to an embedded face that will always
+# draw. Keys are lowercased names as stored in brand settings.
+_CJK_FALLBACKS = "'Noto Sans', 'Noto Sans CJK SC'"
+_SCRIPT_FALLBACKS = "'Noto Sans', 'Noto Sans CJK SC', 'Noto Sans Arabic', 'Noto Sans Hebrew'"
+
+_DISPLAY_FONTS: Dict[str, str] = {
+    "bricolage grotesque": "'Bricolage Grotesque'",
+    "ibm plex sans": "'IBM Plex Sans'",
+    "inter": "'Inter', 'IBM Plex Sans'",
+    "system": "system-ui, -apple-system, 'Segoe UI', Roboto",
+}
+_BODY_FONTS: Dict[str, str] = {
+    "bricolage grotesque": "'IBM Plex Sans'",
+    "ibm plex sans": "'IBM Plex Sans'",
+    "inter": "'Inter', 'IBM Plex Sans'",
+    "system": "system-ui, -apple-system, 'Segoe UI', Roboto",
+}
+
+_DEFAULT_DISPLAY = _DISPLAY_FONTS["bricolage grotesque"]
+_DEFAULT_BODY = _BODY_FONTS["bricolage grotesque"]
+
+
+def _font_stacks(font_family: Optional[str]) -> tuple[str, str, str]:
+    """(display, headline, body) CSS stacks for a brand's chosen font.
+
+    The headline stack carries the extra script fallbacks the display stack does
+    not need: a headline is the one place non-Latin copy has to be drawn at
+    size, and losing Arabic or Hebrew there is a broken card, not a styling nit.
+    """
+    key = (font_family or "").strip().lower()
+    display = _DISPLAY_FONTS.get(key, _DEFAULT_DISPLAY)
+    body = _BODY_FONTS.get(key, _DEFAULT_BODY)
+    return (
+        f"{display}, {_CJK_FALLBACKS}, sans-serif",
+        f"{display}, {_SCRIPT_FALLBACKS}, sans-serif",
+        f"{body}, {_CJK_FALLBACKS}, system-ui, sans-serif",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Color helpers
 # ---------------------------------------------------------------------------
@@ -354,7 +396,7 @@ ${font_head}
   .card {
     width:${card_w}px; height:${card_h}px; position:relative; overflow:hidden;
     background:${panel}; color:${ink}; display:flex; flex-direction:${card_dir};
-    font-family:'IBM Plex Sans', 'Noto Sans', 'Noto Sans CJK SC', system-ui, sans-serif;
+    font-family:${body_font};
     -webkit-font-smoothing:antialiased;
   }
   .accent-shape {
@@ -382,13 +424,12 @@ ${font_head}
     border-radius:${plate_radius}px; background:${plate_bg};
   }
   .wordmark {
-    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC', sans-serif; font-weight:600; font-size:22px;
+    font-family:${display_font}; font-weight:600; font-size:22px;
     letter-spacing:-0.01em; color:${ink};
   }
   .headline-wrap { display:flex; flex-direction:column; gap:${gap}px; }
   .headline {
-    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC',
-                'Noto Sans Arabic', 'Noto Sans Hebrew', sans-serif; font-weight:600;
+    font-family:${headline_font}; font-weight:600;
     font-size:${hsize}px; line-height:1.05; letter-spacing:${headline_tracking};
     color:${ink}; max-width:${headline_mw};
     /* Latin tracking is negative for optical tightness; CJK and Arabic are
@@ -428,7 +469,7 @@ ${font_head}
 
   /* --- stat: the proof number is the hero, the headline supports it --- */
   .stat-value {
-    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC', sans-serif; font-weight:700;
+    font-family:${display_font}; font-weight:700;
     font-size:${stat_sz}px; line-height:0.92; letter-spacing:-0.04em; color:${ink};
   }
   .stat-label {
@@ -518,6 +559,7 @@ def _build_html(
     cta_text: Optional[str] = None,
     size: CardSize = DEFAULT_SIZE,
     logo_plate: Optional[str] = None,
+    font_family: Optional[str] = None,
 ) -> str:
     # Columns only work when there is width to divide. On square and portrait
     # cards the visual stacks above the text instead.
@@ -677,8 +719,13 @@ def _build_html(
     stat_len = len(split_proof(proof)[0]) if layout == "stat" else 0
     stat_sz = int((186 if stat_len <= 6 else 148 if stat_len <= 9 else 112) * k)
 
+    display_font, headline_font, body_font = _font_stacks(font_family)
+
     return _CARD_TEMPLATE.substitute(
         font_head=_font_head(),
+        display_font=display_font,
+        headline_font=headline_font,
+        body_font=body_font,
         card_w=str(size.width),
         card_h=str(size.height),
         card_dir="column" if stacked else "row",
@@ -752,6 +799,7 @@ def render_premium_card(
     hide_watermark: bool = False,
     proof: Optional[str] = None,
     cta_text: Optional[str] = None,
+    font_family: Optional[str] = None,
     size: str = "wide",
 ) -> bytes:
     """Render an on-identity premium share card to PNG bytes.
@@ -765,7 +813,7 @@ def render_premium_card(
         title=title, subtitle=subtitle, url=url, brand_name=brand_name,
         colors=colors, composition=composition, logo_data_uri=logo_data_uri,
         visual_data_uri=visual_data_uri, hide_watermark=hide_watermark,
-        proof=proof, cta_text=cta_text, size=size,
+        proof=proof, cta_text=cta_text, font_family=font_family, size=size,
     )[0]
 
 
@@ -782,6 +830,7 @@ def render_premium_card_detailed(
     hide_watermark: bool = False,
     proof: Optional[str] = None,
     cta_text: Optional[str] = None,
+    font_family: Optional[str] = None,
     size: str = "wide",
 ) -> tuple[bytes, str]:
     """As ``render_premium_card``, but also returns the layout that rendered.
@@ -836,6 +885,7 @@ def render_premium_card_detailed(
         hide_watermark=hide_watermark,
         proof=proof,
         cta_text=cta_text,
+        font_family=font_family,
         size=card_size,
     )
 

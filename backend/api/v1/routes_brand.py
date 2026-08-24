@@ -261,6 +261,9 @@ def render_brand_preview(
             composition=composition,
             logo_data_uri=logo_data_uri,
             hide_watermark=hide_watermark,
+            # The sample has to be drawn in the font the cards will be drawn in,
+            # or the one control with no other feedback is the one that lies.
+            font_family=getattr(s, "font_family", None),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Preview render failed: {e}")

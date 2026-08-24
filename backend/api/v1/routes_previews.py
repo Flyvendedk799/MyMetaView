@@ -98,6 +98,7 @@ def create_or_update_preview(
             existing_preview.image_url = preview_in.image_url
         if preview_in.domain is not None:
             existing_preview.domain = preview_in.domain
+        existing_preview.ignore_site_branding = bool(preview_in.ignore_site_branding)
         
         db.commit()
         db.refresh(existing_preview)
@@ -125,6 +126,7 @@ def create_or_update_preview(
         type=preview_in.type,
         image_url=preview_in.image_url or "",
         description=preview_in.description,
+        ignore_site_branding=bool(preview_in.ignore_site_branding),
         user_id=current_user.id,
         organization_id=current_org.id,
         created_at=datetime.utcnow(),
