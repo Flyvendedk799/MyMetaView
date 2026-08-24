@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
-"""Reproducible runner for the demo preview engine corpus.
+"""Reproducible runner for the preview engine corpus.
 
-This is the script the plan calls "reproducible run command/script". It
-walks the golden corpus, calls the engine, and writes per-URL outputs into
-``artifacts/baseline/<date>/``. The same script is invoked from the nightly
-CI workflow (Phase 7) to drive the regression dashboard.
+Walks the golden corpus, generates a card for each URL, **keeps the rendered
+PNG and scores its pixels**, and writes everything into
+``artifacts/baseline/<date>/``.
+
+The scoring is the part that makes this a gate rather than a report. Before it,
+a run could be green while every card shipped a headline at 1.2:1 contrast,
+because every metric was read off the result dict rather than the artefact. Now
+each card is measured — contrast, overflow, logo occupancy, palette match,
+gradient-only — and ``--gate`` fails the build when a run is worse than the
+stored baseline.
 
 Usage:
+    # nightly: run, score, record the trend, update the baseline
     python -m backend.scripts.preview_engine.run_corpus \\
-        --output-dir artifacts/baseline \\
-        --max-urls 5  # smoke run
+        --output-dir artifacts/baseline --update-baseline
+
+    # PR: run, score, fail if it regressed
+    python -m backend.scripts.preview_engine.run_corpus \\
+        --output-dir artifacts/pr --gate --max-urls 12
 """
 from __future__ import annotations
 
@@ -66,7 +76,34 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                         help="Concurrent jobs (default 2)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Just print the corpus and exit")
+    parser.add_argument("--gate", action="store_true",
+                        help="Exit non-zero when this run is worse than the baseline")
+    parser.add_argument("--update-baseline", action="store_true",
+                        help="Write this run's scores as the new baseline")
+    parser.add_argument("--baseline", default="artifacts/corpus-baseline.json",
+                        help="Path to the stored baseline scores")
+    parser.add_argument("--trend", default="artifacts/corpus-trend.jsonl",
+                        help="Append-only trend file, one line per run")
+    parser.add_argument("--no-score", action="store_true",
+                        help="Skip visual scoring (a smoke run that only checks it works)")
     return parser.parse_args(argv)
+
+
+def _git_commit() -> str:
+    """The commit under test, so a trend point can be traced to a change."""
+    import subprocess
+
+    for env_var in ("GITHUB_SHA", "RAILWAY_GIT_COMMIT_SHA", "COMMIT_SHA"):
+        value = os.environ.get(env_var)
+        if value:
+            return value[:12]
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5,
+        )
+        return out.stdout.strip()[:12] if out.returncode == 0 else "unknown"
+    except Exception:  # noqa: BLE001
+        return "unknown"
 
 
 def make_run_dir(base: str) -> Path:
@@ -126,7 +163,15 @@ def run_single(
             "title_match": entry.matches_title(result.title or ""),
             "default_palette_used": _has_default_palette(result.blueprint or {}),
             "primary_image_url": result.composited_preview_image_url,
+            "blueprint": result.blueprint or {},
+            "rendered_layout": result.rendered_layout,
+            # Which fallbacks fired. A run where half the cards took the
+            # favicon path is a different run from one where none did, even if
+            # both score the same on average.
+            "degradations": result.degradations,
+            "job_trace_id": result.job_id,
         })
+        _save_card(result.composited_preview_image_url, output_dir, entry.url)
     except Exception as exc:  # noqa: BLE001
         logger.exception("Corpus run failed for %s", entry.url)
         record.update({
@@ -138,9 +183,36 @@ def run_single(
     record["elapsed_seconds"] = round(time.time() - started, 2)
     record["finished_at"] = datetime.utcnow().isoformat()
 
-    safe_name = entry.url.replace("https://", "").replace("/", "_")[:120]
-    (output_dir / f"{safe_name}.json").write_text(json.dumps(record, indent=2))
+    (output_dir / f"{_safe_name(entry.url)}.json").write_text(json.dumps(record, indent=2))
     return record
+
+
+def _save_card(image_url: Optional[str], output_dir: Path, source_url: str) -> Optional[Path]:
+    """Keep the rendered PNG next to its record.
+
+    Storing the artefact is what lets a human look at a regression the scores
+    flagged, and what lets a re-score run without regenerating.
+    """
+    if not image_url:
+        return None
+    try:
+        from backend.services.preview.net import fetch
+
+        result = fetch(image_url, timeout=20.0)
+        if not result.ok:
+            return None
+        cards = output_dir / "cards"
+        cards.mkdir(parents=True, exist_ok=True)
+        path = cards / (_safe_name(source_url) + ".png")
+        path.write_bytes(result.content)
+        return path
+    except Exception as exc:  # noqa: BLE001
+        logger.info("Could not save card for %s: %s", source_url, exc)
+        return None
+
+
+def _safe_name(url: str) -> str:
+    return url.replace("https://", "").replace("http://", "").replace("/", "_")[:120]
 
 
 def _has_default_palette(blueprint: Dict[str, Any]) -> bool:
@@ -212,10 +284,85 @@ def main(argv: Optional[List[str]] = None) -> int:
                 records.append(fut.result())
 
     summary = aggregate(records)
-    summary_path = run_dir / "SUMMARY.json"
-    summary_path.write_text(json.dumps(summary, indent=2))
+    (run_dir / "SUMMARY.json").write_text(json.dumps(summary, indent=2))
     logger.info("Run complete: %s", summary)
+
+    if args.no_score:
+        logger.info("Visual scoring skipped (--no-score)")
+        return 0
+
+    # ---- score the cards, not the dicts -------------------------------
+    from backend.services.preview.corpus.scoring import (
+        append_trend,
+        compare_runs,
+        load_baseline,
+        save_baseline,
+        score_run,
+    )
+
+    scores = score_run(
+        records,
+        commit=_git_commit(),
+        ran_at=datetime.utcnow().isoformat(),
+        fetch_image=lambda url: _read_local_card(run_dir, records, url),
+    ).to_dict()
+    (run_dir / "SCORES.json").write_text(json.dumps(scores, indent=2))
+    logger.info(
+        "Visual scores: mean=%.3f contrast=%.2f pass_rate=%.2f gradient_only=%d unreadable=%d",
+        scores["mean_overall"], scores["mean_title_contrast"], scores["pass_rate"],
+        scores["gradient_only_count"], scores["unreadable_count"],
+    )
+    if scores["degradation_counts"]:
+        logger.info("Degradations across the run: %s", scores["degradation_counts"])
+
+    append_trend(Path(args.trend), scores)
+
+    baseline_path = Path(args.baseline)
+    comparison = compare_runs(scores, load_baseline(baseline_path))
+    print(comparison.report())
+    (run_dir / "COMPARISON.json").write_text(json.dumps({
+        "regressed": comparison.regressed,
+        "reasons": comparison.reasons,
+        "improvements": comparison.improvements,
+        "deltas": comparison.deltas,
+        "per_url_regressions": comparison.per_url_regressions,
+    }, indent=2))
+
+    # Update the baseline only when asked and only when the run is not a
+    # regression — otherwise a bad night silently becomes the new normal and
+    # the gate can never fire again.
+    if args.update_baseline and not comparison.regressed:
+        save_baseline(baseline_path, scores)
+        logger.info("Baseline updated: %s", baseline_path)
+    elif args.update_baseline:
+        logger.warning("Baseline NOT updated — this run regressed")
+
+    if args.gate and comparison.regressed:
+        logger.error("Corpus gate failed")
+        return 1
     return 0
+
+
+def _read_local_card(run_dir: Path, records: List[Dict[str, Any]], image_url: str) -> Optional[bytes]:
+    """Score the PNG we already saved rather than downloading it again.
+
+    Falls back to a guarded fetch when the local copy is missing, so a run that
+    failed to save a card is still scored rather than silently counted as a
+    render failure.
+    """
+    for record in records:
+        if record.get("primary_image_url") == image_url:
+            path = run_dir / "cards" / (_safe_name(record.get("url", "")) + ".png")
+            if path.exists():
+                return path.read_bytes()
+            break
+    try:
+        from backend.services.preview.net import fetch
+
+        result = fetch(image_url, timeout=15.0)
+        return result.content if result.ok else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -314,7 +314,24 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             db,
             user_id=user_id,
             action="preview.ai_job.completed",
-            metadata={"preview_id": preview.id, "url": sanitized_url, "domain": domain, "type": preview_type},
+            metadata={
+                "preview_id": preview.id,
+                "url": sanitized_url,
+                "domain": domain,
+                "type": preview_type,
+                "lane": lane.lane,
+                "layout": engine_result.rendered_layout,
+                # Which fallbacks fired, and the id that opens the full trace.
+                # Without these a support question about a generic-looking card
+                # has no answer short of re-running the generation.
+                "degradations": engine_result.degradations,
+                "job_trace_id": engine_result.job_id,
+                "quality": {
+                    "overall": (engine_result.quality_scores or {}).get("overall"),
+                    "gate_status": (engine_result.quality_scores or {}).get("gate_status"),
+                    "is_fallback": bool((engine_result.quality_scores or {}).get("is_fallback")),
+                },
+            },
             request=None  # No request in background job
         )
         

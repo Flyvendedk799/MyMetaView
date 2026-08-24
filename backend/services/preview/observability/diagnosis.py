@@ -46,6 +46,15 @@ def diagnose(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         verdict = "unknown"
 
     bottleneck = _identify_bottleneck(stages)
+    degradations = trace_payload.get("degradations") or []
+    unhealthy = trace_payload.get("unhealthy_degradations") or []
+
+    # A finished job that limped through five fallbacks and one that sailed
+    # through are the same "success" without this. The trail is the answer to
+    # the question support actually asks, which is not "did it fail?" but "why
+    # does this card look generic?".
+    if verdict == "success" and unhealthy:
+        verdict = "degraded"
 
     return {
         "job_id": trace_payload.get("job_id"),
@@ -67,6 +76,82 @@ def diagnose(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         "ai_call_count": trace_payload.get("ai_call_count"),
         "bottleneck_stage": bottleneck,
         "warnings": trace_payload.get("warnings") or [],
+        "degradation_trail": trace_payload.get("degradation_trail") or "",
+        "degradations": degradations,
+        "unhealthy_degradations": unhealthy,
+        "explanation": explain(degradations),
+        "ai_cost_usd": round(float(trace_payload.get("ai_cost_usd") or 0.0), 6),
+        "stage_costs": _stage_costs(stages),
+        "stage_ms": {s.get("name"): int(s.get("duration_ms") or 0) for s in stages},
+        "over_budget_stages": [
+            s.get("name") for s in stages
+            if s.get("budget_ms") and float(s.get("duration_ms") or 0) > float(s["budget_ms"])
+        ],
+    }
+
+
+# What each degradation means, in the words an operator would use. Keyed by
+# code so the admin panel renders a sentence rather than a slug.
+_EXPLANATIONS: Dict[str, str] = {
+    "capture_hedged_to_api": "The browser was slow, so the screenshot API answered instead.",
+    "capture_html_only": "No screenshot — the card was built from the page's markup.",
+    "capture_screenshot_missing": "The page rendered no usable screenshot.",
+    "capture_circuit_open": "This domain has failed repeatedly; capture was skipped.",
+    "capture_placeholder": "The page could not be captured at all.",
+    "brand_extraction_failed": "The page's brand identity could not be read.",
+    "brand_logo_fallback_favicon": "No header logo — the favicon was used instead.",
+    "brand_logo_fallback_screenshot": "The logo was cropped out of the screenshot.",
+    "brand_logo_svg_skipped": "The logo is an SVG and no rasterizer is installed.",
+    "brand_logo_none": "No usable logo was found; the card shows the text wordmark.",
+    "brand_colors_default": "No dominant brand color; a neutral palette was used.",
+    "reasoning_skipped_template_lane": "Template lane — the card uses the page's own metadata.",
+    "reasoning_fallback_html": "The art director was unavailable; the page's og: tags were used.",
+    "reasoning_timeout": "The art director ran past its deadline.",
+    "reasoning_schema_repaired": "The model's output needed repairing before use.",
+    "composition_layout_degraded": "The requested layout needed an asset that was missing.",
+    "composition_focal_crop_rejected": "The hero crop looked like page chrome, so no panel was used.",
+    "composition_focal_crop_failed": "The hero crop could not be taken.",
+    "composition_logo_panel_contrast_fix": "The logo would not have been visible; the panel was adjusted.",
+    "composition_logo_dropped_unusable": "The logo read as a smudge at card size; the wordmark was used.",
+    "premium_render_minimal_spec": "The card was rendered from the deterministic minimal spec.",
+    "premium_render_failed": "The renderer could not produce a card.",
+    "render_upload_failed": "The card rendered but could not be stored.",
+    "quality_soft_pass": "Quality was below target but the card is shippable.",
+    "quality_retry": "The first card was rejected and regenerated.",
+    "quality_pixel_critic_fail": "The visual critic flagged problems with the card.",
+    "quality_fallback_card": "Quality gates rejected the card; the minimal one shipped.",
+    "budget_stage_exceeded": "A stage ran past its time budget and degraded.",
+    "budget_total_exceeded": "The generation ran out of time.",
+}
+
+
+def explain(degradations: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    """Turn the trail into sentences, keeping only what went less than perfectly."""
+    out: List[Dict[str, str]] = []
+    for event in degradations:
+        code = event.get("code")
+        if event.get("healthy") or code not in _EXPLANATIONS:
+            continue
+        out.append({
+            "code": code,
+            "stage": event.get("stage", ""),
+            "says": _EXPLANATIONS[code],
+            "detail": event.get("detail") or "",
+        })
+    return out
+
+
+def _stage_costs(stages: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Per-stage AI spend — the breakdown behind cost-per-preview."""
+    return {
+        s.get("name"): {
+            "usd": round(float(s.get("ai_cost_usd") or 0.0), 6),
+            "calls": int(s.get("ai_calls") or 0),
+            "tokens_in": int(s.get("ai_tokens_input") or 0),
+            "tokens_out": int(s.get("ai_tokens_output") or 0),
+        }
+        for s in stages
+        if float(s.get("ai_cost_usd") or 0.0) > 0 or int(s.get("ai_calls") or 0) > 0
     }
 
 

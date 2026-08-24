@@ -36,6 +36,7 @@ def _run_worker(queue_names, name):
     """Entry point for a single worker process: drain the given queues forever."""
     setup_logging(level="INFO")
     logger = logging.getLogger(f"rq.worker.{name}")
+    _install_trace_store()
     redis_conn = get_rq_redis_connection()
     queues = [Queue(q, connection=redis_conn) for q in queue_names]
     worker = Worker(queues, connection=redis_conn, name=f"{name}-{os.getpid()}")
@@ -64,6 +65,16 @@ def _build_specs():
         # Bulk first, then help with interactive work when no bulk is queued.
         specs.append(([BULK_QUEUE, INTERACTIVE_QUEUE], f"bulk{i + 1}"))
     return specs
+
+
+def _install_trace_store() -> None:
+    """Share this worker's job traces with the web process that reads them."""
+    try:
+        from backend.services.preview.observability.redis_store import install
+
+        install()
+    except Exception as exc:  # noqa: BLE001 — tracing never blocks the worker
+        logging.getLogger(__name__).warning("JobTrace Redis store unavailable: %s", exc)
 
 
 def main():

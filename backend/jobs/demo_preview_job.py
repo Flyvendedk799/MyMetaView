@@ -265,6 +265,13 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
                     "message": (result.message or "")[:200],
                     "image_url": result.composited_preview_image_url or result.screenshot_url,
                     "trace_url": result.trace_url,
+                    # The ordered trail of fallbacks this generation took. A
+                    # completed job that limped through five of them and one
+                    # that sailed through look identical without it, and "why
+                    # does this card look generic?" is the question that gets
+                    # asked. `job_id` opens the full trace in the admin panel.
+                    "degradations": result.degradations,
+                    "job_trace_id": result.job_id,
                     "request_id": request_id,
                     "quality_mode": quality_mode,
                     "generation_profile": generation_profile,
