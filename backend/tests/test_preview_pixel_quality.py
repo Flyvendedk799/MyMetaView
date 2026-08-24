@@ -124,6 +124,79 @@ class TestOverflow:
         assert score_card(_png(image), expect_logo=False).overflow_risk > 0.2
 
 
+class TestDeliberateChoicesAreNotDefects:
+    """The gate acts on these scores, so a design choice scored as a defect
+    replaces a good card with a generic fallback. Both of these did."""
+
+    def test_an_absent_logo_is_not_scored_as_a_missing_one(self, real_card):
+        """A brand with no mark renders the wordmark by design. Scoring that as
+        an empty logo slot marked a 7:1-contrast card down by a whole grade."""
+        expecting = score_card(real_card, expect_logo=True)
+        not_expecting = score_card(real_card, expect_logo=False)
+        assert not_expecting.overall > expecting.overall
+        assert not_expecting.issues == []
+
+    def test_a_bleeding_panel_is_not_scored_as_overflow(self):
+        """A split card's visual panel reaches three edges on purpose.
+
+        Reading those pixels as a clipped headline scored a good card at 1.00
+        overflow, failed the gate, and shipped the generic fallback instead.
+        Pixel statistics cannot tell that panel from ink — the renderer lays a
+        panel-coloured scrim over the hero precisely to tie it to the card,
+        which makes it cluster like a single ink — so the layout decides.
+        """
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1200, 630), (11, 59, 46))
+        draw = ImageDraw.Draw(image)
+        draw.text((70, 250), "Ship faster", font=_font(64), fill=(251, 251, 249))
+        for i in range(20):
+            draw.rectangle([700 + (i % 5) * 100, (i // 5) * 160,
+                            790 + (i % 5) * 100, 150 + (i // 5) * 160],
+                           fill=(20 + i * 11, 90, 200 - i * 9))
+        card = _png(image)
+
+        assert score_card(card, layout="split", expect_logo=False).overflow_risk == 0
+        assert score_card(card, layout="product", expect_logo=False).overflow_risk == 0
+
+    def test_a_panel_layout_still_guards_its_text_column(self):
+        """Only the panel's edges are exempt. The text column's own left edge is
+        still pure margin, so ink there is still a bug."""
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1200, 630), (11, 59, 46))
+        draw = ImageDraw.Draw(image)
+        draw.text((-40, 300), "Escaping left", font=_font(64), fill=(251, 251, 249))
+
+        assert score_card(_png(image), layout="split", expect_logo=False).overflow_risk > 0
+
+    @pytest.mark.parametrize("draw_overflow,label", [
+        (lambda d, f: d.text((70, -20), "Headline clipped at the top", font=f,
+                             fill=(251, 251, 249)), "top"),
+        (lambda d, f: d.text((820, 250), "Running off the right", font=f,
+                             fill=(251, 251, 249)), "right"),
+        (lambda d, f: d.text((70, 590), "Pushed off the bottom", font=f,
+                             fill=(251, 251, 249)), "bottom"),
+    ])
+    def test_real_overflow_still_fails(self, draw_overflow, label):
+        """The relaxations must not blind the detector to actual clipping.
+
+        An earlier density-based rule missed bottom overflow entirely, because
+        a clipped headline covers a third of a 12px strip — denser than some
+        photographs.
+        """
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1200, 630), (11, 59, 46))
+        draw = ImageDraw.Draw(image)
+        draw.text((70, 250), "Ship faster", font=_font(64), fill=(251, 251, 249))
+        draw_overflow(draw, _font(64))
+
+        score = score_card(_png(image), expect_logo=False, layout="typographic")
+        assert score.overflow_risk > 0, f"{label} overflow went undetected"
+        assert not score.passed
+
+
 class TestVerdicts:
     def test_a_good_card_passes(self, real_card):
         verdict = evaluate_card(real_card, policy=SoftPassPolicy(threshold=0.75),

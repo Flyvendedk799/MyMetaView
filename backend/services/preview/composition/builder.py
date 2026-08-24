@@ -231,8 +231,8 @@ def build_minimal_spec(
     logo_uri = brand.logo_data_uri if logo_is_usable(brand.logo_data_uri) else None
 
     state.trace.degrade(
-        Degradation.PREMIUM_RENDER_MINIMAL_SPEC, Stage.COMPOSITION,
-        detail="reasoning unavailable; rendering the deterministic minimal card",
+        Degradation.COMPOSITION_MINIMAL_SPEC, Stage.COMPOSITION,
+        detail="building the deterministic minimal card — title, palette, wordmark",
     )
     return CompositionSpec(
         title=resolved_title,

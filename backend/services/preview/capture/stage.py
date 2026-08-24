@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 from backend.services.preview.budgets import StageBudget
 from backend.services.preview.caching.layers import ScreenshotCache, domain_of
-from backend.services.preview.net import SSRFError, guard_url
+from backend.services.preview.net import SSRFError, UnresolvableHost, guard_url
 from backend.services.preview.observability.reason_codes import (
     Degradation,
     FailureReason,
@@ -209,7 +209,18 @@ def capture_page(state: PipelineState) -> CaptureResult:
 
     try:
         guard_url(url)
+    except UnresolvableHost as exc:
+        # DNS said no. That is the world being unreliable, not a request we must
+        # not make — so it degrades like any other capture failure and the retry
+        # policy is allowed to try again.
+        state.trace.degrade(
+            Degradation.CAPTURE_PLACEHOLDER, Stage.CAPTURE,
+            detail=str(exc), reason=FailureReason.CAPTURE_NETWORK_ERROR,
+        )
+        raise ValueError(f"Could not resolve {url}: {exc}") from exc
     except SSRFError as exc:
+        # The host resolves somewhere we are not allowed to reach. Retrying
+        # would make the same forbidden request again.
         state.trace.degrade(
             Degradation.CAPTURE_PLACEHOLDER, Stage.CAPTURE,
             detail=str(exc), reason=FailureReason.CAPTURE_BLOCKED,

@@ -35,6 +35,20 @@ class SSRFError(ValueError):
     """A URL was refused because it points somewhere we must not fetch."""
 
 
+class UnresolvableHost(SSRFError):
+    """The host does not resolve — which is not the same as forbidden.
+
+    Both stop the fetch, but they mean opposite things downstream. A host that
+    resolves to a private address is a request we must never make, so retrying
+    it is pointless and slightly alarming. A host that does not resolve at all
+    may simply be a DNS blip or a domain that came back a minute later, and the
+    retry policy should treat it as the transient network failure it is.
+
+    Conflating them meant a temporary DNS failure was recorded as
+    ``capture_blocked`` and never retried.
+    """
+
+
 @dataclass(frozen=True)
 class UrlPolicy:
     """What counts as a fetchable URL.
@@ -139,10 +153,10 @@ def guard_url(
     try:
         addresses = _addresses_for(host)
     except socket.gaierror as exc:
-        raise SSRFError(f"dns resolution failed for {host}: {exc}") from exc
+        raise UnresolvableHost(f"dns resolution failed for {host}: {exc}") from exc
 
     if not addresses:
-        raise SSRFError(f"dns returned no addresses for {host}")
+        raise UnresolvableHost(f"dns returned no addresses for {host}")
 
     if not policy.allow_private:
         bad = [a for a in addresses if not _is_public_address(a)]

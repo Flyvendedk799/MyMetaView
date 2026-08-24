@@ -283,43 +283,124 @@ def _sample_pixels(region) -> List[RGB]:
     ]
 
 
-def text_overflow_risk(image_bytes: bytes) -> float:
+# Which edges are pure margin, per layout. On a typographic card every edge is
+# margin and ink there is a bug. On a split or product card the visual panel
+# owns the top, right and bottom — it is *supposed* to reach them — so only the
+# text column's own left edge is a place where escaped ink means anything.
+#
+# Trying to tell a bleeding panel from clipped type by pixel statistics does not
+# work: the renderer lays a panel-coloured scrim over the hero precisely to tie
+# it to the card, which is exactly what makes those pixels cluster like a single
+# ink. Knowing the layout is the answer, and every caller in the engine has it.
+_MARGIN_EDGES = {
+    "split": ("left",),
+    "product": ("left",),
+}
+_ALL_EDGES = ("top", "bottom", "left", "right")
+
+# Ink at an edge is type if it clusters in colour. Measured: a clipped headline
+# spreads ~2 ΔE across its outliers (one ink), a flat bar 0, a photograph ~41.
+_INK_CLUSTER_SPREAD = 18.0
+
+# Below this fraction of an edge's length there is nothing to judge — a few
+# anti-aliased pixels are not a clipped headline. Sized against the smallest
+# real failure: one 64px line of copy crossing a 630px vertical edge marks
+# about 2% of it, and a clean card marks 0%.
+_MIN_EDGE_COVERAGE = 0.01
+
+
+def text_overflow_risk(
+    image_bytes: bytes,
+    *,
+    layout: Optional[str] = None,
+) -> float:
     """0 = copy sits inside the safe area, 1 = ink is running off the edge.
 
-    Ink in the last 2% of the card on any side means the layout overflowed —
-    the renderer's padding guarantees a margin, so pixels there are a bug.
+    Ink in the outer 2% means the layout overflowed: the renderer's padding
+    guarantees a margin, so glyphs there are a bug.
+
+    Which edges count depends on the layout — a split card's panel reaches
+    three of them by design. Pass ``layout``; without it every edge is checked,
+    which is right for a caller scoring an unknown card and will over-report on
+    a panel layout.
+
+    Coverage is measured along each edge's *length* rather than as a share of
+    the strip's pixels. The top strip is 1200x12 and the right strip 24x630, so
+    the same escaped word covers 3% of one and 0.4% of the other; "what
+    fraction of this edge has ink on it" means the same thing for both.
     """
     try:
         img = _open(image_bytes)
     except Exception:  # noqa: BLE001
         return 0.0
 
-    w, h = img.size
-    margin_w = max(2, int(w * 0.02))
-    margin_h = max(2, int(h * 0.02))
+    width, height = img.size
+    margin_w = max(2, int(width * 0.02))
+    margin_h = max(2, int(height * 0.02))
     interior_mean = _mean_color(_region(img, CONTENT_BOX))
+    edges = _MARGIN_EDGES.get((layout or "").lower(), _ALL_EDGES)
 
-    strips = [
-        img.crop((0, 0, w, margin_h)),
-        img.crop((0, h - margin_h, w, h)),
-        img.crop((0, 0, margin_w, h)),
-        img.crop((w - margin_w, 0, w, h)),
-    ]
+    boxes = {
+        "top": ((0, 0, width, margin_h), "horizontal"),
+        "bottom": ((0, height - margin_h, width, height), "horizontal"),
+        "left": ((0, 0, margin_w, height), "vertical"),
+        "right": ((width - margin_w, 0, width, height), "vertical"),
+    }
+
     worst = 0.0
-    for strip in strips:
-        pixels = list(strip.resize((32, 8)).getdata())
-        if not pixels:
-            continue
-        # "Ink" = a pixel far from both the strip's own background and the card
-        # interior. A colored panel bleeding to the edge is by design; a glyph
-        # is not, and a glyph is a high-contrast outlier within its strip.
-        strip_bg = _mean_color(strip)
-        outliers = sum(
-            1 for p in pixels
-            if delta_e(p, strip_bg) > 28 and delta_e(p, interior_mean) > 20
-        )
-        worst = max(worst, outliers / len(pixels))
+    for edge in edges:
+        box, axis = boxes[edge]
+        worst = max(worst, _edge_ink_coverage(img.crop(box), axis, interior_mean))
     return round(min(1.0, worst * 4.0), 3)
+
+
+def _edge_ink_coverage(strip, axis: str, interior_mean: RGB) -> float:
+    """What fraction of this edge's length has type-like ink touching it."""
+    width, height = strip.size
+    if width < 2 or height < 2:
+        return 0.0
+
+    pixels = strip.load()
+    strip_bg = _mean_color(strip)
+    along = width if axis == "horizontal" else height
+    across = height if axis == "horizontal" else width
+
+    ink_positions = 0
+    ink_colours: List[RGB] = []
+    for position in range(along):
+        found = False
+        for depth in range(across):
+            pixel = pixels[position, depth] if axis == "horizontal" else pixels[depth, position]
+            if delta_e(pixel, strip_bg) > 28 and delta_e(pixel, interior_mean) > 20:
+                found = True
+                if len(ink_colours) < 3000:
+                    ink_colours.append(pixel)
+        if found:
+            ink_positions += 1
+
+    coverage = ink_positions / along
+    if coverage < _MIN_EDGE_COVERAGE:
+        return 0.0
+    if _colour_spread(ink_colours) > _INK_CLUSTER_SPREAD:
+        return 0.0  # a picture, not escaped type
+    return coverage
+
+
+def _colour_spread(pixels: List[RGB]) -> float:
+    """Mean ΔE of a set of pixels from their own average.
+
+    Near zero for one flat colour, small for anti-aliased type of a single ink,
+    large for anything photographic.
+    """
+    if not pixels:
+        return 0.0
+    count = len(pixels)
+    mean = (
+        sum(p[0] for p in pixels) / count,
+        sum(p[1] for p in pixels) / count,
+        sum(p[2] for p in pixels) / count,
+    )
+    return sum(delta_e(p, mean) for p in pixels) / count
 
 
 def logo_slot_occupancy(image_bytes: bytes) -> float:
@@ -438,6 +519,13 @@ GOOD_TITLE_CONTRAST = 4.5
 MIN_LOGO_OCCUPANCY = 0.06
 MAX_PALETTE_DELTA_E = 45.0
 
+# The renderer's padding guarantees a margin, so *any* confirmed glyph in it is
+# a bug — the risk number is severity, not a dial to tune. Detection already has
+# its own noise floor (`_MIN_EDGE_COVERAGE`) below which it reports exactly
+# zero, so this threshold only has to sit between "nothing detected" and the
+# smallest thing that is. Every real Chromium-rendered card measures 0.000.
+MAX_OVERFLOW_RISK = 0.02
+
 
 @dataclass
 class CardScore:
@@ -460,26 +548,38 @@ class CardScore:
     bytes_len: int = 0
     issues: List[str] = field(default_factory=list)
     scored: bool = True
+    # Whether a logo was expected at all. A brand with no mark renders the text
+    # wordmark by design, and scoring that as a missing logo marked a perfectly
+    # good card down by a whole grade — which then failed the quality gate and
+    # shipped the generic fallback in its place.
+    logo_expected: bool = True
 
     @property
     def overall(self) -> float:
         """Weighted 0..1 summary. Contrast and gradient-only dominate because
-        they are the two failures that make a card unusable rather than weak."""
+        they are the two failures that make a card unusable rather than weak.
+
+        When no logo was expected its weight is redistributed across the other
+        dimensions rather than scored as zero: the absence is a design choice,
+        not a defect, and treating it as one is how a 7:1-contrast card with a
+        clean layout scored 0.71 and got replaced by a fallback.
+        """
         if not self.scored:
             return 0.0
-        contrast_score = min(1.0, self.title_contrast / GOOD_TITLE_CONTRAST)
-        overflow_score = 1.0 - min(1.0, self.overflow_risk)
-        logo_score = min(1.0, self.logo_occupancy / 0.18)
-        palette_score = max(0.0, 1.0 - (self.palette_delta_e / MAX_PALETTE_DELTA_E))
-        gradient_penalty = 0.0 if self.gradient_only else 1.0
+
+        dimensions = [
+            (0.32, min(1.0, self.title_contrast / GOOD_TITLE_CONTRAST)),
+            (0.20, 1.0 - min(1.0, self.overflow_risk)),
+            (0.16, max(0.0, 1.0 - (self.palette_delta_e / MAX_PALETTE_DELTA_E))),
+            (0.12, self.balance),
+            (0.08, 0.0 if self.gradient_only else 1.0),
+        ]
+        if self.logo_expected:
+            dimensions.append((0.12, min(1.0, self.logo_occupancy / 0.18)))
+
+        total_weight = sum(weight for weight, _ in dimensions)
         return round(
-            0.32 * contrast_score
-            + 0.20 * overflow_score
-            + 0.12 * logo_score
-            + 0.16 * palette_score
-            + 0.12 * self.balance
-            + 0.08 * gradient_penalty,
-            4,
+            sum(weight * value for weight, value in dimensions) / total_weight, 4
         )
 
     @property
@@ -489,7 +589,7 @@ class CardScore:
             self.scored
             and not self.gradient_only
             and self.title_contrast >= MIN_TITLE_CONTRAST
-            and self.overflow_risk < 0.25
+            and self.overflow_risk < MAX_OVERFLOW_RISK
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -504,12 +604,15 @@ def score_card(
     *,
     expected_colors: Optional[Sequence[str]] = None,
     expect_logo: bool = True,
+    layout: Optional[str] = None,
 ) -> CardScore:
     """Score a rendered card. Never raises — an unscorable card scores 0.
 
-    ``expect_logo`` exists because a card whose brand has no logo renders the
-    text wordmark by design, and penalising the empty logo slot there would
-    report a defect where there is a deliberate choice.
+    ``expect_logo`` and ``layout`` both exist for the same reason: a deliberate
+    design choice must not be scored as a defect. A brand with no mark renders
+    the wordmark; a split layout's panel bleeds to the edge. Penalising either
+    reports a problem where there is none — and, because the gate acts on these
+    scores, replaces a good card with a generic fallback.
     """
     if not image_bytes:
         return CardScore(scored=False, issues=["no image bytes"])
@@ -522,9 +625,10 @@ def score_card(
 
     contrasts = text_contrast(image_bytes)
     score = CardScore(
+        logo_expected=expect_logo,
         title_contrast=contrasts.get("title_contrast", 0.0),
         eyebrow_contrast=contrasts.get("eyebrow_contrast", 0.0),
-        overflow_risk=text_overflow_risk(image_bytes),
+        overflow_risk=text_overflow_risk(image_bytes, layout=layout),
         logo_occupancy=logo_slot_occupancy(image_bytes),
         palette_delta_e=palette_delta_e(image_bytes, expected_colors),
         gradient_only=detect_gradient_only(image_bytes),
@@ -540,7 +644,7 @@ def score_card(
         score.issues.append(
             f"title contrast {score.title_contrast:.1f}:1 below {MIN_TITLE_CONTRAST}:1"
         )
-    if score.overflow_risk >= 0.25:
+    if score.overflow_risk >= MAX_OVERFLOW_RISK:
         score.issues.append(f"text overflow risk {score.overflow_risk:.2f}")
     if expect_logo and score.logo_occupancy < MIN_LOGO_OCCUPANCY:
         score.issues.append(f"logo slot nearly empty ({score.logo_occupancy:.2f})")

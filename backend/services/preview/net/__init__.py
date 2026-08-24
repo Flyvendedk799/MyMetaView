@@ -29,6 +29,7 @@ from backend.services.preview.net.session import (
 )
 from backend.services.preview.net.ssrf import (
     SSRFError,
+    UnresolvableHost,
     UrlPolicy,
     guard_url,
     is_public_host,
@@ -38,6 +39,7 @@ __all__ = [
     "BROWSER_HEADERS",
     "FetchResult",
     "SSRFError",
+    "UnresolvableHost",
     "UrlPolicy",
     "fetch",
     "fetch_many",

@@ -191,6 +191,7 @@ class Degradation(str, Enum):
     COMPOSITION_LOGO_PANEL_CONTRAST_FIX = "composition_logo_panel_contrast_fix"
     COMPOSITION_LOGO_DROPPED_UNUSABLE = "composition_logo_dropped_unusable"
     COMPOSITION_BRAND_OVERRIDES_APPLIED = "composition_brand_overrides_applied"
+    COMPOSITION_MINIMAL_SPEC = "composition_minimal_spec"
 
     # ---- render ----------------------------------------------------------
     PREMIUM_RENDER_OK = "premium_render_ok"

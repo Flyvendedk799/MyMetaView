@@ -73,6 +73,7 @@ def evaluate_card(
     policy: SoftPassPolicy,
     expected_colors: Optional[Sequence[str]] = None,
     expect_logo: bool = True,
+    layout: Optional[str] = None,
     attempts_left: int = 0,
     trace: Optional[Any] = None,
 ) -> CardVerdict:
@@ -82,7 +83,12 @@ def evaluate_card(
     remaining a broken card is worth another pass, without it the honest
     outcome is the deterministic fallback card, not shipping the broken one.
     """
-    score = score_card(image_bytes, expected_colors=expected_colors, expect_logo=expect_logo)
+    score = score_card(
+        image_bytes,
+        expected_colors=expected_colors,
+        expect_logo=expect_logo,
+        layout=layout,
+    )
 
     if not score.scored:
         verdict = CardVerdict("retry" if attempts_left > 0 else "reject", score,

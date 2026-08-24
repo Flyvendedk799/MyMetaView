@@ -190,7 +190,7 @@ class TestComposition:
         assert spec.minimal
         assert spec.title == "Acme ships faster than anyone"   # the page's own og:title
         assert spec.composition["layout"] == "typographic"
-        assert Degradation.PREMIUM_RENDER_MINIMAL_SPEC.value in state.trace.degradation_codes()
+        assert Degradation.COMPOSITION_MINIMAL_SPEC.value in state.trace.degradation_codes()
 
     def test_the_minimal_spec_falls_back_to_the_domain(self, state):
         from backend.services.preview.composition.builder import build_minimal_spec

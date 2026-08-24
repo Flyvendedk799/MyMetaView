@@ -257,6 +257,10 @@ def _render_and_grade(
                 policy=policy,
                 expected_colors=expected_colors,
                 expect_logo=brand.has_logo,
+                # The layout that actually rendered — a split card's panel
+                # bleeds to the edge by design, and scoring that as overflow
+                # would fail a perfectly good card.
+                layout=render.rendered_layout,
                 attempts_left=attempts_left,
                 trace=state.trace,
             )
@@ -303,7 +307,23 @@ def _render_and_grade(
                 detail="shipped the deterministic minimal card",
                 reason=FailureReason.QUALITY_GATE_FAILED,
             )
-            return fallback, minimal, verdict
+            # Grade it too. The fallback is correct by construction, but
+            # "correct by construction" is what the premium renderer was also
+            # assumed to be — and shipping an ungraded card is the practice this
+            # whole phase exists to end.
+            with _Timed(state, Stage.QUALITY) as timing:
+                fallback_verdict = evaluate_card(
+                    fallback.png,
+                    policy=policy,
+                    expected_colors=expected_colors,
+                    expect_logo=bool(minimal.logo_data_uri),
+                    layout=fallback.rendered_layout,
+                    attempts_left=0,
+                    trace=state.trace,
+                )
+                timing.set("decision", fallback_verdict.decision)
+                timing.set("overall", fallback_verdict.score.overall)
+            return fallback, minimal, fallback_verdict
         if not render.ok:
             raise ValueError(
                 f"Could not render a card for {state.url}: "

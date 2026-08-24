@@ -65,6 +65,11 @@ class CardScoreRequest(BaseModel):
         None, description="Brand hex colors the card should match"
     )
     expect_logo: bool = Field(True, description="False when the brand has no mark")
+    layout: Optional[str] = Field(
+        None,
+        description="Which layout rendered. A split card's panel bleeds to the "
+                    "edge by design; without this it can read as overflow.",
+    )
 
 
 class CardScoreResponse(BaseModel):
@@ -185,6 +190,7 @@ def score_card_endpoint(request: CardScoreRequest):
         image_bytes,
         expected_colors=request.expected_colors,
         expect_logo=request.expect_logo,
+        layout=request.layout,
     )
     if not score.scored:
         raise HTTPException(

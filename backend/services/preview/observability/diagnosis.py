@@ -113,6 +113,7 @@ _EXPLANATIONS: Dict[str, str] = {
     "composition_focal_crop_failed": "The hero crop could not be taken.",
     "composition_logo_panel_contrast_fix": "The logo would not have been visible; the panel was adjusted.",
     "composition_logo_dropped_unusable": "The logo read as a smudge at card size; the wordmark was used.",
+    "composition_minimal_spec": "The card was built from title, palette and wordmark only.",
     "premium_render_minimal_spec": "The card was rendered from the deterministic minimal spec.",
     "premium_render_failed": "The renderer could not produce a card.",
     "render_upload_failed": "The card rendered but could not be stored.",

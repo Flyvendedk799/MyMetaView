@@ -114,7 +114,13 @@ def score_run(
                 (record.get("blueprint") or {}).get("secondary_color"),
             ) if c
         ]
-        card = score_card(image_bytes, expected_colors=expected)
+        card = score_card(
+            image_bytes,
+            expected_colors=expected,
+            # The record knows which layout rendered; a split card's panel
+            # bleeds to the edge by design and must not score as overflow.
+            layout=record.get("rendered_layout"),
+        )
 
         scores.scored_count += 1
         overalls.append(card.overall)
