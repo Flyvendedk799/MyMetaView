@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
+from backend.services.preview.branding import disregarded, settings_of
 from backend.services.preview.caching.layers import BrandCache, domain_of
 from backend.services.preview.extraction.logo_resolver import logo_degradation, resolve_logo
 from backend.services.preview.observability.reason_codes import (
@@ -135,9 +136,23 @@ def _apply_brand_settings(state: PipelineState, result: BrandResult) -> BrandRes
 
     They filled these in so we would stop inferring. Blank fields still mean
     "keep inferring", which is why this only overrides what is actually set.
+
+    Colours follow a three-step rule rather than the old all-or-nothing one:
+    forced settings win outright; otherwise a real read off the page wins; and
+    when the page gave us nothing real — no palette at all, or the sampler's
+    synthetic slate — the site's own colours are used instead of a grey we
+    invented. "Take the branding into account" has to mean something in exactly
+    the case where the page had no branding to find.
     """
-    settings = getattr(state.config, "brand_settings", None)
-    if not isinstance(settings, dict):
+    settings = settings_of(state.config)
+    if not settings:
+        return result
+
+    if disregarded(settings):
+        state.trace.degrade(
+            Degradation.BRAND_SETTINGS_DISREGARDED, Stage.EXTRACTION,
+            detail="this preview was added with site branding disregarded",
+        )
         return result
 
     name = (settings.get("brand_name") or "").strip()
@@ -150,15 +165,46 @@ def _apply_brand_settings(state: PipelineState, result: BrandResult) -> BrandRes
             "secondary_color": settings.get("secondary_color") or result.colors.get("secondary_color"),
             "accent_color": settings.get("accent_color") or result.colors.get("accent_color"),
         }
+        result.palette_source = PaletteSource.BRAND_SETTINGS
+        state.trace.palette_source = result.palette_source
         state.trace.degrade(
             Degradation.COMPOSITION_BRAND_OVERRIDES_APPLIED, Stage.EXTRACTION,
             detail="org forced its own brand colors",
+        )
+    elif _palette_is_guesswork(result) and _has_colors(settings):
+        result.colors = {
+            "primary_color": settings.get("primary_color") or result.colors.get("primary_color"),
+            "secondary_color": settings.get("secondary_color") or result.colors.get("secondary_color"),
+            "accent_color": settings.get("accent_color") or result.colors.get("accent_color"),
+        }
+        result.palette_source = PaletteSource.BRAND_SETTINGS
+        state.trace.palette_source = result.palette_source
+        state.trace.degrade(
+            Degradation.BRAND_COLORS_FROM_SETTINGS, Stage.EXTRACTION,
+            detail="page had no usable palette; using the site's own colours",
         )
 
     uploaded = _uploaded_logo(settings.get("logo_url"))
     if uploaded:
         result.logo_data_uri = uploaded
     return result
+
+
+def _palette_is_guesswork(result: BrandResult) -> bool:
+    """True when nothing on the page told us what this brand's colours are."""
+    if not result.colors:
+        return True
+    if result.palette_source is PaletteSource.DEFAULT:
+        return True
+    primary = str(result.colors.get("primary_color", "")).lower()
+    return primary in {c.lower() for c in SYNTHETIC_SLATE_PRIMARIES}
+
+
+def _has_colors(settings: Dict[str, Any]) -> bool:
+    return any(
+        settings.get(key)
+        for key in ("primary_color", "secondary_color", "accent_color")
+    )
 
 
 def _uploaded_logo(logo_url: Optional[str]) -> Optional[str]:

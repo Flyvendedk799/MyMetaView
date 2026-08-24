@@ -41,7 +41,8 @@ def upsert_preview(
     composited_image_url: Optional[str] = None,
     generation_mode: str = "ai",
     layout: Optional[str] = None,
-    render_spec: Optional[dict] = None
+    render_spec: Optional[dict] = None,
+    ignore_site_branding: bool = False,
 ) -> PreviewModel:
     """
     Upsert preview record in database.
@@ -59,6 +60,8 @@ def upsert_preview(
         generation_mode: Lane that produced this card — "ai" or "template"
         layout: The card layout that actually rendered
         render_spec: Inputs for re-rendering this card without regenerating it
+        ignore_site_branding: Whether this card was generated from the page
+            alone, with the site's brand settings disregarded
 
     Returns:
         Preview model instance
@@ -81,6 +84,9 @@ def upsert_preview(
         existing_preview.tone = tone
         existing_preview.ai_reasoning = ai_reasoning
         existing_preview.generation_mode = generation_mode
+        # A regeneration states which way it ran, so flipping the toggle and
+        # re-rolling actually changes what the row says about itself.
+        existing_preview.ignore_site_branding = bool(ignore_site_branding)
         # Only overwrite when this run produced one. A regeneration that fell
         # through to the legacy renderer has no spec, and clearing the old one
         # would strip re-render support from a preview that still has a card.
@@ -111,6 +117,7 @@ def upsert_preview(
             generation_mode=generation_mode,
             layout=layout,
             render_spec=render_spec,
+            ignore_site_branding=bool(ignore_site_branding),
             user_id=user_id,
             organization_id=organization_id,
             created_at=datetime.utcnow(),

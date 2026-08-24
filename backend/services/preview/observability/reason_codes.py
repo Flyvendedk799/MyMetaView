@@ -107,6 +107,9 @@ class PaletteSource(str, Enum):
     SAMPLED = "sampled"
     DERIVED = "derived"
     DEFAULT = "default"
+    # The customer's own palette, off the My Site tab — either forced, or used
+    # because the page itself yielded nothing real to sample.
+    BRAND_SETTINGS = "brand_settings"
 
 
 class PreviewLane(str, Enum):
@@ -171,6 +174,8 @@ class Degradation(str, Enum):
     BRAND_LOGO_SVG_SKIPPED = "brand_logo_svg_skipped"
     BRAND_LOGO_NONE = "brand_logo_none"
     BRAND_COLORS_DEFAULT = "brand_colors_default"
+    BRAND_COLORS_FROM_SETTINGS = "brand_colors_from_settings"
+    BRAND_SETTINGS_DISREGARDED = "brand_settings_disregarded"
     UI_EXTRACTION_SKIPPED = "ui_extraction_skipped"
 
     # ---- reasoning -------------------------------------------------------
@@ -191,6 +196,7 @@ class Degradation(str, Enum):
     COMPOSITION_LOGO_PANEL_CONTRAST_FIX = "composition_logo_panel_contrast_fix"
     COMPOSITION_LOGO_DROPPED_UNUSABLE = "composition_logo_dropped_unusable"
     COMPOSITION_BRAND_OVERRIDES_APPLIED = "composition_brand_overrides_applied"
+    COMPOSITION_BRAND_FONT_APPLIED = "composition_brand_font_applied"
     COMPOSITION_MINIMAL_SPEC = "composition_minimal_spec"
 
     # ---- render ----------------------------------------------------------
@@ -215,6 +221,7 @@ class Degradation(str, Enum):
     # ---- cache -----------------------------------------------------------
     RESULT_CACHE_HIT = "result_cache_hit"
     RESULT_CACHE_MISS = "result_cache_miss"
+    RESULT_CACHE_BRAND_CHANGED = "result_cache_brand_changed"
 
     @property
     def is_healthy(self) -> bool:
@@ -241,6 +248,10 @@ _HEALTHY_DEGRADATIONS = frozenset({
     Degradation.QUALITY_PIXEL_CRITIC_PASS,
     Degradation.RESULT_CACHE_HIT,
     Degradation.RESULT_CACHE_MISS,
+    Degradation.RESULT_CACHE_BRAND_CHANGED,
+    Degradation.BRAND_COLORS_FROM_SETTINGS,
+    Degradation.BRAND_SETTINGS_DISREGARDED,
+    Degradation.COMPOSITION_BRAND_FONT_APPLIED,
 })
 
 

@@ -12,6 +12,7 @@ from backend.services.preview.assets.logo import (
     logo_is_usable,
     resolve_logo_contrast,
 )
+from backend.services.preview.branding import disregarded, settings_of
 from backend.services.preview.observability.reason_codes import Degradation, Stage
 from backend.services.preview.stages import (
     BrandResult,
@@ -56,10 +57,11 @@ def _apply_customer_overrides(
     """Fold in the org's saved card preferences.
 
     ``auto`` means "the art director decides", which is why only explicit values
-    override. The public demo has no preferences, so it is untouched.
+    override. The public demo has no preferences, so it is untouched, and a
+    preview the user added with branding disregarded is treated the same way.
     """
-    prefs = getattr(state.config, "brand_settings", None)
-    if not isinstance(prefs, dict):
+    prefs = settings_of(state.config)
+    if not prefs or disregarded(prefs):
         return composition
 
     changed = []
@@ -85,6 +87,38 @@ def _apply_customer_overrides(
             detail="; ".join(changed),
         )
     return composition
+
+
+def _card_prefs(state: PipelineState) -> Dict[str, Any]:
+    """The site's card preferences, or nothing when they are being disregarded.
+
+    ``hide_watermark`` is deliberately not in here — see ``_hide_watermark``.
+    """
+    prefs = settings_of(state.config)
+    return {} if disregarded(prefs) else prefs
+
+
+def _hide_watermark(state: PipelineState) -> bool:
+    """Whether to draw the MetaView mark.
+
+    Read straight off the settings rather than through ``_card_prefs``: hiding
+    the mark is a plan entitlement the account paid for, not a styling choice,
+    so disregarding the site's branding for one preview must not put somebody
+    else's watermark back on a white-label customer's card.
+    """
+    return bool(settings_of(state.config).get("hide_watermark"))
+
+
+def _brand_font(state: PipelineState, prefs: Dict[str, Any]) -> Optional[str]:
+    """The display font chosen on the My Site tab, if it is not the default."""
+    font = str(prefs.get("font_family") or "").strip()
+    if not font:
+        return None
+    state.trace.degrade(
+        Degradation.COMPOSITION_BRAND_FONT_APPLIED, Stage.COMPOSITION,
+        detail=f"font={font}",
+    )
+    return font
 
 
 def resolve_visual(
@@ -177,8 +211,9 @@ def build_spec(
         composition = apply_contrast_fix_to_spec(composition, fix)
         logo_uri = None if fix.drop_logo else fix.logo_data_uri
 
-    prefs = getattr(state.config, "brand_settings", None) or {}
-    subtitle = reasoning.subtitle or (prefs.get("tagline") if isinstance(prefs, dict) else None)
+    prefs = _card_prefs(state)
+    subtitle = reasoning.subtitle or prefs.get("tagline")
+    font_family = _brand_font(state, prefs)
 
     spec = CompositionSpec(
         title=reasoning.title,
@@ -191,7 +226,8 @@ def build_spec(
         visual_data_uri=visual_uri,
         proof=reasoning.proof,
         cta_text=reasoning.cta_text,
-        hide_watermark=bool(isinstance(prefs, dict) and prefs.get("hide_watermark")),
+        hide_watermark=_hide_watermark(state),
+        font_family=font_family,
         size=size,
     )
     state.trace.template_selected = composition.get("layout")
@@ -227,25 +263,30 @@ def build_minimal_spec(
     resolved_title = (title or "").strip() or _title_from_page(capture, state.url)
     colors = dict(brand.colors or {})
 
-    prefs = getattr(state.config, "brand_settings", None) or {}
+    prefs = _card_prefs(state)
     logo_uri = brand.logo_data_uri if logo_is_usable(brand.logo_data_uri) else None
 
     state.trace.degrade(
         Degradation.COMPOSITION_MINIMAL_SPEC, Stage.COMPOSITION,
         detail="building the deterministic minimal card — title, palette, wordmark",
     )
+    # The fallback card is simpler content, not a different brand: the site's
+    # layout, panel, accent and font still apply. Dropping them here is what
+    # made a degraded generation look like somebody else's product.
+    composition = _apply_customer_overrides(dict(DEFAULT_COMPOSITION), state)
     return CompositionSpec(
         title=resolved_title,
-        subtitle=subtitle or _description_from_page(capture),
+        subtitle=subtitle or _description_from_page(capture) or prefs.get("tagline"),
         url=state.url,
         brand_name=brand.brand_name or _brand_from_url(state.url),
         colors=colors,
-        composition=dict(DEFAULT_COMPOSITION),
+        composition=composition,
         logo_data_uri=logo_uri,
         visual_data_uri=None,
         proof=None,
         cta_text=None,
-        hide_watermark=bool(isinstance(prefs, dict) and prefs.get("hide_watermark")),
+        hide_watermark=_hide_watermark(state),
+        font_family=_brand_font(state, prefs),
         size=size,
         minimal=True,
     )

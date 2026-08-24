@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
+from backend.services.preview.branding import identity_brief, settings_of
 from backend.services.preview.budgets import run_with_deadline
 from backend.services.preview.caching.layers import (
     ReasoningCache,
@@ -72,6 +73,7 @@ def _run(
         return _from_page_metadata(state, capture, source="template")
 
     spec = spec_for("art_director", profile=state.shared.get("profile"))
+    brief = identity_brief(settings_of(state.config))
     fingerprint = reasoning_fingerprint(
         url=state.url,
         title=_page_title(capture),
@@ -79,6 +81,7 @@ def _run(
         screenshot_phash=screenshot_phash(capture.screenshot_bytes),
         model=spec.model,
         prompt_version=PROMPT_VERSION,
+        brand_brief=brief,
     )
 
     cached = ReasoningCache.get(fingerprint)
@@ -101,7 +104,7 @@ def _run(
         return _from_page_metadata(state, capture, source="html")
 
     result = run_with_deadline(
-        lambda: _call_art_director(state, capture),
+        lambda: _call_art_director(state, capture, brief),
         stage=Stage.REASONING,
         budget=state.budget,
         default=None,
@@ -126,12 +129,22 @@ def _run(
     return result
 
 
-def _call_art_director(state: PipelineState, capture: CaptureResult) -> Optional[ReasoningResult]:
-    """One vision call, adapted into the stage contract."""
+def _call_art_director(
+    state: PipelineState,
+    capture: CaptureResult,
+    brand_brief: str = "",
+) -> Optional[ReasoningResult]:
+    """One vision call, adapted into the stage contract.
+
+    ``brand_brief`` is the customer's own identity from the My Site tab. It is
+    context for the copy, never content: the page still decides what is true.
+    """
     try:
         from backend.services.preview_reasoning import generate_reasoned_preview
 
-        reasoned = generate_reasoned_preview(capture.screenshot_bytes, state.url)
+        reasoned = generate_reasoned_preview(
+            capture.screenshot_bytes, state.url, brand_context=brand_brief,
+        )
     except Exception as exc:  # noqa: BLE001 — the caller degrades to metadata
         logger.info("Art director call failed for %s: %s", state.url, exc)
         return None

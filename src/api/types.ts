@@ -89,6 +89,11 @@ export interface Preview {
   layout?: CardLayout | null
   /** True when the card can be restyled/resized without spending an AI generation. */
   can_rerender?: boolean
+  /**
+   * True when this card was designed from the page alone — the site's My Site
+   * branding was deliberately disregarded. Regenerating keeps the choice.
+   */
+  ignore_site_branding?: boolean
   created_at: string // ISO datetime
   monthly_clicks: number
 }
@@ -209,12 +214,15 @@ export interface PreviewCreate {
   type: string
   image_url?: string | null
   description?: string | null
+  /** Design this preview from the page alone, ignoring the site's branding. */
+  ignore_site_branding?: boolean
 }
 
 export interface PreviewUpdate {
   title?: string | null
   type?: string | null
   image_url?: string | null
+  ignore_site_branding?: boolean
 }
 
 export interface TopDomain {

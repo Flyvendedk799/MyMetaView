@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PlusIcon, PencilIcon, TrashIcon, PhotoIcon, RectangleStackIcon, ArrowPathIcon, CheckIcon, XMarkIcon, SwatchIcon, EyeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -33,6 +33,73 @@ import type {
   CardPanel,
   CardAccent,
 } from '../api/types'
+
+/**
+ * "Disregard my site branding" — the per-preview opt-out from the brand set up
+ * on My Site for this domain.
+ *
+ * Branding is per domain and applies to every card generated for it, which is
+ * right for a site's own pages and wrong for the ones that are not really the
+ * site's: a guest post, a co-branded landing page, a microsite. Off means the
+ * card is generated the normal way; on means the page is designed from its own
+ * identity — its colours, its mark, its words — and the choice is stored with
+ * the preview, so re-rolling it later does not quietly re-brand the card.
+ */
+function DisregardBrandingToggle({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean
+  onChange: (value: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <div
+      className={`rounded-lg border p-3 transition-colors ${
+        checked ? 'border-primary-300 bg-primary-50/50' : 'border-secondary-200 bg-secondary-50/50'
+      } ${disabled ? 'opacity-60' : ''}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="block text-sm font-medium text-secondary-800">
+            Disregard my site branding
+          </span>
+          <p className="text-xs text-secondary-500 mt-0.5">
+            {checked
+              ? 'This page will be designed from its own identity — your My Site colours, logo, font and card style are not applied.'
+              : (
+                <>
+                  Your{' '}
+                  <Link to="/app/brand" className="underline hover:no-underline">
+                    My Site
+                  </Link>{' '}
+                  branding for this domain shapes the card. Turn on to design this page from the page alone.
+                </>
+              )}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          aria-label="Disregard my site branding"
+          disabled={disabled}
+          onClick={() => !disabled && onChange(!checked)}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            disabled ? 'cursor-not-allowed' : ''
+          } ${checked && !disabled ? 'bg-primary-500' : 'bg-secondary-300'}`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+              checked ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 const filters = ['All', 'Product', 'Blog', 'Landing Page'] as const
 type FilterType = typeof filters[number]
@@ -134,6 +201,7 @@ export default function Previews() {
   const [bulkSitemapNote, setBulkSitemapNote] = useState<string | null>(null)
   const [bulkError, setBulkError] = useState<string | null>(null)
   const [bulkStarting, setBulkStarting] = useState(false)
+  const [bulkIgnoreBranding, setBulkIgnoreBranding] = useState(false)
   const bulkUrls = useMemo(
     () => bulkUrlText.split('\n').map((l) => l.trim()).filter(Boolean),
     [bulkUrlText]
@@ -251,6 +319,7 @@ export default function Previews() {
     title: '',
     type: 'product',
     image_url: null,
+    ignore_site_branding: false,
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -316,6 +385,7 @@ export default function Previews() {
       title: '',
       type: 'product',
       image_url: null,
+      ignore_site_branding: false,
     })
     setFormError(null)
     setIsModalOpen(true)
@@ -341,6 +411,7 @@ export default function Previews() {
         title: preview.title,
         type: preview.type,
         image_url: preview.image_url || null,
+        ignore_site_branding: !!preview.ignore_site_branding,
       })
     } else {
       const variantData = previewVariants[preview.id]?.find(v => v.variant_key === variant)
@@ -351,6 +422,7 @@ export default function Previews() {
           title: variantData.title,
           type: preview.type,
           image_url: variantData.image_url || preview.highlight_image_url || preview.image_url || null,
+          ignore_site_branding: !!preview.ignore_site_branding,
         })
       } else {
         setFormData({
@@ -359,6 +431,7 @@ export default function Previews() {
           title: preview.title,
           type: preview.type,
           image_url: preview.image_url || null,
+          ignore_site_branding: !!preview.ignore_site_branding,
         })
       }
     }
@@ -376,6 +449,7 @@ export default function Previews() {
       title: '',
       type: 'product',
       image_url: null,
+      ignore_site_branding: false,
     })
     setFormError(null)
   }
@@ -424,6 +498,9 @@ export default function Previews() {
             title: formData.title,
             type: formData.type,
             image_url: formData.image_url || null,
+            // Stored now, honoured by the next generation — the card in front
+            // of the user was already rendered one way or the other.
+            ignore_site_branding: !!formData.ignore_site_branding,
           }
           await updatePreview(editingPreview, updatePayload)
         } else {
@@ -474,7 +551,11 @@ export default function Previews() {
     try {
       setIsStartingGeneration(true)
       setFormError(null)
-      await createPreviewJob({ url: formData.url, domain: formData.domain })
+      await createPreviewJob({
+        url: formData.url,
+        domain: formData.domain,
+        ignore_branding: !!formData.ignore_site_branding,
+      })
       handleCloseModal()
       toast.info('Generating in the background', 'Track it under Generation activity — you can close this tab.')
       loadActivity()
@@ -491,6 +572,7 @@ export default function Previews() {
   const openBulk = () => {
     setBulkDomain(verifiedDomains.length > 0 ? verifiedDomains[0].name : '')
     setBulkUrlText('')
+    setBulkIgnoreBranding(false)
     setBulkSitemapNote(null)
     setBulkError(null)
     setBulkStarting(false)
@@ -524,7 +606,7 @@ export default function Previews() {
     setBulkError(null)
     setBulkStarting(true)
     try {
-      const res = await createBulkPreviewJob(bulkDomain, bulkUrls, false)
+      const res = await createBulkPreviewJob(bulkDomain, bulkUrls, false, bulkIgnoreBranding)
       closeBulk()
       const skipped = res.skipped_quota || 0
       toast.info(
@@ -546,7 +628,14 @@ export default function Previews() {
     if (regeneratingIds[preview.id]) return
     setRegenError(null)
     try {
-      const { batch_id } = await createPreviewJob({ url: preview.url, domain: preview.domain, force: true })
+      // Re-roll the card the way this preview was generated: a preview added
+      // with branding disregarded must not come back branded.
+      const { batch_id } = await createPreviewJob({
+        url: preview.url,
+        domain: preview.domain,
+        force: true,
+        ignore_branding: !!preview.ignore_site_branding,
+      })
       // Tie the spinner to the server-side run; loadActivity clears it when done.
       if (batch_id) setRegeneratingIds((prev) => ({ ...prev, [preview.id]: batch_id }))
       toast.info('Regenerating in the background', 'The card updates here when the run finishes.')
@@ -880,6 +969,14 @@ export default function Previews() {
                               title="Built from this page's metadata — your plan's monthly AI allowance is spent. Upgrade for an AI-designed card."
                             >
                               Template
+                            </span>
+                          )}
+                          {preview.ignore_site_branding && (
+                            <span
+                              className="pill bg-secondary-100 text-secondary-600"
+                              title="Designed from the page alone — your My Site branding was disregarded for this preview."
+                            >
+                              Unbranded
                             </span>
                           )}
                           <span className="pill bg-secondary-100 text-secondary-600 capitalize">
@@ -1245,6 +1342,19 @@ export default function Previews() {
             </div>
           )}
 
+          {/* The card's relationship to this domain's My Site branding. Shown
+              when editing the preview itself too — the toggle decides how the
+              NEXT generation runs, and a re-roll is one click away on the card.
+              A variant edit only changes that variant's copy, so it is not
+              offered there. */}
+          {(editingPreview === null || editingVariant === 'main') && (
+            <DisregardBrandingToggle
+              checked={!!formData.ignore_site_branding}
+              onChange={(value) => setFormData({ ...formData, ignore_site_branding: value })}
+              disabled={isSubmitting || isStartingGeneration}
+            />
+          )}
+
           {/* What "Generate with AI" does — set expectations before the click */}
           {editingPreview === null && (
             <p className="text-xs text-secondary-500">
@@ -1360,6 +1470,12 @@ export default function Previews() {
                   {bulkUrls.length} URL{bulkUrls.length === 1 ? '' : 's'} · up to 50 per run
                 </p>
               </div>
+
+              <DisregardBrandingToggle
+                checked={bulkIgnoreBranding}
+                onChange={setBulkIgnoreBranding}
+                disabled={bulkStarting}
+              />
 
               <div className="flex items-center justify-end space-x-3 pt-2">
                 <Button variant="secondary" onClick={closeBulk} disabled={bulkStarting}>

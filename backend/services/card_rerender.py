@@ -125,6 +125,7 @@ def rerender_card(
             hide_watermark=bool(render_spec.get("hide_watermark")),
             proof=render_spec.get("proof"),
             cta_text=render_spec.get("cta_text"),
+            font_family=render_spec.get("font_family"),
             size=size,
         )
     except Exception as e:

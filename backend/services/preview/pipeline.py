@@ -25,6 +25,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Optional
 
+from backend.services.preview.branding import brand_signature, settings_of
 from backend.services.preview.budgets import StageBudget
 from backend.services.preview.capture.stage import capture_page, upload_screenshot
 from backend.services.preview.composition.builder import build_minimal_spec, build_spec
@@ -154,6 +155,7 @@ def _run(state: PipelineState, started: float, cache_key_prefix: str) -> Dict[st
         with _Timed(state, Stage.CACHE) as timing:
             cached = _read_cache(state, cache_key_prefix)
             timing.set("hit", cached is not None)
+            timing.set("brand", _brand_signature(state))
         if cached is not None:
             state.trace.degrade(Degradation.RESULT_CACHE_HIT, Stage.CACHE,
                                 detail="served from the result cache")
@@ -518,7 +520,21 @@ def _reason_for(detail: str, trace: JobTrace) -> FailureReason:
 # Result cache
 # ---------------------------------------------------------------------------
 
+def _brand_signature(state: PipelineState) -> str:
+    """Which branding this generation is running with."""
+    return brand_signature(settings_of(state.config))
+
+
 def _read_cache(state: PipelineState, prefix: str) -> Optional[Dict[str, Any]]:
+    """A cached card, but only one generated for *this* branding.
+
+    Result entries are keyed by URL alone, which was fine while every card for a
+    URL looked the same. Once the customer's own colours, mark, font and layout
+    preferences reach the renderer they no longer do: the same URL under a
+    different brand is a different card, and serving the stored one hands a
+    customer somebody else's identity — or their own, from before they changed
+    it. The signature travels with the payload, so a mismatch is a miss.
+    """
     try:
         import json
 
@@ -531,7 +547,16 @@ def _read_cache(state: PipelineState, prefix: str) -> Optional[Dict[str, Any]]:
         if not raw:
             return None
         payload = json.loads(raw)
-        return payload if isinstance(payload, dict) else None
+        if not isinstance(payload, dict):
+            return None
+        cached_brand = str(payload.get("brand_signature") or "none")
+        if cached_brand != _brand_signature(state):
+            state.trace.degrade(
+                Degradation.RESULT_CACHE_BRAND_CHANGED, Stage.CACHE,
+                detail="cached card was generated with different branding",
+            )
+            return None
+        return payload
     except Exception as exc:  # noqa: BLE001
         logger.debug("Result cache read failed: %s", exc)
         return None
@@ -552,6 +577,7 @@ def _write_cache(state: PipelineState, prefix: str, payload: Dict[str, Any]) -> 
             return
         ttl_hours = CacheConfig.DEMO_TTL_HOURS if state.is_demo else CacheConfig.DEFAULT_TTL_HOURS
         body = {k: v for k, v in payload.items() if not k.startswith("_")}
+        body["brand_signature"] = _brand_signature(state)
         client.setex(
             generate_cache_key(state.url, prefix),
             int(ttl_hours) * 3600,

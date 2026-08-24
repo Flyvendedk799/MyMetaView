@@ -1,6 +1,6 @@
 """SQLAlchemy ORM model for Preview."""
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from backend.db import Base
 
@@ -36,6 +36,12 @@ class Preview(Base):
     # (and on any that fell through to the legacy renderer), which is why every
     # consumer treats "no spec" as "a re-render needs a full regeneration".
     render_spec = Column(JSON, nullable=True)
+    # "Design this one from the page alone." Set when the preview is added, and
+    # kept on the row so a re-roll or a bulk re-run honours the same choice
+    # rather than quietly putting the site's branding back on the card.
+    ignore_site_branding = Column(
+        Boolean, nullable=False, server_default="0", default=False
+    )
     # The same card composed at each platform's aspect — {"square": url, ...}.
     # Produced by a pure render off `render_spec`, so filling this in costs no
     # AI allowance and no page capture; absent until the fan-out has run.

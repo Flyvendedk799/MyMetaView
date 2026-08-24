@@ -40,6 +40,10 @@ class PreviewJobRequest(BaseModel):
     url: str
     domain: str
     force: bool = False  # bypass cache to regenerate / re-roll an existing preview
+    # "Design this one from the page alone": the domain's My Site brand — its
+    # identity, palette, logo, font and card preferences — is not applied. The
+    # choice is stored on the preview, so a later re-roll keeps it.
+    ignore_branding: bool = False
 
 
 class DiscoverUrlsRequest(BaseModel):
@@ -52,6 +56,8 @@ class BulkPreviewJobRequest(BaseModel):
     domain: str
     urls: List[str]
     force: bool = False
+    # Applies to every URL in the run — see PreviewJobRequest.ignore_branding.
+    ignore_branding: bool = False
 
 
 class JobStatusResponse(BaseModel):
@@ -151,6 +157,7 @@ def create_preview_job(
             request.domain,
             request.force,  # force_regenerate: bypass cache on re-roll
             created_at,
+            request.ignore_branding,
             job_timeout='10m'  # 10 minute timeout for AI generation
         )
 
@@ -159,7 +166,11 @@ def create_preview_job(
             db,
             user_id=current_user.id,
             action="preview.ai_job.queued",
-            metadata={"job_id": job.id, "batch_id": batch_id, "url": sanitized_url, "domain": request.domain},
+            metadata={
+                "job_id": job.id, "batch_id": batch_id, "url": sanitized_url,
+                "domain": request.domain,
+                "ignore_branding": bool(request.ignore_branding),
+            },
             request=http_request
         )
 
@@ -309,6 +320,7 @@ def create_bulk_preview_job(
             clean_urls,
             request.force,
             created_at,
+            request.ignore_branding,
             job_timeout='2h',  # bulk runs many URLs sequentially
         )
     except Exception as e:
@@ -322,7 +334,10 @@ def create_bulk_preview_job(
         db,
         user_id=current_user.id,
         action="preview.bulk_job.queued",
-        metadata={"batch_id": batch_id, "domain": request.domain, "count": len(clean_urls)},
+        metadata={
+            "batch_id": batch_id, "domain": request.domain, "count": len(clean_urls),
+            "ignore_branding": bool(request.ignore_branding),
+        },
         request=http_request,
     )
 

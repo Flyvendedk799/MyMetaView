@@ -149,13 +149,15 @@ def reasoning_fingerprint(
     screenshot_phash: str = "",
     model: str = "",
     prompt_version: str = "",
+    brand_brief: str = "",
 ) -> str:
     """Identity of one art-director call.
 
     Everything that changes the answer goes in: the copy it read, a perceptual
-    hash of what it saw, and the model plus prompt version that produced it. A
-    prompt edit therefore misses cache rather than serving output authored by
-    the previous prompt.
+    hash of what it saw, the model plus prompt version that produced it, and the
+    customer's identity brief — which is part of the prompt, so copy written for
+    one brand must never be served to another. A prompt edit therefore misses
+    cache rather than serving output authored by the previous prompt.
     """
     parts = [
         domain_of(url),
@@ -164,6 +166,7 @@ def reasoning_fingerprint(
         screenshot_phash or "",
         model or "",
         prompt_version or "",
+        hashlib.sha256((brand_brief or "").encode()).hexdigest()[:16],
     ]
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 

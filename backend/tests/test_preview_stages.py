@@ -97,16 +97,25 @@ class TestContracts:
         assert not ReasoningResult(title="   ").ok
 
     def test_a_composition_spec_is_exactly_the_renderer_call(self):
+        import inspect
+
+        from backend.services.premium_card_renderer import render_premium_card_detailed
+
         spec = CompositionSpec(title="T", url="https://x.test", size="square")
         kwargs = spec.render_kwargs()
         assert kwargs["title"] == "T"
         assert kwargs["size"] == "square"
-        # Anything the renderer does not take would raise at the call site.
-        assert set(kwargs) <= {
-            "title", "subtitle", "url", "brand_name", "colors", "composition",
-            "logo_data_uri", "visual_data_uri", "hide_watermark", "proof",
-            "cta_text", "size",
-        }
+        # Anything the renderer does not take would raise at the call site, so
+        # the renderer's own signature is the list to check against — a new spec
+        # field that nobody wired into the renderer fails here rather than in
+        # production.
+        accepted = set(inspect.signature(render_premium_card_detailed).parameters)
+        assert set(kwargs) <= accepted
+
+    def test_the_brand_font_reaches_the_renderer(self):
+        """The My Site font is a rendering fact, not a note on the side."""
+        spec = CompositionSpec(title="T", url="https://x.test", font_family="IBM Plex Sans")
+        assert spec.render_kwargs()["font_family"] == "IBM Plex Sans"
 
 
 class TestLogoResolution:
@@ -243,6 +252,69 @@ class TestComposition:
         )
         assert spec.composition["layout"] == "stat"
 
+    def test_the_sites_font_and_tagline_reach_the_card(self, state):
+        """Everything on the My Site tab is meant to shape the card."""
+        state.config.brand_settings = {
+            "font_family": "IBM Plex Sans",
+            "tagline": "Analytics without the setup",
+        }
+        from backend.services.preview.composition.builder import build_spec
+
+        spec = build_spec(
+            state, CaptureResult(url=state.url, html=HTML),
+            BrandResult(), ReasoningResult(title="T"),
+        )
+        assert spec.font_family == "IBM Plex Sans"
+        assert spec.subtitle == "Analytics without the setup"
+
+    def test_the_fallback_card_still_wears_the_site_brand(self, state):
+        """A degraded generation is simpler content, not a different product."""
+        state.config.brand_settings = {
+            "preview_panel": "dark",
+            "preview_accent": "dot",
+            "font_family": "IBM Plex Sans",
+        }
+        from backend.services.preview.composition.builder import build_minimal_spec
+
+        spec = build_minimal_spec(
+            state, CaptureResult(url=state.url, html=HTML),
+            BrandResult(brand_name="Acme"),
+        )
+        assert spec.composition["panel_color_role"] == "dark"
+        assert spec.composition["accent_moment"] == "dot"
+        assert spec.font_family == "IBM Plex Sans"
+
+    def test_disregarding_the_branding_drops_the_card_preferences(self, state):
+        """The per-preview opt-out, as chosen in the gallery."""
+        state.config.brand_settings = {
+            "disregard_site_branding": True,
+            "preview_layout": "editorial",
+            "tagline": "Not this page's tagline",
+            "font_family": "IBM Plex Sans",
+        }
+        from backend.services.preview.composition.builder import build_spec
+
+        spec = build_spec(
+            state, CaptureResult(url=state.url, html=HTML),
+            BrandResult(), ReasoningResult(title="T", composition={"layout": "stat"}),
+        )
+        assert spec.composition["layout"] == "stat"
+        assert spec.subtitle is None
+        assert spec.font_family is None
+
+    def test_disregarding_the_branding_keeps_the_white_label_entitlement(self, state):
+        """Hiding the mark is paid for, not a styling preference."""
+        state.config.brand_settings = {
+            "disregard_site_branding": True, "hide_watermark": True,
+        }
+        from backend.services.preview.composition.builder import build_spec
+
+        spec = build_spec(
+            state, CaptureResult(url=state.url, html=HTML),
+            BrandResult(), ReasoningResult(title="T"),
+        )
+        assert spec.hide_watermark is True
+
 
 class TestBrandExtraction:
     def test_a_typed_in_brand_name_beats_whatever_we_scraped(self, state):
@@ -269,6 +341,51 @@ class TestBrandExtraction:
         result = _apply_brand_settings(state, BrandResult(colors={"primary_color": "#0B3B2E"}))
         assert result.colors["primary_color"] == "#FF0000"
         assert Degradation.COMPOSITION_BRAND_OVERRIDES_APPLIED.value in \
+               state.trace.degradation_codes()
+
+    def test_the_sites_colours_stand_in_when_the_page_had_none(self, state):
+        """The palette sampler's synthetic slate is a guess, not a brand."""
+        from backend.services.preview.extraction.brand import _apply_brand_settings
+        from backend.services.preview.observability.reason_codes import PaletteSource
+
+        state.config.brand_settings = {
+            "primary_color": "#2979FF", "accent_color": "#3FFFD3",
+        }
+        result = _apply_brand_settings(state, BrandResult(
+            colors={"primary_color": "#475569"},   # SYNTHETIC_SLATE_PRIMARIES
+            palette_source=PaletteSource.DERIVED,
+        ))
+        assert result.colors["primary_color"] == "#2979FF"
+        assert Degradation.BRAND_COLORS_FROM_SETTINGS.value in \
+               state.trace.degradation_codes()
+
+    def test_a_real_read_off_the_page_still_wins(self, state):
+        """Without force-brand-colours, a colour we actually saw is the brand."""
+        from backend.services.preview.extraction.brand import _apply_brand_settings
+        from backend.services.preview.observability.reason_codes import PaletteSource
+
+        state.config.brand_settings = {"primary_color": "#2979FF"}
+        result = _apply_brand_settings(state, BrandResult(
+            colors={"primary_color": "#0B3B2E"},
+            palette_source=PaletteSource.SAMPLED,
+        ))
+        assert result.colors["primary_color"] == "#0B3B2E"
+
+    def test_a_disregarded_preview_keeps_the_pages_own_identity(self, state):
+        from backend.services.preview.extraction.brand import _apply_brand_settings
+
+        state.config.brand_settings = {
+            "disregard_site_branding": True,
+            "brand_name": "Acme Corp",
+            "force_brand_colors": True,
+            "primary_color": "#FF0000",
+        }
+        result = _apply_brand_settings(state, BrandResult(
+            brand_name="guestblog.test", colors={"primary_color": "#0B3B2E"},
+        ))
+        assert result.brand_name == "guestblog.test"
+        assert result.colors["primary_color"] == "#0B3B2E"
+        assert Degradation.BRAND_SETTINGS_DISREGARDED.value in \
                state.trace.degradation_codes()
 
     def test_the_legacy_dict_shape_is_preserved(self):

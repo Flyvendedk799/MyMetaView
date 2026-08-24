@@ -190,8 +190,13 @@ def generate_bulk_preview_job(
     urls: List[str],
     force_regenerate: bool = False,
     created_at: Optional[str] = None,
+    ignore_site_branding: bool = False,
 ) -> Dict[str, Any]:
-    """Background job: generate + persist previews for ``urls`` under ``domain``."""
+    """Background job: generate + persist previews for ``urls`` under ``domain``.
+
+    ``ignore_site_branding`` applies to every URL in the run — a bulk job is one
+    choice made once, in the dialog that started it.
+    """
     redis_client = get_redis_connection()
     total = len(urls)
     completed = 0
@@ -204,7 +209,9 @@ def generate_bulk_preview_job(
     for url in urls:
         try:
             result = generate_preview_job(
-                user_id, organization_id, url, domain, force_regenerate=force_regenerate
+                user_id, organization_id, url, domain,
+                force_regenerate=force_regenerate,
+                ignore_site_branding=ignore_site_branding,
             )
             preview = result.get("preview", {}) if isinstance(result, dict) else {}
             item = {
@@ -282,6 +289,7 @@ def generate_tracked_preview_job(
     domain: str,
     force_regenerate: bool = False,
     created_at: Optional[str] = None,
+    ignore_site_branding: bool = False,
 ) -> Dict[str, Any]:
     """Background job: generate ONE preview, reporting progress as a run of one.
 
@@ -296,12 +304,18 @@ def generate_tracked_preview_job(
         redis_client = get_redis_connection()
     except Exception as e:  # Redis down — the preview itself can still be generated
         logger.warning("single %s: no redis for progress (%s); generating untracked", batch_id, e)
-        return generate_preview_job(user_id, organization_id, url, domain, force_regenerate=force_regenerate)
+        return generate_preview_job(
+            user_id, organization_id, url, domain,
+            force_regenerate=force_regenerate,
+            ignore_site_branding=ignore_site_branding,
+        )
 
     _write_status(redis_client, batch_id, "running", 1, 0, 0, [], domain, created_at, "single", url)
     try:
         result = generate_preview_job(
-            user_id, organization_id, url, domain, force_regenerate=force_regenerate
+            user_id, organization_id, url, domain,
+            force_regenerate=force_regenerate,
+            ignore_site_branding=ignore_site_branding,
         )
     except Exception as e:  # already recorded to DLQ inside generate_preview_job
         logger.warning("single %s: failed %s: %s", batch_id, url[:80], e)

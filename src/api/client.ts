@@ -564,7 +564,7 @@ export async function buildPlatformCards(
 
 // Job queue endpoints
 export async function createPreviewJob(
-  payload: { url: string; domain: string; force?: boolean }
+  payload: { url: string; domain: string; force?: boolean; ignore_branding?: boolean }
 ): Promise<PreviewJobCreateResponse> {
   return fetchApi<PreviewJobCreateResponse>('/api/v1/jobs/preview', {
     method: 'POST',
@@ -584,11 +584,12 @@ export async function discoverSitemapUrls(domain: string): Promise<SitemapDiscov
 export async function createBulkPreviewJob(
   domain: string,
   urls: string[],
-  force = false
+  force = false,
+  ignoreBranding = false
 ): Promise<BulkJobCreateResponse> {
   return fetchApi<BulkJobCreateResponse>('/api/v1/jobs/preview/bulk', {
     method: 'POST',
-    body: JSON.stringify({ domain, urls, force }),
+    body: JSON.stringify({ domain, urls, force, ignore_branding: ignoreBranding }),
   })
 }
 
