@@ -78,6 +78,17 @@ class ModelSpec:
             kwargs["temperature"] = self.temperature
         return kwargs
 
+    def request_kwargs_without_tokens(self) -> Dict[str, object]:
+        """As above, for call sites that set their own ``max_tokens``.
+
+        Some stages size their output cap to the prompt (the art director needs
+        headroom for variants; a classifier needs almost none), so the spec
+        supplies the model and the parameter policy and leaves the cap alone.
+        """
+        kwargs = self.request_kwargs()
+        kwargs.pop("max_tokens", None)
+        return kwargs
+
 
 # The flagship: reads a screenshot and authors copy plus a composition spec.
 # This is the card. Do not tier it down without a corpus run that says so.

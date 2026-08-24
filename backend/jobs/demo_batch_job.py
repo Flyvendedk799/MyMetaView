@@ -140,7 +140,6 @@ def _process_single_url(
         enable_ai_reasoning=profile.ai_reasoning,
         enable_composited_image=True,
         enable_cache=not cache_disabled,
-        enable_multi_agent=profile.multi_agent,
         enable_ui_element_extraction=profile.ui_extraction,
         quality_threshold=profile.threshold,
         max_quality_iterations=profile.iterations,
@@ -151,6 +150,9 @@ def _process_single_url(
         min_soft_pass_fidelity=profile.min_soft_pass_fidelity,
     )
     engine = PreviewEngine(config)
+    # The profile carries the thresholds and per-purpose model choices the
+    # pipeline reads; passing it keeps the one-table principle intact.
+    engine.quality_profile = profile
     try:
         logger.info(f"Batch {batch_id}: processing URL {index + 1}/{total}: {url_str[:60]}...")
         result = engine.generate(url_str, cache_key_prefix=cache_prefix)

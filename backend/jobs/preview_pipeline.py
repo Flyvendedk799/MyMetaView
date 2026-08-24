@@ -188,7 +188,6 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             enable_ai_reasoning=profile.ai_reasoning,
             enable_composited_image=True,
             enable_cache=not force_regenerate,
-            enable_multi_agent=profile.multi_agent,
             enable_ui_element_extraction=profile.ui_extraction,
             quality_threshold=profile.threshold,
             max_quality_iterations=profile.iterations,
@@ -221,6 +220,12 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         )
         
         engine = PreviewEngine(config)
+        
+        # The profile carries the thresholds and per-purpose model choices the
+        
+        # pipeline reads; passing it keeps the one-table principle intact.
+        
+        engine.quality_profile = profile
         # Separate cache namespaces per lane. Sharing one would let a template
         # card served during an exhausted month keep being returned after the
         # account upgrades — the customer pays and sees the same generic image.

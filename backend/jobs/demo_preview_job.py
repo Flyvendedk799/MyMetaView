@@ -82,13 +82,6 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
             enable_ai_reasoning=profile.ai_reasoning,
             enable_composited_image=True,
             enable_cache=not cache_disabled,
-            # The demo runs the single-pass art-director brain (preview_reasoning),
-            # NOT the multi-agent orchestrator. The orchestrator is currently broken
-            # (its reasoning_chain agent sends `temperature`, which the Anthropic
-            # model behind the gateway rejects with a 400) and it bypasses our
-            # authored-copy + composition prompt. Single-pass gives clean, on-brand
-            # copy and the composition spec the premium renderer needs.
-            enable_multi_agent=profile.multi_agent,
             enable_ui_element_extraction=profile.ui_extraction,
             quality_threshold=profile.threshold,
             max_quality_iterations=profile.iterations,
@@ -102,6 +95,9 @@ def generate_demo_preview_job(url: str, quality_mode: str = "ultra") -> Dict[str
         
         # Create engine and generate preview
         engine = PreviewEngine(config)
+        # The profile carries the thresholds and per-purpose model choices the
+        # pipeline reads; passing it keeps the one-table principle intact.
+        engine.quality_profile = profile
         result = engine.generate(url_str, cache_key_prefix=f"demo:preview:v3:{quality_mode}:")
         
         # Ensure progress is at 100% when job completes successfully

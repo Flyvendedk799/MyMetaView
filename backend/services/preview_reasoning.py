@@ -37,9 +37,10 @@ from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, asdict, field
 from enum import Enum
 from PIL import Image
-from openai import OpenAI
 from backend.core.config import settings
-from backend.services.graceful_degradation import OpenAICircuitBreaker
+from backend.services.preview.reasoning.models import spec_for
+from backend.services.preview.reasoning.structured import parse_json_response
+from backend.services.reasoning_client import get_client, reasoning_breaker
 
 # Initialize logger FIRST (before any code that uses it)
 logger = logging.getLogger(__name__)
@@ -264,16 +265,17 @@ class ReasonedPreview:
 # AI PROMPTS - Multi-Stage Reasoning (loaded from backend/prompts/)
 # =============================================================================
 
+# Prompts come from the loader; the *model* comes from
+# `preview/reasoning/models.py`. Keeping a model id here too was how six call
+# sites ended up pinned to gpt-4o in three different files.
 try:
     from backend.prompts.loader import (
         get_layout_stage1_prompt,
         get_layout_stage4_prompt,
-        MODEL_LAYOUT_REASONING,
     )
     PROMPT_LOADER_AVAILABLE = True
 except ImportError:
     PROMPT_LOADER_AVAILABLE = False
-    MODEL_LAYOUT_REASONING = "gpt-4o"
 
 # Fallback prompts if loader unavailable (keep minimal inline)
 _STAGE_1_2_3_FALLBACK = "You are an expert web analyst. Extract primary_headline, credibility_signals, value_statement, page_type, regions, design_dna, analysis_confidence. Output valid JSON only."
@@ -479,13 +481,14 @@ def run_stages_1_2_3(screenshot_bytes: bytes) -> Tuple[List[Dict], Dict[str, str
     """
     image_base64, pil_image = prepare_image(screenshot_bytes)
 
-    # Check circuit breaker before making OpenAI call
-    circuit_breaker = OpenAICircuitBreaker.get_instance()
+    # Check the shared circuit breaker before spending a model call.
+    circuit_breaker = reasoning_breaker()
     if circuit_breaker.is_open():
-        logger.warning("Circuit breaker OPEN - skipping Stage 1-2-3 OpenAI call, using fallback")
-        raise Exception("OpenAI circuit breaker is open - too many recent errors")
+        logger.warning("Circuit breaker OPEN - skipping Stage 1-2-3 model call, using fallback")
+        raise Exception("AI circuit breaker is open - too many recent errors")
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=60)
+    spec = spec_for("layout_reasoning")
+    client = get_client(timeout=spec.timeout_s)
 
     stage1_prompt = (
         get_layout_stage1_prompt() if PROMPT_LOADER_AVAILABLE else _STAGE_1_2_3_FALLBACK
@@ -500,7 +503,7 @@ def run_stages_1_2_3(screenshot_bytes: bytes) -> Tuple[List[Dict], Dict[str, str
             else stage1_prompt
         )
         resp = client.chat.completions.create(
-            model=MODEL_LAYOUT_REASONING,
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -518,8 +521,6 @@ def run_stages_1_2_3(screenshot_bytes: bytes) -> Tuple[List[Dict], Dict[str, str
                 }
             ],
             max_tokens=4000,
-            temperature=0.0,
-            seed=42
         )
         return resp.choices[0].message.content.strip()
 
@@ -793,12 +794,13 @@ def run_stages_4_5_6(regions: List[Dict], page_type: str, palette: Dict[str, str
         regions_for_ai.append(region_copy)
 
     # Check circuit breaker before making OpenAI call
-    circuit_breaker = OpenAICircuitBreaker.get_instance()
+    circuit_breaker = reasoning_breaker()
     if circuit_breaker.is_open():
         logger.warning("Circuit breaker OPEN - skipping Stage 4-5-6 OpenAI call, using fallback")
         return _fallback_layout_result(page_type)
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=45)
+    spec = spec_for("layout_reasoning")
+    client = get_client(timeout=spec.timeout_s)
 
     stage4_prompt = ""
     if PROMPT_LOADER_AVAILABLE:
@@ -832,7 +834,7 @@ def run_stages_4_5_6(regions: List[Dict], page_type: str, palette: Dict[str, str
 
     try:
         response = client.chat.completions.create(
-            model=MODEL_LAYOUT_REASONING,
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -841,7 +843,6 @@ def run_stages_4_5_6(regions: List[Dict], page_type: str, palette: Dict[str, str
                 {"role": "user", "content": stage4_prompt}
             ],
             max_tokens=2000,
-            temperature=0.0
         )
         circuit_breaker.record_success()
 
@@ -850,13 +851,12 @@ def run_stages_4_5_6(regions: List[Dict], page_type: str, palette: Dict[str, str
         if result is None:
             logger.warning("⚠️ Stage 4-5-6 parse failed, retrying with simplified prompt")
             retry_resp = client.chat.completions.create(
-                model=MODEL_LAYOUT_REASONING,
+                **spec.request_kwargs_without_tokens(),
                 messages=[
                     {"role": "system", "content": "You are a layout designer. Output valid JSON only."},
                     {"role": "user", "content": stage4_prompt + "\n\nReturn valid JSON only."}
                 ],
                 max_tokens=2000,
-                temperature=0.0
             )
             result = _parse_stage4_content(retry_resp.choices[0].message.content.strip())
         if result is None:
@@ -1632,16 +1632,17 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
     image_base64, pil_image = prepare_image(screenshot_bytes)
 
     # Circuit breaker check
-    circuit_breaker = OpenAICircuitBreaker.get_instance()
+    circuit_breaker = reasoning_breaker()
     if circuit_breaker.is_open():
         logger.warning("Circuit breaker OPEN - using fallback")
-        raise Exception("OpenAI circuit breaker is open")
+        raise Exception("AI circuit breaker is open")
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=60)
+    spec = spec_for("art_director")
+    client = get_client(timeout=spec.timeout_s)
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -1668,9 +1669,6 @@ def generate_reasoned_preview(screenshot_bytes: bytes, url: str = "") -> Reasone
             # output. Truncating the JSON mid-object would fail the whole parse,
             # not just lose the variants, so leave clear headroom.
             max_tokens=2600,
-            # NOTE: no temperature/seed — the gateway routes to an Anthropic model
-            # that 400s on `temperature` ("deprecated for this model"), which would
-            # crash this call and drop us to mojibaked HTML-only extraction.
         )
         circuit_breaker.record_success()
     except Exception as e:

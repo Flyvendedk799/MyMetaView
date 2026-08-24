@@ -306,6 +306,22 @@ class CircuitBreaker:
 
         return wrapper
 
+    def record_success(self) -> None:
+        """Report a successful call the breaker did not itself make.
+
+        ``call()`` wraps a callable, which does not fit work that races two
+        providers or spans a thread pool. Those paths report their outcome here
+        instead of reaching into the private handlers.
+        """
+        self._on_success()
+
+    def record_failure(self, exception: Optional[Exception] = None) -> None:
+        """Report a failed call the breaker did not itself make."""
+        self._on_failure(exception or Exception("unspecified failure"))
+
+    # Older callers (pipeline_context, preview_reasoning) use this spelling.
+    record_error = record_failure
+
     def get_metrics(self) -> Dict[str, Any]:
         """Get current metrics."""
         with self._lock:
@@ -315,6 +331,18 @@ class CircuitBreaker:
         """Get current state."""
         with self._lock:
             return self.metrics.state
+
+    def is_open(self) -> bool:
+        """Should callers skip the protected work right now?
+
+        HALF_OPEN counts as closed: the whole point of that state is to let one
+        probe through, and reporting it as open would mean the breaker never
+        gets the success it needs to recover.
+        """
+        with self._lock:
+            if self.metrics.state != CircuitState.OPEN:
+                return False
+        return not self._should_attempt_reset()
 
     def reset(self) -> None:
         """Manually reset circuit breaker to CLOSED state."""
