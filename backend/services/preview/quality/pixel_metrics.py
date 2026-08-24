@@ -172,10 +172,21 @@ def _edge_density(img) -> float:
 # Where the renderer puts things. The card is laid out in HTML with fixed
 # padding, so these fractional boxes track the real safe area; if the renderer's
 # geometry moves, these move with it.
-TEXT_BOX = (0.055, 0.24, 0.62, 0.82)     # headline + subtitle column
-EYEBROW_BOX = (0.055, 0.09, 0.45, 0.20)  # brand mark / mono label row
-LOGO_BOX = (0.05, 0.07, 0.28, 0.18)      # corner mark slot
+#
+# The horizontal extent is deliberately the *full* safe width rather than the
+# left column: an RTL card mirrors its text to the right, and a left-column
+# sampler measured empty panel on those — reporting a perfectly legible Arabic
+# headline as barely-passing 3.0:1. The vertical band is where the headline sits
+# in either direction, and sampling by luminance decile within the band finds
+# the glyphs wherever they are.
+TEXT_BOX = (0.055, 0.24, 0.945, 0.82)    # headline + subtitle band
+EYEBROW_BOX = (0.055, 0.09, 0.945, 0.20)  # brand mark / mono label row
 CONTENT_BOX = (0.04, 0.06, 0.96, 0.94)   # everything inside the bleed
+
+# The corner mark slot. Unlike the text, this genuinely has a side — but which
+# side flips with direction, so both are checked and the fuller one wins.
+LOGO_BOX = (0.05, 0.07, 0.28, 0.18)
+LOGO_BOX_RTL = (0.72, 0.07, 0.95, 0.18)
 
 
 def text_contrast(image_bytes: bytes) -> Dict[str, float]:
@@ -194,27 +205,82 @@ def text_contrast(image_bytes: bytes) -> Dict[str, float]:
 
     out: Dict[str, float] = {}
     for name, box in (("title_contrast", TEXT_BOX), ("eyebrow_contrast", EYEBROW_BOX)):
-        region = _region(img, box)
-        pixels = list(region.resize((64, 64)).getdata())
-        if not pixels:
-            out[name] = 0.0
-            continue
-        by_luma = sorted(pixels, key=relative_luminance)
-        decile = max(1, len(by_luma) // 10)
-        dark = by_luma[:decile]
-        light = by_luma[-decile:]
-        fg = (
-            int(sum(p[0] for p in dark) / len(dark)),
-            int(sum(p[1] for p in dark) / len(dark)),
-            int(sum(p[2] for p in dark) / len(dark)),
-        )
-        bg = (
-            int(sum(p[0] for p in light) / len(light)),
-            int(sum(p[1] for p in light) / len(light)),
-            int(sum(p[2] for p in light) / len(light)),
-        )
-        out[name] = round(contrast_ratio(fg, bg), 2)
+        pixels = _sample_pixels(_region(img, box))
+        out[name] = _ink_contrast(pixels)
     return out
+
+
+def _ink_contrast(pixels: List[RGB]) -> float:
+    """Contrast between a region's background and the type drawn on it.
+
+    Finding the ink is the hard part, and a fixed decile does not do it. The
+    headline fills a good share of its band, but the eyebrow is a 19px mono
+    label crossing maybe 1% of its band's pixels — so a 10%-decile "foreground"
+    was 90% background, and every card reported its eyebrow at ~1.4:1 no matter
+    what colour it actually was.
+
+    Instead: the background is the region's dominant luminance, and the ink is
+    the pixels furthest from it. Sparse type and dense type both work, because
+    nothing here assumes how much of the region the type covers.
+    """
+    if not pixels:
+        return 0.0
+
+    lumas = [relative_luminance(p) for p in pixels]
+    # Dominant luminance via a coarse histogram — the panel, whatever it is.
+    buckets: Dict[int, int] = {}
+    for luma in lumas:
+        key = int(luma * 32)
+        buckets[key] = buckets.get(key, 0) + 1
+    dominant = max(buckets.items(), key=lambda kv: kv[1])[0] / 32.0
+
+    # Ink = the pixels furthest from the background, capped so a handful of
+    # anti-aliasing outliers cannot invent contrast that is not there.
+    ranked = sorted(zip(lumas, pixels), key=lambda item: abs(item[0] - dominant), reverse=True)
+    take = max(1, min(len(ranked) // 50, 400))
+    ink_pixels = [p for _, p in ranked[:take]]
+    if not ink_pixels:
+        return 0.0
+
+    count = len(ink_pixels)
+    ink = (
+        int(sum(p[0] for p in ink_pixels) / count),
+        int(sum(p[1] for p in ink_pixels) / count),
+        int(sum(p[2] for p in ink_pixels) / count),
+    )
+    background_pixels = [p for luma, p in ranked[-take:]] or ink_pixels
+    background = (
+        int(sum(p[0] for p in background_pixels) / len(background_pixels)),
+        int(sum(p[1] for p in background_pixels) / len(background_pixels)),
+        int(sum(p[2] for p in background_pixels) / len(background_pixels)),
+    )
+    return round(contrast_ratio(ink, background), 2)
+
+
+# How many pixels to sample from a text region. Enough to be representative,
+# few enough to stay fast on a 2400x1260 card.
+_SAMPLE_TARGET = 12000
+
+
+def _sample_pixels(region) -> List[RGB]:
+    """Sample a region by striding, never by resizing.
+
+    Resizing was the bug: a 19px mono eyebrow on a 1200px-wide card downscaled
+    to 64px has its strokes averaged into the background, so every card reported
+    its eyebrow at ~1.4:1 whatever it actually was. Striding keeps real pixel
+    values, which is the whole point of measuring the artefact.
+    """
+    width, height = region.size
+    if width < 2 or height < 2:
+        return []
+    total = width * height
+    stride = max(1, int((total / _SAMPLE_TARGET) ** 0.5))
+    pixels = region.load()
+    return [
+        pixels[x, y]
+        for y in range(0, height, stride)
+        for x in range(0, width, stride)
+    ]
 
 
 def text_overflow_risk(image_bytes: bytes) -> float:
@@ -268,13 +334,18 @@ def logo_slot_occupancy(image_bytes: bytes) -> float:
     except Exception:  # noqa: BLE001
         return 0.0
 
-    slot = _region(img, LOGO_BOX)
-    pixels = list(slot.resize((40, 20)).getdata())
-    if not pixels:
-        return 0.0
-    background = _mean_color(slot)
-    marked = sum(1 for p in pixels if delta_e(p, background) > 18)
-    return round(marked / len(pixels), 3)
+    # Check both corners: RTL cards mirror the mark to the opposite side, and
+    # scoring only one would report every RTL card as having no logo.
+    best = 0.0
+    for box in (LOGO_BOX, LOGO_BOX_RTL):
+        slot = _region(img, box)
+        pixels = list(slot.resize((40, 20)).getdata())
+        if not pixels:
+            continue
+        background = _mean_color(slot)
+        marked = sum(1 for p in pixels if delta_e(p, background) > 18)
+        best = max(best, marked / len(pixels))
+    return round(best, 3)
 
 
 def palette_delta_e(

@@ -44,6 +44,13 @@ from string import Template
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
+from backend.services.preview.rendering.typography import (
+    clamp as _clamp_em,
+    em_width,
+    fit_headline,
+    text_direction,
+)
+
 logger = logging.getLogger(__name__)
 
 # Canonical OG size. We render at 2× and downscale for anti-aliased edges.
@@ -263,26 +270,17 @@ def _panel_color(colors: Dict[str, str], role: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _clean(text: Optional[str], limit: int) -> str:
+    """Trim to ``limit`` *Latin-equivalent* characters.
+
+    The limits throughout this file were written as character counts against
+    English copy, so they are converted to visual width here rather than
+    restated everywhere. That is what stops a CJK subtitle — half the character
+    count, twice the width — from running past the safe area, and what makes a
+    long German compound end in an ellipsis instead of a hard cut mid-word.
+    """
     if not text:
         return ""
-    t = re.sub(r"\s+", " ", str(text)).strip()
-    if len(t) > limit:
-        t = t[: limit - 1].rstrip(" ,.;:-–—") + "…"
-    return t
-
-
-def _headline_size(title: str) -> int:
-    """Fit the headline: shorter lines get a bigger, more confident size (px)."""
-    n = len(title or "")
-    if n <= 22:
-        return 82
-    if n <= 34:
-        return 72
-    if n <= 48:
-        return 62
-    if n <= 64:
-        return 54
-    return 46
+    return _clamp_em(text, limit * 0.5)
 
 
 def _url_label(url: str) -> str:
@@ -298,6 +296,19 @@ def _url_label(url: str) -> str:
 
 def _esc(text: str) -> str:
     return _html.escape(text or "", quote=True)
+
+
+def _has_wide_script(text: Optional[str]) -> bool:
+    """Does this copy contain full-width glyphs (CJK)?"""
+    from backend.services.preview.rendering.typography import is_wide
+
+    return any(is_wide(char) for char in (text or ""))
+
+
+def _longest_token(text: Optional[str]) -> str:
+    """The widest single unbreakable run — the German-compound case."""
+    tokens = (text or "").split()
+    return max(tokens, key=em_width) if tokens else ""
 
 
 def _logo_usable(data_uri: str) -> bool:
@@ -355,6 +366,7 @@ ${font_head}
     position:relative; width:${text_col_w}; height:${text_col_h}; flex:${text_flex};
     padding:${pad_y}px ${pad_x}px; display:flex; flex-direction:column;
     justify-content:space-between; gap:${pad_y}px;
+    direction:${text_dir}; text-align:${text_align};
   }
   .top { display:flex; align-items:center; justify-content:space-between; gap:24px; }
   .eyebrow {
@@ -363,15 +375,25 @@ ${font_head}
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .logo { height:${logo_h}px; max-width:250px; object-fit:contain; opacity:0.98; }
+  /* A mark whose tone is too close to the panel gets a plate to sit on, rather
+     than being dropped for the wordmark. Composition decides; this draws it. */
+  .logo-plate {
+    display:inline-flex; align-items:center; padding:${plate_pad}px ${plate_pad_x}px;
+    border-radius:${plate_radius}px; background:${plate_bg};
+  }
   .wordmark {
     font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC', sans-serif; font-weight:600; font-size:22px;
     letter-spacing:-0.01em; color:${ink};
   }
   .headline-wrap { display:flex; flex-direction:column; gap:${gap}px; }
   .headline {
-    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC', sans-serif; font-weight:600;
-    font-size:${hsize}px; line-height:1.05; letter-spacing:-0.025em;
+    font-family:'Bricolage Grotesque', 'Noto Sans', 'Noto Sans CJK SC',
+                'Noto Sans Arabic', 'Noto Sans Hebrew', sans-serif; font-weight:600;
+    font-size:${hsize}px; line-height:1.05; letter-spacing:${headline_tracking};
     color:${ink}; max-width:${headline_mw};
+    /* Latin tracking is negative for optical tightness; CJK and Arabic are
+       drawn to their own metrics and negative tracking collides the glyphs. */
+    overflow-wrap:break-word; word-break:${word_break};
   }
   .accent-bar { width:64px; height:5px; border-radius:3px; background:${accent}; flex:none; }
   .subtitle {
@@ -495,6 +517,7 @@ def _build_html(
     proof: Optional[str] = None,
     cta_text: Optional[str] = None,
     size: CardSize = DEFAULT_SIZE,
+    logo_plate: Optional[str] = None,
 ) -> str:
     # Columns only work when there is width to divide. On square and portrait
     # cards the visual stacks above the text instead.
@@ -502,12 +525,22 @@ def _build_html(
     is_split = layout in _PANEL_LAYOUTS and bool(visual_data_uri)
     k = size.width / 1200.0  # geometry scales with the card
 
-    hsize = _headline_size(title)
-    if is_split and not stacked:
-        hsize = min(hsize, 58)  # narrower text column
-    if stacked:
-        hsize = int(hsize * 0.92)
-    hsize = max(30, int(hsize * k))
+    # One rule sizes the headline, measured rather than counted, so CJK and RTL
+    # land at a size that fits instead of the one a character count implied.
+    fit = fit_headline(
+        title,
+        card_width=size.width,
+        card_height=size.height,
+        layout=layout,
+        stacked=stacked,
+    )
+    title = fit.text
+    hsize = max(30, int(fit.font_size_px * k))
+    headline_dir = fit.direction
+    # RTL copy needs the whole text column mirrored, not just the headline:
+    # a left-aligned Arabic headline over a left-aligned eyebrow reads as
+    # broken to anyone who reads it.
+    rtl = headline_dir == "rtl"
 
     # Scrim = the panel colour at ~0.66 opacity: it dims the hero photo into a
     # cohesive, subdued backdrop (muting any of the site's own overlaid text) and
@@ -534,7 +567,13 @@ def _build_html(
     if is_split:
         logo_html = ""
     elif logo_data_uri:
-        logo_html = f'<img class="logo" src="{logo_data_uri}" alt="" />'
+        logo_img = f'<img class="logo" src="{logo_data_uri}" alt="" />'
+        # Composition measured this mark against the resolved panel and asked
+        # for a plate because it would otherwise be invisible — a white logo on
+        # a white panel is a real failure this card used to ship.
+        logo_html = (
+            f'<span class="logo-plate">{logo_img}</span>' if logo_plate else logo_img
+        )
     elif show_wordmark:
         logo_html = f'<span class="wordmark">{_esc(brand_name)}</span>'
     else:
@@ -676,6 +715,21 @@ def _build_html(
         headline_mw="16ch" if (is_split and not stacked) else "20ch",
         subtitle_mw="24ch" if (is_split and not stacked) else "34ch",
 
+        text_dir=headline_dir,
+        text_align="right" if rtl else "left",
+        # Negative tracking is an optical correction for Latin display type. CJK
+        # and Arabic glyphs are drawn to their own metrics and tightening them
+        # collides strokes, so those scripts get none.
+        headline_tracking="0" if (rtl or _has_wide_script(title)) else "-0.025em",
+        # Only break inside a word when there is nowhere else to break: a long
+        # German compound is one token wider than the column.
+        word_break="break-word" if em_width(_longest_token(title)) > 14 else "normal",
+
+        plate_bg=logo_plate or "transparent",
+        plate_pad=str(max(4, int(8 * k))),
+        plate_pad_x=str(max(6, int(12 * k))),
+        plate_radius=str(max(4, int(8 * k))),
+
         accent_shape_html=accent_shape_html,
         body_html=body_html,
     )
@@ -766,6 +820,7 @@ def render_premium_card_detailed(
         visual_data_uri = None
 
     doc = _build_html(
+        logo_plate=composition.get("logo_plate"),
         title=title_c,
         subtitle=subtitle_c,
         url_label=_url_label(url),
