@@ -77,10 +77,24 @@ The complete list lives in [`docs/ops/ENVIRONMENT_VARIABLES.md`](docs/ops/ENVIRO
 ## Tests
 
 ```bash
-python -m pytest backend/tests             # engine + services (181 tests)
+python -m pytest backend/tests             # engine + services (300 tests)
 npm run build                              # typecheck + production build
 npm run test:e2e                           # Playwright smoke of public pages
 ```
+
+## The engine
+
+The preview engine is a pipeline of typed stages under
+[`backend/services/preview/`](backend/services/preview/) — capture, extraction,
+reasoning, composition, rendering, quality. Every generation records the
+fallbacks it took, so "why did this card come out generic?" is a query rather
+than log archaeology, and the corpus scores the rendered PNGs so a change that
+makes cards worse fails CI.
+
+[`docs/ENGINE_ARCHITECTURE.md`](docs/ENGINE_ARCHITECTURE.md) is the map, and
+the section at its end lists the things that will bite you.
+[`docs/ENGINE_ROADMAP.md`](docs/ENGINE_ROADMAP.md) records why each piece is
+the way it is.
 
 ## Deployment
 
