@@ -26,4 +26,7 @@ Pillow>=10.0.0
 Jinja2>=3.1.0
 markdown>=3.5.0
 img2pdf>=0.5.0
-
+# SVG rasterization for scraped header logos (Phase 3.1). Optional at runtime:
+# `svg_rasterizer_available()` falls back to the text wordmark when it is absent,
+# so a deployment that cannot build cairo keeps working.
+cairosvg>=2.7.0

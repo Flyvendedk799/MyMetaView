@@ -28,9 +28,11 @@ from typing import Any, Callable, Dict, List, Optional
 from uuid import uuid4
 
 from backend.services.preview.observability.reason_codes import (
+    Degradation,
     FailureReason,
     PaletteSource,
     PreviewLane,
+    Stage,
     TerminalStatus,
 )
 
@@ -44,7 +46,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class StageTiming:
-    """Single stage measurement embedded in the JobTrace."""
+    """Single stage measurement embedded in the JobTrace.
+
+    Timings were already here; the token/cost fields are what make
+    "cost per preview, broken down by stage" answerable. They are populated by
+    the provider layer through ``JobTrace.record_ai_usage``, which attributes
+    spend to whichever stage is open.
+    """
 
     name: str
     started_at: float
@@ -54,6 +62,43 @@ class StageTiming:
     skipped: bool = False
     error: Optional[str] = None
     outputs: Dict[str, Any] = field(default_factory=dict)
+
+    # Per-stage AI accounting (Phase 0.3)
+    ai_calls: int = 0
+    ai_tokens_input: int = 0
+    ai_tokens_output: int = 0
+    ai_cost_usd: float = 0.0
+    # Budget accounting (Phase 2.1)
+    budget_ms: Optional[float] = None
+
+    @property
+    def over_budget(self) -> bool:
+        return self.budget_ms is not None and self.duration_ms > self.budget_ms
+
+
+@dataclass
+class DegradationEvent:
+    """One step down from the ideal path, in the order it happened.
+
+    ``detail`` is the sentence a human reads in the admin "why" view, so keep
+    it concrete ("logo was 18x18 after crop") rather than restating the code.
+    """
+
+    code: Degradation
+    stage: Stage
+    at: float = field(default_factory=time.time)
+    detail: Optional[str] = None
+    reason: Optional[FailureReason] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "code": self.code.value,
+            "stage": self.stage.value,
+            "at": self.at,
+            "detail": self.detail,
+            "reason": self.reason.value if self.reason else None,
+            "healthy": self.code.is_healthy,
+        }
 
 
 @dataclass
@@ -99,33 +144,127 @@ class JobTrace:
     retry_count: int = 0
     retry_deltas: List[RetryDelta] = field(default_factory=list)
 
+    # Ordered trail of every fallback the job took (Phase 0.1). This is the
+    # answer to "why did this card come out generic?" — a finished job with a
+    # healthy trail and a finished job that limped through five fallbacks are
+    # indistinguishable without it.
+    degradations: List[DegradationEvent] = field(default_factory=list)
+
+    # Which stage is currently open, so AI spend recorded by the provider layer
+    # lands on the right stage without every call site passing it.
+    _open_stage: Optional[str] = None
+
     # Terminal status
     terminal_status: Optional[TerminalStatus] = None
     failure_reason: Optional[FailureReason] = None
     failure_detail: Optional[str] = None
 
-    # Token / cost accounting (Phase 6)
+    # Token / cost accounting (Phase 6, per-stage in Phase 0.3)
     ai_tokens_input: int = 0
     ai_tokens_output: int = 0
     ai_call_count: int = 0
+    ai_cost_usd: float = 0.0
 
     # Free-form notes (kept short)
     warnings: List[str] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)
+
+    # Usage recorded before its stage closed; folded in by attach_pending_usage.
+    _pending_usage: List[Any] = field(default_factory=list)
 
     # ---- mutators -------------------------------------------------------
 
     def add_stage(self, timing: StageTiming) -> None:
         self.stage_timings.append(timing)
 
+    def open_stage(self, stage: "Stage | str") -> None:
+        """Mark a stage as running so AI spend is attributed to it."""
+        self._open_stage = stage.value if isinstance(stage, Stage) else str(stage)
+
+    def close_stage(self) -> None:
+        self._open_stage = None
+
+    def degrade(
+        self,
+        code: Degradation,
+        stage: Stage,
+        detail: Optional[str] = None,
+        reason: Optional[FailureReason] = None,
+    ) -> None:
+        """Record one step down from the ideal path.
+
+        Cheap by design — it is called from every fallback branch in the engine,
+        including the ones on the happy path, so the trail reads as a story
+        rather than a list of complaints.
+        """
+        self.degradations.append(
+            DegradationEvent(code=code, stage=stage,
+                             detail=(detail or None) and str(detail)[:240],
+                             reason=reason)
+        )
+
+    def degradation_codes(self) -> List[str]:
+        """The trail as a flat, ordered list of codes."""
+        return [d.code.value for d in self.degradations]
+
+    def degradation_trail(self) -> str:
+        """Human-readable trail: ``capture_ok → brand_logo_fallback_favicon → …``"""
+        return " → ".join(self.degradation_codes())
+
+    def unhealthy_degradations(self) -> List[str]:
+        """Only the codes that mean something went less than perfectly."""
+        return [d.code.value for d in self.degradations if not d.code.is_healthy]
+
     def add_retry(self, delta: RetryDelta) -> None:
         self.retry_count = max(self.retry_count, delta.attempt)
         self.retry_deltas.append(delta)
 
-    def record_ai_usage(self, input_tokens: int, output_tokens: int) -> None:
+    def record_ai_usage(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        cost_usd: float = 0.0,
+        stage: Optional[str] = None,
+    ) -> None:
+        """Attribute one model call to the job and to a stage.
+
+        ``stage`` defaults to whichever stage is open, which is why call sites
+        deep inside the reasoning code do not have to thread it through.
+        """
         self.ai_tokens_input += int(input_tokens or 0)
         self.ai_tokens_output += int(output_tokens or 0)
+        self.ai_cost_usd += float(cost_usd or 0.0)
         self.ai_call_count += 1
+
+        target = stage or self._open_stage
+        if not target:
+            return
+        for timing in reversed(self.stage_timings):
+            if timing.name == target:
+                timing.ai_calls += 1
+                timing.ai_tokens_input += int(input_tokens or 0)
+                timing.ai_tokens_output += int(output_tokens or 0)
+                timing.ai_cost_usd += float(cost_usd or 0.0)
+                return
+        # The stage has not been closed yet (timings are appended on exit), so
+        # park the usage and let ``attach_pending_usage`` fold it in.
+        self._pending_usage.append(
+            (target, int(input_tokens or 0), int(output_tokens or 0), float(cost_usd or 0.0))
+        )
+
+    def attach_pending_usage(self, timing: StageTiming) -> StageTiming:
+        """Fold usage recorded while ``timing``'s stage was still open into it."""
+        remaining = []
+        for stage_name, tin, tout, cost in self._pending_usage:
+            if stage_name == timing.name:
+                timing.ai_calls += 1
+                timing.ai_tokens_input += tin
+                timing.ai_tokens_output += tout
+                timing.ai_cost_usd += cost
+            else:
+                remaining.append((stage_name, tin, tout, cost))
+        self._pending_usage = remaining
+        return timing
 
     def finalize_success(self) -> None:
         self.end_ts = time.time()
@@ -154,6 +293,12 @@ class JobTrace:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
+        # Private bookkeeping never leaves the object.
+        d.pop("_open_stage", None)
+        d.pop("_pending_usage", None)
+        d["degradations"] = [event.to_dict() for event in self.degradations]
+        d["degradation_trail"] = self.degradation_trail()
+        d["unhealthy_degradations"] = self.unhealthy_degradations()
         # Enum serialization
         if self.lane:
             d["lane"] = self.lane.value
