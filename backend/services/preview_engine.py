@@ -473,6 +473,10 @@ class PreviewEngine:
         self.config = config
         self.logger = logging.getLogger(__name__)
         self._last_progress = 0.0  # Track last progress for monotonic updates
+        # Customer-uploaded brand logo (SaaS): fetched at most once per
+        # generation; None either means "no logo configured" or "unreachable".
+        self._uploaded_logo_cache: Optional[Dict[str, Any]] = None
+        self._uploaded_logo_fetched = False
         # Initialize framework-based fusion engine
         self.fusion_engine = MultiModalFusionEngine()
         # Initialize quality orchestrator
@@ -1607,7 +1611,14 @@ class PreviewEngine:
                 brand_name = extract_brand_name(html_content, url)
                 if brand_name:
                     brand_elements["brand_name"] = brand_name
-            
+
+            # The logo the customer uploaded beats whatever we scraped — it's
+            # the exact mark they want on every card. SVG uploads have no
+            # raster form; they reach the card renderer directly as a data URI.
+            uploaded = self._uploaded_logo()
+            if uploaded and uploaded.get("png_base64"):
+                brand_elements["logo_base64"] = uploaded["png_base64"]
+
             self.logger.info(
                 f"✅ Brand extraction: name={brand_elements.get('brand_name')}, "
                 f"has_logo={bool(brand_elements.get('logo_base64'))}, "
@@ -1902,6 +1913,61 @@ class PreviewEngine:
             # Fallback to HTML-only extraction
             return self._extract_from_html_only(html_content, url, screenshot_bytes=getattr(self, '_last_screenshot_bytes', None))
     
+    def _uploaded_logo(self) -> Optional[Dict[str, Any]]:
+        """The logo the customer uploaded on the Brand & identity page.
+
+        This is the one logo we know is right — it beats anything scraped off
+        the page. Fetched lazily and at most once per generation; the public
+        demo has no brand settings, so it never fetches there.
+        """
+        if self._uploaded_logo_fetched:
+            return self._uploaded_logo_cache
+        self._uploaded_logo_fetched = True
+        settings_dict = self.config.brand_settings if isinstance(self.config.brand_settings, dict) else {}
+        logo_url = settings_dict.get("logo_url")
+        if not logo_url:
+            return None
+        try:
+            from backend.services.brand_extractor import fetch_uploaded_logo
+            self._uploaded_logo_cache = fetch_uploaded_logo(logo_url)
+            if self._uploaded_logo_cache:
+                self.logger.info("✅ Using customer-uploaded brand logo")
+            else:
+                self.logger.warning(f"Uploaded brand logo unusable, falling back to extraction: {logo_url}")
+        except Exception as e:
+            self.logger.warning(f"Uploaded brand logo fetch failed: {e}")
+        return self._uploaded_logo_cache
+
+    @staticmethod
+    def _as_image_data_uri(image_b64: Optional[str]) -> Optional[str]:
+        """Base64 image → data URI with a sniffed mime type.
+
+        Callers used to hard-code image/png, but hero images travel as JPEG;
+        the sniff keeps the declared type honest for whatever renders it.
+        """
+        if not image_b64:
+            return None
+        value = str(image_b64)
+        if value.startswith("data:"):
+            return value
+        import base64
+        head_b64 = value[:32]
+        try:
+            head = base64.b64decode(head_b64 + "=" * (-len(head_b64) % 4))
+        except Exception:
+            head = b""
+        if head.startswith(b"\xff\xd8"):
+            mime = "image/jpeg"
+        elif head.startswith(b"GIF8"):
+            mime = "image/gif"
+        elif head[:4] == b"RIFF":
+            mime = "image/webp"
+        elif head.lstrip().startswith((b"<svg", b"<?xml")):
+            mime = "image/svg+xml"
+        else:
+            mime = "image/png"
+        return f"data:{mime};base64,{value}"
+
     def _stash_crop(self, data_uri: Optional[str], kind: str) -> Optional[str]:
         """Park a crop on R2 and return its URL, for later re-renders.
 
@@ -2495,12 +2561,16 @@ class PreviewEngine:
                         "accent_color": _p.get("accent_color") or blueprint_colors.get("accent_color"),
                     }
                 _hide_watermark = bool(_p.get("hide_watermark"))
-                logo_uri = None
-                if primary_image:
-                    logo_uri = (
-                        primary_image if str(primary_image).startswith("data:")
-                        else f"data:image/png;base64,{primary_image}"
-                    )
+                # The card's corner mark. The customer-uploaded logo wins
+                # outright (SVG included — Chromium draws it crisply); then the
+                # brand logo we extracted. Hero/product/avatar photos — what
+                # primary_image resolves to on classified pages — stay out of
+                # this slot: squeezed to corner-mark height they read as noise,
+                # and the renderer's text wordmark is the designed fallback.
+                _uploaded = self._uploaded_logo() or {}
+                logo_uri = _uploaded.get("data_uri") or self._as_image_data_uri(
+                    (brand_elements or {}).get("logo_base64")
+                )
                 # SEQ 3: focal-cropped screenshot for split cards. The art director
                 # only asks for "split" when the page has one clean hero visual, and
                 # gives a tight focus box (nav/banners excluded). We crop exactly

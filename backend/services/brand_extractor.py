@@ -244,6 +244,12 @@ def crop_logo_from_screenshot(screenshot_bytes: bytes, logo_info: Dict[str, Any]
         
         # Crop the logo
         logo_image = image.crop((left, top, right, bottom))
+        if max(logo_image.size) > _LOGO_MAX_DIM:
+            ratio = _LOGO_MAX_DIM / max(logo_image.size)
+            logo_image = logo_image.resize(
+                (max(1, int(logo_image.width * ratio)), max(1, int(logo_image.height * ratio))),
+                Image.Resampling.LANCZOS,
+            )
         
         # Convert to RGBA to handle transparency
         if logo_image.mode != 'RGBA':
@@ -262,23 +268,117 @@ def crop_logo_from_screenshot(screenshot_bytes: bytes, logo_info: Dict[str, Any]
         return None
 
 
-def _download_and_validate_image(img_url: str, min_width: int = 32, min_height: int = 32) -> Optional[str]:
-    """Download image, validate dimensions, return base64 or None."""
+# Some CDNs (Cloudflare, Akamai) refuse the default python-requests UA with a
+# 403, which silently downgraded us to the favicon fallback on those sites.
+_IMAGE_REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    ),
+    "Accept": "image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5",
+}
+
+# Logos are corner marks, not hero art: anything past this edge length only
+# bloats the Redis cache and the demo payload without adding a pixel on screen.
+_LOGO_MAX_DIM = 512
+_MAX_LOGO_DOWNLOAD_BYTES = 5 * 1024 * 1024  # matches the brand-logo upload cap
+
+
+def _looks_like_svg(content: bytes, content_type: str = "") -> bool:
+    if "svg" in (content_type or "").lower():
+        return True
+    head = content[:512].lstrip().lower()
+    return head.startswith(b"<svg") or (head.startswith(b"<?xml") and b"<svg" in head)
+
+
+def _trim_logo_padding(img: Image.Image) -> Image.Image:
+    """Trim fully transparent margins so the logo renders at its optical size.
+
+    Exported logo files often ship inside a much larger transparent canvas;
+    untrimmed, the visible mark shrinks to a fraction of the height the card
+    gives it. Trims only via the alpha channel — never content — and keeps a
+    small breathing margin.
+    """
     try:
-        response = requests.get(img_url, timeout=5)
-        if response.status_code != 200:
+        if img.mode != 'RGBA':
+            return img
+        bbox = img.split()[-1].getbbox()
+        if not bbox:
+            return img  # fully transparent; caller's validation handles it
+        left, top, right, bottom = bbox
+        if (right - left) >= img.width * 0.9 and (bottom - top) >= img.height * 0.9:
+            return img  # nothing meaningful to trim
+        pad_x = max(2, (right - left) // 25)
+        pad_y = max(2, (bottom - top) // 25)
+        return img.crop((
+            max(0, left - pad_x), max(0, top - pad_y),
+            min(img.width, right + pad_x), min(img.height, bottom + pad_y),
+        ))
+    except Exception:
+        return img
+
+
+def _process_logo_image(img: Image.Image) -> str:
+    """Normalize a validated logo to trimmed, bounded, base64 PNG."""
+    if img.mode not in ('RGB', 'RGBA'):
+        img = img.convert('RGBA')
+    img = _trim_logo_padding(img)
+    if max(img.size) > _LOGO_MAX_DIM:
+        ratio = _LOGO_MAX_DIM / max(img.size)
+        img = img.resize(
+            (max(1, int(img.width * ratio)), max(1, int(img.height * ratio))),
+            Image.Resampling.LANCZOS,
+        )
+    buffered = BytesIO()
+    img.save(buffered, format="PNG", optimize=True)
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+
+def _download_and_validate_image(img_url: str, min_width: int = 32, min_height: int = 32) -> Optional[str]:
+    """Download image, validate dimensions, return base64 PNG or None."""
+    try:
+        response = requests.get(img_url, timeout=5, headers=_IMAGE_REQUEST_HEADERS)
+        if response.status_code != 200 or not response.content:
+            return None
+        if len(response.content) > _MAX_LOGO_DOWNLOAD_BYTES:
+            return None
+        if _looks_like_svg(response.content, response.headers.get("content-type", "")):
+            # PIL can't rasterize SVG and the frontend renders logo_base64 as
+            # PNG; skip so the next candidate (usually a raster icon) wins.
+            logger.debug(f"Skipping SVG logo candidate (no rasterizer): {img_url}")
             return None
         img = Image.open(BytesIO(response.content))
+        img.load()
         if img.width < min_width or img.height < min_height:
             return None
         # Filter decorative images (1x1 pixels, tracking pixels)
         if img.width <= 2 or img.height <= 2:
             return None
-        buffered = BytesIO()
-        img.save(buffered, format="PNG")
-        return base64.b64encode(buffered.getvalue()).decode('utf-8')
+        return _process_logo_image(img)
     except Exception:
         return None
+
+
+def _candidate_img_srcs(img_tag) -> List[str]:
+    """All plausible source URLs of an <img>, lazy-load attributes included.
+
+    Lazy-loaded sites put a 1px placeholder (or nothing) in `src` and the real
+    file in data-src/data-lazy-src/srcset; reading only `src` made us fall
+    through to the favicon on exactly the sites with the nicest logos.
+    """
+    srcs: List[str] = []
+    for attr in ('src', 'data-src', 'data-lazy-src', 'data-original'):
+        value = (img_tag.get(attr) or "").strip()
+        if value and not value.startswith('data:'):
+            srcs.append(value)
+    srcset = img_tag.get('srcset') or img_tag.get('data-srcset') or ""
+    for candidate in srcset.split(','):
+        value = candidate.strip().split(' ')[0]
+        if value and not value.startswith('data:'):
+            srcs.append(value)
+            break  # first srcset entry is enough
+    # De-duplicate, preserving order
+    return list(dict.fromkeys(srcs))
 
 
 def extract_brand_logo(html_content: str, url: str, screenshot_bytes: bytes) -> Optional[str]:
@@ -350,13 +450,15 @@ def extract_brand_logo(html_content: str, url: str, screenshot_bytes: bytes) -> 
         ]
 
         for selector in logo_selectors:
-            logo_img = soup.select_one(selector)
-            if logo_img and logo_img.get('src'):
-                logo_url = urljoin(base_url, logo_img['src'])
-                logo_base64 = _download_and_validate_image(logo_url, min_width=32, min_height=32)
-                if logo_base64:
-                    logger.info(f"Logo extracted from HTML: {selector}")
-                    return logo_base64
+            # A selector's first hit can be a broken or placeholder image;
+            # trying the next couple of matches beats skipping to the favicon.
+            for logo_img in soup.select(selector)[:3]:
+                for src in _candidate_img_srcs(logo_img):
+                    logo_url = urljoin(base_url, src)
+                    logo_base64 = _download_and_validate_image(logo_url, min_width=32, min_height=32)
+                    if logo_base64:
+                        logger.info(f"Logo extracted from HTML: {selector}")
+                        return logo_base64
 
         # =================================================================
         # PRIORITY 3: AI-Powered Logo Detection (fallback for complex pages)
@@ -432,23 +534,64 @@ def _extract_logo_from_screenshot(screenshot_bytes: bytes) -> Optional[str]:
         crop_height = int(height * 0.15)
         
         logo_region = screenshot.crop((0, 0, crop_width, crop_height))
-        
-        # Check if region has meaningful content (not just background)
-        # Simple heuristic: check if there's sufficient color variation
-        pixels = list(logo_region.getdata())
+
+        # Check if region has meaningful content (not just background): a crop
+        # of empty header shipped as "the logo" is worse than no logo at all —
+        # it reaches the demo UI and the card renderer as a blank smudge.
+        pixels = list(logo_region.resize((24, 24)).getdata())
         if len(pixels) < 100:  # Too small
             return None
-        
-        # Convert to base64
-        buffered = BytesIO()
-        logo_region.save(buffered, format="PNG")
-        logo_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        
+        def _channel_variance(values):
+            mean = sum(values) / len(values)
+            return sum((v - mean) ** 2 for v in values) / len(values)
+        spread = sum(
+            _channel_variance([p[channel] for p in pixels]) for channel in range(3)
+        )
+        if spread < 80:
+            logger.debug("  Screenshot logo extraction: region is near-uniform, skipping")
+            return None
+
+        logo_base64 = _process_logo_image(logo_region)
+
         logger.debug(f"  Screenshot logo extraction: cropped {crop_width}x{crop_height} from top-left")
         return logo_base64
         
     except Exception as e:
         logger.debug(f"  Screenshot logo extraction failed: {e}")
+        return None
+
+
+def fetch_uploaded_logo(logo_url: str) -> Optional[Dict[str, Optional[str]]]:
+    """Download the customer's uploaded brand logo (Brand & identity page).
+
+    Returns {"data_uri": ..., "png_base64": ...} or None if unreachable.
+    `data_uri` keeps the original format (SVG included — the card renderer is
+    real Chromium and draws it crisply); `png_base64` is the normalized raster
+    for consumers that require PNG, and is None for SVG uploads.
+    """
+    if not logo_url:
+        return None
+    try:
+        response = requests.get(logo_url, timeout=8, headers=_IMAGE_REQUEST_HEADERS)
+        if response.status_code != 200 or not response.content:
+            logger.warning(f"Uploaded logo unreachable ({response.status_code}): {logo_url}")
+            return None
+        if len(response.content) > _MAX_LOGO_DOWNLOAD_BYTES:
+            logger.warning(f"Uploaded logo too large, ignoring: {logo_url}")
+            return None
+
+        if _looks_like_svg(response.content, response.headers.get("content-type", "")):
+            data_uri = "data:image/svg+xml;base64," + base64.b64encode(response.content).decode('utf-8')
+            return {"data_uri": data_uri, "png_base64": None}
+
+        img = Image.open(BytesIO(response.content))
+        img.load()
+        if img.width < 8 or img.height < 8:
+            return None
+        png_base64 = _process_logo_image(img)
+        return {"data_uri": f"data:image/png;base64,{png_base64}", "png_base64": png_base64}
+    except Exception as e:
+        logger.warning(f"Failed to fetch uploaded logo {logo_url}: {e}")
         return None
 
 
