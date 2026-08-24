@@ -714,6 +714,81 @@ export async function fetchAdminPreviewVariants(previewId: number): Promise<Prev
   return fetchApi<PreviewVariant[]>(`/api/v1/admin/previews/${previewId}/variants`)
 }
 
+// ---------------------------------------------------------------------------
+// Preview diagnosis — the "why did this card come out like that?" view
+// ---------------------------------------------------------------------------
+
+export interface DegradationExplanation {
+  code: string
+  stage: string
+  says: string
+  detail: string
+}
+
+export interface PreviewDiagnosis {
+  job_id: string | null
+  url: string | null
+  verdict: string
+  terminal_status: string | null
+  failure_reason: string | null
+  failure_detail: string | null
+  lane: string | null
+  template: string | null
+  palette_source: string | null
+  retry_count: number
+  extraction_confidence: number | null
+  quality_subscores: Record<string, number>
+  visual_quality: Record<string, unknown>
+  total_ms: number | null
+  ai_tokens_total: number | null
+  ai_call_count: number | null
+  bottleneck_stage: { name: string; duration_ms: number; success: boolean } | null
+  warnings: string[]
+  degradation_trail: string
+  degradations: Array<{ code: string; stage: string; detail: string | null; healthy: boolean }>
+  unhealthy_degradations: string[]
+  explanation: DegradationExplanation[]
+  ai_cost_usd: number
+  stage_costs: Record<string, { usd: number; calls: number; tokens_in: number; tokens_out: number }>
+  stage_ms: Record<string, number>
+  over_budget_stages: string[]
+}
+
+export interface CostDashboard {
+  samples: number
+  stages: Record<string, {
+    p50_ms: number
+    p95_ms: number
+    max_ms: number
+    samples: number
+    cost_usd: number
+  }>
+  lanes: Record<string, {
+    count: number
+    cost_usd: number
+    total_ms: number
+    avg_ms?: number
+    cost_per_preview_usd?: number
+  }>
+  cost_per_preview_usd: number
+  total_cost_usd?: number
+}
+
+export async function fetchPreviewDiagnosis(jobId: string): Promise<PreviewDiagnosis> {
+  return fetchApi<PreviewDiagnosis>(`/api/v1/preview-diagnosis/jobs/${encodeURIComponent(jobId)}`)
+}
+
+export async function fetchRecentDiagnoses(
+  limit = 25,
+  degradedOnly = false,
+): Promise<{ jobs: PreviewDiagnosis[]; count: number }> {
+  return fetchApi(`/api/v1/preview-diagnosis/recent?limit=${limit}&degraded_only=${degradedOnly}`)
+}
+
+export async function fetchPreviewCosts(limit = 100): Promise<CostDashboard> {
+  return fetchApi<CostDashboard>(`/api/v1/preview-diagnosis/cost?limit=${limit}`)
+}
+
 export async function deleteAdminPreviewVariant(variantId: number): Promise<{ message: string }> {
   return fetchApi(`/api/v1/admin/preview-variants/${variantId}`, {
     method: 'DELETE',

@@ -11,6 +11,7 @@ from backend.services.quality_profiles import get_quality_profile
 from backend.services.generation_lane import LaneDecision, record_ai_generation, resolve_lane
 from backend.services.card_rerender import rerender_card
 from backend.jobs.preview_upsert import upsert_preview
+from backend.jobs.platform_render_job import enqueue_platform_renders
 from backend.services.brand_rewriter import rewrite_to_brand_voice
 from backend.models.preview_variant import PreviewVariant as PreviewVariantModel
 from backend.models.preview_job_failure import PreviewJobFailure as PreviewJobFailureModel
@@ -335,6 +336,13 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
             request=None  # No request in background job
         )
         
+        # The same card at the other platform aspects. A pure render off the
+        # stored spec — no capture, no model call — so it costs nothing but
+        # render time, and it runs on the bulk queue because the wide card is
+        # already served and nobody is waiting for these.
+        if engine_result.render_spec:
+            enqueue_platform_renders(preview.id)
+
         return {
             "preview_id": preview.id,
             "preview": {
@@ -355,7 +363,16 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
         
     except Exception as e:
         logger.error("Preview generation job failed", exc_info=True)
-        
+
+        # Some failures are the world's, not the input's: a capture timeout, a
+        # provider 5xx, a rate limit. Those are worth another attempt; a 404 or
+        # a refused URL will fail identically forever and retrying it only
+        # delays real work. The reason code decides, not the exception text.
+        decision = _schedule_retry_if_transient(
+            e, url=url, domain=domain, user_id=user_id,
+            organization_id=organization_id,
+        )
+
         # Save to Dead Letter Queue (DLQ)
         try:
             failure_record = PreviewJobFailureModel(
@@ -377,7 +394,12 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
                 db,
                 user_id=user_id,
                 action="preview.ai_job.failed",
-                metadata={"url": url, "domain": domain, "error": str(e)},
+                metadata={
+                    "url": url,
+                    "domain": domain,
+                    "error": str(e),
+                    "retry": decision.to_dict(),
+                },
                 request=None
             )
         except Exception:
@@ -387,4 +409,76 @@ def generate_preview_job(user_id: int, organization_id: int, url: str, domain: s
     finally:
         # Always close DB session
         db.close()
+
+
+def _schedule_retry_if_transient(
+    error: Exception,
+    *,
+    url: str,
+    domain: str,
+    user_id: int,
+    organization_id: int,
+):
+    """Re-enqueue a failed job when its reason code says that could help.
+
+    Bounded by attempt count and keyed by the job's inputs, so a retry takes
+    over the first attempt's identity instead of racing it — which is what stops
+    a retried job double-inserting variants.
+    """
+    from backend.services.preview.retry import (
+        attempt_count,
+        decide_retry,
+        idempotency_key,
+        record_attempt,
+    )
+    from backend.services.preview.observability.reason_codes import FailureReason
+
+    key = idempotency_key(url=url, organization_id=organization_id, lane="ai")
+    attempts = attempt_count(key)
+
+    reason = getattr(error, "failure_reason", None)
+    if reason is None:
+        reason = _reason_from_error(str(error))
+    decision = decide_retry(reason, attempt=attempts)
+
+    if not decision.should_retry:
+        logger.info("Not retrying %s: %s", url, decision.reason)
+        return decision
+
+    try:
+        from backend.queue.queue_connection import get_rq_redis_connection
+        from rq import Queue
+
+        record_attempt(key)
+        queue = Queue("preview_generation", connection=get_rq_redis_connection())
+        queue.enqueue_in(
+            __import__("datetime").timedelta(seconds=decision.delay_s),
+            generate_preview_job,
+            user_id, organization_id, url, domain,
+            job_timeout=900,
+        )
+        logger.info("Retrying %s: %s", url, decision.reason)
+    except Exception as enqueue_error:  # noqa: BLE001 — a failed retry is not a new failure
+        logger.warning("Could not schedule retry for %s: %s", url, enqueue_error)
+        return type(decision)(False, reason=f"enqueue failed: {enqueue_error}")
+
+    return decision
+
+
+def _reason_from_error(message: str):
+    """Best-effort reason code when the failure did not carry one."""
+    from backend.services.preview.observability.reason_codes import FailureReason
+
+    text = (message or "").lower()
+    if "refusing to capture" in text or "ssrf" in text:
+        return FailureReason.CAPTURE_BLOCKED
+    if "rate limit" in text or "429" in text:
+        return FailureReason.EXTRACTION_AI_RATE_LIMIT
+    if "timed out" in text or "timeout" in text:
+        return FailureReason.CAPTURE_TIMEOUT
+    if "404" in text or "not found" in text:
+        return FailureReason.CAPTURE_HTTP_ERROR
+    if "capture" in text or "screenshot" in text:
+        return FailureReason.CAPTURE_NETWORK_ERROR
+    return FailureReason.UNKNOWN
 

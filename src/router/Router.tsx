@@ -17,6 +17,7 @@ import AdminDashboard from '../pages/admin/AdminDashboard'
 import AdminUsers from '../pages/admin/AdminUsers'
 import AdminDomains from '../pages/admin/AdminDomains'
 import AdminPreviews from '../pages/admin/AdminPreviews'
+import AdminPreviewEngine from '../pages/admin/AdminPreviewEngine'
 import AdminSystem from '../pages/admin/AdminSystem'
 import AdminActivity from '../pages/admin/AdminActivity'
 import AdminAnalytics from '../pages/admin/AdminAnalytics'
@@ -203,6 +204,16 @@ export default function Router() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminPreviews />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/admin/engine"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminPreviewEngine />
             </AdminRoute>
           </ProtectedRoute>
         }
