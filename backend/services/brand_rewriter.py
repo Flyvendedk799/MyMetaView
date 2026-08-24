@@ -26,7 +26,11 @@ def rewrite_to_brand_voice(text: str, brand_settings: BrandSettings) -> str:
     brand_context = _brand_context(brand_settings)
 
     try:
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        from backend.services.preview.reasoning.models import spec_for
+        from backend.services.reasoning_client import get_client
+
+        spec = spec_for("brand_voice")
+        client = get_client(timeout=spec.timeout_s)
 
         prompt = f"""Rewrite the following text to match this brand voice: {brand_voice}
 {brand_context}
@@ -44,7 +48,7 @@ Requirements:
 Return ONLY the rewritten text, no explanations or markdown."""
         
         response = client.chat.completions.create(
-            model="gpt-4o",
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -55,7 +59,6 @@ Return ONLY the rewritten text, no explanations or markdown."""
                     "content": prompt
                 }
             ],
-            temperature=0.7,
             max_tokens=300,
         )
         

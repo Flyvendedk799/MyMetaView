@@ -317,10 +317,14 @@ def call_vision_api(image_base64: str, timeout: int = FocusConfig.AI_CALL_TIMEOU
     start_time = time.time()
     
     try:
-        client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=timeout)
+        from backend.services.preview.reasoning.models import spec_for
+        from backend.services.reasoning_client import get_client
+
+        spec = spec_for("visual_focus")
+        client = get_client(timeout=spec.timeout_s)
         
         response = client.chat.completions.create(
-            model="gpt-4o",
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -372,7 +376,6 @@ PRINCIPLES:
                 }
             ],
             max_tokens=400,
-            temperature=0.2  # Low temperature for consistency
         )
         
         elapsed_ms = int((time.time() - start_time) * 1000)

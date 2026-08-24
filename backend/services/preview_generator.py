@@ -159,10 +159,14 @@ def _analyze_screenshot_with_vision(screenshot_bytes: bytes, url: str, brand_set
         path = parsed_url.path
         
         # Call Vision API
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        from backend.services.preview.reasoning.models import spec_for
+        from backend.services.reasoning_client import get_client
+
+        spec = spec_for("art_director")
+        client = get_client(timeout=spec.timeout_s)
         
         response = client.chat.completions.create(
-            model="gpt-4o",  # GPT-4 Vision
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -228,7 +232,6 @@ Be accurate - extract exactly what you see, don't make assumptions."""
                 }
             ],
             max_tokens=1000,
-            temperature=0.3  # Lower temperature for accuracy
         )
         
         # Parse response
@@ -418,10 +421,14 @@ Return your response as valid JSON with these exact keys:
     
     # Step 4: Call OpenAI Chat Completions API
     try:
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        from backend.services.preview.reasoning.models import spec_for
+        from backend.services.reasoning_client import get_client
+
+        spec = spec_for("art_director")
+        client = get_client(timeout=spec.timeout_s)
         
         response = client.chat.completions.create(
-            model="gpt-4o",  # Using gpt-4o for best results
+            **spec.request_kwargs_without_tokens(),
             messages=[
                 {
                     "role": "system",
@@ -432,7 +439,6 @@ Return your response as valid JSON with these exact keys:
                     "content": prompt
                 }
             ],
-            temperature=0.7,
             max_tokens=500,
         )
         

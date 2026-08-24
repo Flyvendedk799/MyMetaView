@@ -344,10 +344,13 @@ class ValuePropExtractor:
             return rule_based
         
         try:
-            from openai import OpenAI
-            from ..config import settings
-            
-            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            from backend.services.preview.reasoning.models import spec_for
+            from backend.services.reasoning_client import get_client
+
+            # Copy work, not vision: the small model is as good at it and the
+            # shared client is the one that actually points at the gateway.
+            spec = spec_for("copy_refinement")
+            client = get_client(timeout=spec.timeout_s)
             
             prompt = f"""Transform this page content into a compelling value proposition.
 
@@ -373,13 +376,12 @@ Respond in JSON:
 {{"hook": "...", "benefit": "...", "cta": "..."}}"""
             
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                **spec.request_kwargs_without_tokens(),
                 messages=[
                     {"role": "system", "content": "You are a conversion copywriter who writes compelling headlines."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=200,
-                temperature=0.7
             )
             
             import json
