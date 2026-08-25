@@ -261,6 +261,8 @@ _META_KEY_RE = re.compile(
     r"""(?:property|name)\s*=\s*["'](og:title|og:image)["']""", re.IGNORECASE
 )
 _CONTENT_RE = re.compile(r"""content\s*=\s*["']([^"']*)["']""", re.IGNORECASE)
+# The comment every server-side integration wraps its tags in.
+_INSTALL_MARKER_RE = re.compile(r"<!--\s*/?\s*MyMetaView\b", re.IGNORECASE)
 
 
 def _looks_like_our_snippet(src: str) -> bool:
@@ -278,6 +280,12 @@ def _looks_like_our_snippet(src: str) -> bool:
 
 def _scan_html(html: str) -> dict:
     found = any(_looks_like_our_snippet(src) for src in _SCRIPT_SRC_RE.findall(html))
+
+    # A server-side install (npm package, WordPress plugin) signs the block of
+    # tags it writes. That comment is proof of an install even on a page that
+    # never loads the browser snippet.
+    if not found:
+        found = _INSTALL_MARKER_RE.search(html) is not None
 
     # A bundler or tag template can inline the snippet instead of linking it.
     if not found:

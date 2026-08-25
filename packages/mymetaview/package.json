@@ -1,0 +1,54 @@
+{
+  "name": "mymetaview",
+  "version": "1.0.0",
+  "description": "Server-side Open Graph tags from MyMetaView for any Node app — one install, one line.",
+  "keywords": [
+    "open-graph",
+    "og-tags",
+    "social-preview",
+    "link-preview",
+    "twitter-card",
+    "express",
+    "fastify",
+    "next",
+    "middleware"
+  ],
+  "homepage": "https://mymetaview.com",
+  "license": "MIT",
+  "author": "MyMetaView",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Flyvendedk799/MyMetaView.git",
+    "directory": "packages/mymetaview"
+  },
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./index.d.ts",
+  "bin": {
+    "mymetaview": "./bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./auto": "./src/auto.js",
+    "./express": "./src/index.js",
+    "./connect": "./src/index.js",
+    "./fastify": "./src/fastify.js",
+    "./next": "./src/next.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "bin",
+    "index.d.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
