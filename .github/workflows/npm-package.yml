@@ -1,0 +1,41 @@
+name: npm package
+
+# The install path customers actually use: `npm install mymetaview` plus one
+# line. Its tests are hermetic (a stub API on localhost, no network, no key),
+# so they run on every change to the package.
+
+on:
+  push:
+    paths:
+      - "packages/mymetaview/**"
+      - ".github/workflows/npm-package.yml"
+  pull_request:
+    paths:
+      - "packages/mymetaview/**"
+      - ".github/workflows/npm-package.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        # 18 is the floor the package claims; 22 is what most people run.
+        node-version: ["18", "22"]
+    defaults:
+      run:
+        working-directory: packages/mymetaview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Tests
+        run: npm test
+      - name: Pack
+        # Catches a file missing from `files`, which only shows up once someone
+        # has already installed the broken version.
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          tar -tzf "$RUNNER_TEMP"/mymetaview-*.tgz | sort

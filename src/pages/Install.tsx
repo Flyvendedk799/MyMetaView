@@ -51,6 +51,8 @@ interface Platform {
   tagline: string
   /** A download is genuinely one click; a copy is one click plus a paste. */
   kind: 'download' | 'copy'
+  /** True when the tags end up in the HTML itself, not in the browser. */
+  serverSide?: boolean
   artifact?: InstallArtifact
   downloadLabel?: string
   recommended?: boolean
@@ -116,6 +118,29 @@ const PLATFORMS: Platform[] = [
     deepLink: () => ({ href: 'https://dash.cloudflare.com/', label: 'Open Cloudflare dashboard' }),
     note:
       'This one adds the tags server-side, so crawlers that never run JavaScript still see them. If you are on Cloudflare, prefer it over the script.',
+  },
+  {
+    id: 'node',
+    name: 'Node.js',
+    icon: '🟩',
+    tagline: 'npm install — server-side',
+    kind: 'copy',
+    serverSide: true,
+    recommended: true,
+    codeLabel: 'Install, then one line in your server',
+    code: () => `npm install mymetaview
+
+// server.js — before your routes
+const mymetaview = require('mymetaview')
+
+app.use(mymetaview())`,
+    steps: () => [
+      'Install the package in your app: npm install mymetaview.',
+      'Register it before your routes. There is no key to paste and nothing to configure — it reads the URL from the request.',
+      'Deploy, then check it with npx mymetaview check https://your-site.com/a-page (or the button above).',
+    ],
+    note:
+      'Works with Express, Connect, Koa and Nest. Fastify: register mymetaview/fastify. Next.js: pick the Next.js option. Would rather not touch the code at all? Start the app with NODE_OPTIONS="--require mymetaview/auto" and it wires itself into your server.',
   },
   {
     id: 'shopify',
@@ -186,29 +211,24 @@ const PLATFORMS: Platform[] = [
     id: 'nextjs',
     name: 'Next.js',
     icon: '▲',
-    tagline: 'Add the Script component',
+    tagline: 'npm install — two one-line files',
     kind: 'copy',
-    codeLabel: 'app/layout.tsx',
-    code: ({ snippetUrl, domain }) => `import Script from 'next/script'
+    serverSide: true,
+    codeLabel: 'Install, then two exports',
+    code: () => `npm install mymetaview
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        {children}
-        <Script
-          src="${snippetUrl}"
-          data-site="${domain}"
-          strategy="afterInteractive"
-        />
-      </body>
-    </html>
-  )
-}`,
+// app/layout.tsx — Next renders the tags itself
+export { generateMetadata } from 'mymetaview/next'
+
+// middleware.ts — tells it which URL is being rendered
+export { middleware, config } from 'mymetaview/next'`,
     steps: () => [
-      'Add the Script component to your root layout.',
-      'Deploy.',
+      'Install the package: npm install mymetaview.',
+      'Re-export generateMetadata from the layout or page you want cards for.',
+      'Re-export the middleware so it knows which URL it is rendering, then deploy.',
     ],
+    note:
+      'The tags are rendered by Next itself, so crawlers that never run JavaScript still get them. Already have a middleware? Import withMyMetaViewUrl and add the header from yours instead.',
   },
   {
     id: 'nuxt',
@@ -667,13 +687,13 @@ export default function Install() {
               </p>
             )}
 
-            {platform.kind === 'copy' && (
+            {platform.kind === 'copy' && !platform.serverSide && (
               <p className="text-xs text-secondary-500 flex items-start gap-1.5 mt-2">
                 <ExclamationTriangleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>
                   The script fills in tags in the browser. Some crawlers never run JavaScript, so
                   for the widest coverage put the tags in your HTML server-side — the Cloudflare
-                  option above does exactly that.
+                  and Node.js options above do exactly that.
                 </span>
               </p>
             )}
