@@ -480,3 +480,37 @@ export interface OrganizationInviteResponse {
 export interface OrganizationJoinRequest {
   invite_token: string
 }
+
+// AI Auth types
+export interface ClaudeStatus {
+  connected: boolean
+  plan: string | null
+  expires_at: number | null
+  expired: boolean
+  scopes: string[]
+}
+
+export interface AntigravityStatus {
+  connected: boolean
+  email: string | null
+  expires_at: number | null
+  expired: boolean
+  project_id: string | null
+}
+
+export interface AiKeyHints {
+  anthropic: string | null
+  openai: string | null
+  gemini: string | null
+}
+
+export interface AiAuthFullStatus {
+  claude: ClaudeStatus
+  antigravity: AntigravityStatus
+  keys: AiKeyHints
+}
+
+export interface LoginStartResponse {
+  url: string
+  state: string
+}

@@ -41,6 +41,11 @@ import type {
   AdminUserDetail,
   AdminDomain,
   AdminPreview,
+  ClaudeStatus,
+  AntigravityStatus,
+  AiKeyHints,
+  AiAuthFullStatus,
+  LoginStartResponse,
 } from './types'
 
 // Re-export types for use in other files
@@ -83,6 +88,11 @@ export type {
   AdminUserDetail,
   AdminDomain,
   AdminPreview,
+  ClaudeStatus,
+  AntigravityStatus,
+  AiKeyHints,
+  AiAuthFullStatus,
+  LoginStartResponse,
 }
 
 /**
@@ -1421,3 +1431,77 @@ export async function getDemoJobStatus(jobId: string): Promise<DemoJobStatusResp
   }, false) // Public endpoint; attach auth when available for user-scoped activity logs
 }
 
+// AI Auth API functions
+export async function getAiAuthStatus(scope: 'org' | 'user', orgId?: number): Promise<AiAuthFullStatus> {
+  const params = new URLSearchParams({ scope })
+  if (orgId) params.set('org_id', String(orgId))
+  return fetchApi<AiAuthFullStatus>(`/api/v1/ai-auth/status?${params}`) 
+}
+
+export async function startClaudeLogin(scope: 'org' | 'user', orgId?: number): Promise<LoginStartResponse> {
+  return fetchApi<LoginStartResponse>('/api/v1/ai-auth/claude/login', {
+    method: 'POST',
+    body: JSON.stringify({ scope, org_id: orgId }),
+  })
+}
+
+export async function completeClaudeLogin(code: string, state: string, scope: 'org' | 'user', orgId?: number) {
+  return fetchApi('/api/v1/ai-auth/claude/login/complete', {
+    method: 'POST',
+    body: JSON.stringify({ code, state, scope, org_id: orgId }),
+  })
+}
+
+export async function disconnectClaude(scope: 'org' | 'user', orgId?: number) {
+  const params = new URLSearchParams({ scope })
+  if (orgId) params.set('org_id', String(orgId))
+  return fetchApi(`/api/v1/ai-auth/claude?${params}`, { method: 'DELETE' })
+}
+
+export async function startAntigravityLogin(scope: 'org' | 'user', orgId?: number): Promise<LoginStartResponse> {
+  return fetchApi<LoginStartResponse>('/api/v1/ai-auth/antigravity/login', {
+    method: 'POST',
+    body: JSON.stringify({ scope, org_id: orgId }),
+  })
+}
+
+export async function completeAntigravityLogin(code: string, state: string, scope: 'org' | 'user', orgId?: number) {
+  return fetchApi('/api/v1/ai-auth/antigravity/login/complete', {
+    method: 'POST',
+    body: JSON.stringify({ code, state, scope, org_id: orgId }),
+  })
+}
+
+export async function disconnectAntigravity(scope: 'org' | 'user', orgId?: number) {
+  const params = new URLSearchParams({ scope })
+  if (orgId) params.set('org_id', String(orgId))
+  return fetchApi(`/api/v1/ai-auth/antigravity?${params}`, { method: 'DELETE' })
+}
+
+export async function setAntigravityProject(projectId: string | null, scope: 'org' | 'user', orgId?: number) {
+  const params = new URLSearchParams({ scope })
+  if (orgId) params.set('org_id', String(orgId))
+  return fetchApi(`/api/v1/ai-auth/antigravity/project?${params}`, {
+    method: 'PUT',
+    body: JSON.stringify({ project_id: projectId }),
+  })
+}
+
+export async function saveAiKey(provider: string, key: string, scope: 'org' | 'user', orgId?: number) {
+  return fetchApi(`/api/v1/ai-auth/keys/${provider}`, {
+    method: 'PUT',
+    body: JSON.stringify({ key, scope, org_id: orgId }),
+  })
+}
+
+export async function getAiKeyHints(scope: 'org' | 'user', orgId?: number): Promise<AiKeyHints> {
+  const params = new URLSearchParams({ scope })
+  if (orgId) params.set('org_id', String(orgId))
+  return fetchApi<AiKeyHints>(`/api/v1/ai-auth/keys?${params}`)
+}
+
+export async function deleteAiKey(provider: string, scope: 'org' | 'user', orgId?: number) {
+  const params = new URLSearchParams({ scope })
+  if (orgId) params.set('org_id', String(orgId))
+  return fetchApi(`/api/v1/ai-auth/keys/${provider}?${params}`, { method: 'DELETE' })
+}
