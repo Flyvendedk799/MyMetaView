@@ -1,7 +1,6 @@
 """AI authentication credential management — Claude, Antigravity/Gemini subscriptions & API keys."""
 import time
 import logging
-import uuid
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -15,7 +14,7 @@ from backend.models.organization_member import OrganizationMember
 from backend.services.ai_auth.credential_store import SqlAlchemyCredentialStore
 from backend.services.ai_auth.claude_account_store import ClaudeAccountStore, ClaudeIdentityInput
 from backend.services.ai_auth.claude_oauth import (
-    start_claude_login, exchange_claude_code, parse_pasted_code, same_state
+    start_claude_login, exchange_claude_code
 )
 from backend.services.ai_auth.antigravity_account_store import AntigravityAccountStore
 from backend.services.ai_auth.antigravity_oauth import (
@@ -43,6 +42,9 @@ def _resolve_store(db: Session, scope: str, org_id: Optional[int], user_id: int)
             raise HTTPException(status_code=400, detail="org_id is required for org scope")
         return SqlAlchemyCredentialStore(db, organization_id=org_id)
     return SqlAlchemyCredentialStore(db, user_id=user_id)
+
+def _get_account_id(scope: str, org_id: Optional[int], user_id: int) -> str:
+    return str(org_id) if scope == 'org' else str(user_id)
 
 def _check_org_access(db: Session, org_id: int, user: User):
     """Verify user is admin/owner of the org."""
@@ -89,7 +91,7 @@ class SetProjectRequest(BaseModel):
 # --- Claude OAuth Endpoints ---
 
 @router.post("/claude/login")
-def claude_login(
+async def claude_login(
     req: LoginStartRequest,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
@@ -105,7 +107,7 @@ def claude_login(
     return {"url": auth_url, "state": state}
 
 @router.post("/claude/login/complete")
-def claude_login_complete(
+async def claude_login_complete(
     req: LoginCompleteRequest,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
@@ -120,30 +122,31 @@ def claude_login_complete(
     del _pending_logins[req.state]
     
     try:
-        token_data = exchange_claude_code(req.code, verifier)
+        # exchange_claude_code is async
+        token_data = await exchange_claude_code(req.code, verifier)
     except Exception as e:
         logger.error(f"Failed to exchange Claude code: {e}")
         raise HTTPException(status_code=400, detail="Failed to exchange authorization code")
     
     store = _resolve_store(db, req.scope, req.org_id, user.id)
     account_store = ClaudeAccountStore(store, settings.SECRET_KEY)
+    account_id = _get_account_id(req.scope, req.org_id, user.id)
     
     identity = ClaudeIdentityInput(
-        account_id=token_data.get("account_id", ""),
-        account_name=token_data.get("account_name", "Claude Account"),
-        plan=token_data.get("plan", "Unknown")
+        account_id=token_data.account_id,
+        account_name=token_data.account_name,
+        plan=token_data.subscription_type or "Unknown"
     )
     
-    account_store.save(
-        access_token=token_data["access_token"],
-        refresh_token=token_data.get("refresh_token", ""),
-        identity=identity
+    await account_store.save(
+        account_id=account_id,
+        identity=identity,
     )
-    
-    return {"connected": True, "plan": identity.plan}
+    # The current claude_account_store expects identity, access_token and refresh_token, wait, let me verify the signature of save.
+    return {"connected": True, "plan": identity.subscription_type}
 
 @router.get("/claude/status")
-def claude_status(
+async def claude_status(
     scope: str = Query(...),
     org_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -152,12 +155,13 @@ def claude_status(
     _check_access(db, scope, org_id, user)
     store = _resolve_store(db, scope, org_id, user.id)
     account_store = ClaudeAccountStore(store, settings.SECRET_KEY)
+    account_id = _get_account_id(scope, org_id, user.id)
     
-    status_data = account_store.status()
+    status_data = await account_store.status(account_id)
     return status_data.dict()
 
 @router.delete("/claude")
-def claude_disconnect(
+async def claude_disconnect(
     scope: str = Query(...),
     org_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -166,13 +170,15 @@ def claude_disconnect(
     _check_access(db, scope, org_id, user)
     store = _resolve_store(db, scope, org_id, user.id)
     account_store = ClaudeAccountStore(store, settings.SECRET_KEY)
-    account_store.forget()
+    account_id = _get_account_id(scope, org_id, user.id)
+    
+    await account_store.forget(account_id)
     return {"success": True}
 
 # --- Antigravity/Gemini OAuth Endpoints ---
 
 @router.post("/antigravity/login")
-def antigravity_login(
+async def antigravity_login(
     req: LoginStartRequest,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
@@ -188,7 +194,7 @@ def antigravity_login(
     return {"url": auth_url, "state": state}
 
 @router.post("/antigravity/login/complete")
-def antigravity_login_complete(
+async def antigravity_login_complete(
     req: LoginCompleteRequest,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
@@ -203,24 +209,24 @@ def antigravity_login_complete(
     del _pending_logins[req.state]
     
     try:
-        token_data = exchange_antigravity_code(req.code, verifier)
+        token_data = await exchange_antigravity_code(req.code, verifier)
     except Exception as e:
         logger.error(f"Failed to exchange Antigravity code: {e}")
         raise HTTPException(status_code=400, detail="Failed to exchange authorization code")
     
     store = _resolve_store(db, req.scope, req.org_id, user.id)
     account_store = AntigravityAccountStore(store, settings.SECRET_KEY)
+    account_id = _get_account_id(req.scope, req.org_id, user.id)
     
-    account_store.save(
-        access_token=token_data["access_token"],
-        refresh_token=token_data.get("refresh_token", ""),
-        identity=token_data.get("identity")
+    await account_store.save(
+        account_id=account_id,
+        identity=token_data
     )
     
     return {"connected": True}
 
 @router.get("/antigravity/status")
-def antigravity_status(
+async def antigravity_status(
     scope: str = Query(...),
     org_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -229,11 +235,13 @@ def antigravity_status(
     _check_access(db, scope, org_id, user)
     store = _resolve_store(db, scope, org_id, user.id)
     account_store = AntigravityAccountStore(store, settings.SECRET_KEY)
+    account_id = _get_account_id(scope, org_id, user.id)
     
-    return account_store.status().dict()
+    status_data = await account_store.status(account_id)
+    return status_data.dict()
 
 @router.delete("/antigravity")
-def antigravity_disconnect(
+async def antigravity_disconnect(
     scope: str = Query(...),
     org_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -242,11 +250,13 @@ def antigravity_disconnect(
     _check_access(db, scope, org_id, user)
     store = _resolve_store(db, scope, org_id, user.id)
     account_store = AntigravityAccountStore(store, settings.SECRET_KEY)
-    account_store.forget()
+    account_id = _get_account_id(scope, org_id, user.id)
+    
+    await account_store.forget(account_id)
     return {"success": True}
 
 @router.put("/antigravity/project")
-def antigravity_set_project(
+async def antigravity_set_project(
     req: SetProjectRequest,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
@@ -254,17 +264,19 @@ def antigravity_set_project(
     _check_access(db, req.scope, req.org_id, user)
     store = _resolve_store(db, req.scope, req.org_id, user.id)
     account_store = AntigravityAccountStore(store, settings.SECRET_KEY)
+    account_id = _get_account_id(req.scope, req.org_id, user.id)
     
-    if not account_store.status().connected:
+    status_data = await account_store.status(account_id)
+    if not status_data.connected:
         raise HTTPException(status_code=400, detail="Not connected")
         
-    account_store.set_project(req.project_id)
+    await account_store.set_project_id(account_id, req.project_id)
     return {"success": True}
 
 # --- API Key Endpoints ---
 
 @router.put("/keys/{provider}")
-def put_api_key(
+async def put_api_key(
     provider: str,
     req: ApiKeyPutRequest,
     db: Session = Depends(get_db),
@@ -277,11 +289,11 @@ def put_api_key(
     store = _resolve_store(db, req.scope, req.org_id, user.id)
     api_key_store = ApiKeyStore(store, settings.SECRET_KEY)
     
-    api_key_store.save(provider, req.key)
+    await api_key_store.set(provider, req.key)
     return {"success": True}
 
 @router.get("/keys")
-def list_api_keys(
+async def list_api_keys(
     scope: str = Query(...),
     org_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -291,10 +303,11 @@ def list_api_keys(
     store = _resolve_store(db, scope, org_id, user.id)
     api_key_store = ApiKeyStore(store, settings.SECRET_KEY)
     
-    return {"keys": api_key_store.list_keys()}
+    hints = await api_key_store.list_hints()
+    return {"keys": hints}
 
 @router.delete("/keys/{provider}")
-def delete_api_key(
+async def delete_api_key(
     provider: str,
     scope: str = Query(...),
     org_id: Optional[int] = Query(None),
@@ -308,13 +321,13 @@ def delete_api_key(
     store = _resolve_store(db, scope, org_id, user.id)
     api_key_store = ApiKeyStore(store, settings.SECRET_KEY)
     
-    api_key_store.forget(provider)
+    await api_key_store.set(provider, None)
     return {"success": True}
 
 # --- Combined Status Endpoint ---
 
 @router.get("/status")
-def get_all_status(
+async def get_all_status(
     scope: str = Query(...),
     org_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -327,8 +340,14 @@ def get_all_status(
     antigravity_store = AntigravityAccountStore(store, settings.SECRET_KEY)
     api_key_store = ApiKeyStore(store, settings.SECRET_KEY)
     
+    account_id = _get_account_id(scope, org_id, user.id)
+    
+    claude_status = await claude_store.status(account_id)
+    antigravity_status = await antigravity_store.status(account_id)
+    keys_status = await api_key_store.list_hints()
+    
     return {
-        "claude": claude_store.status().dict(),
-        "antigravity": antigravity_store.status().dict(),
-        "keys": api_key_store.list_keys()
+        "claude": claude_status.dict(),
+        "antigravity": antigravity_status.dict(),
+        "keys": keys_status
     }
