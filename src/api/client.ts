@@ -1445,10 +1445,10 @@ export async function startClaudeLogin(scope: 'org' | 'user', orgId?: number): P
   })
 }
 
-export async function completeClaudeLogin(code: string, state: string, scope: 'org' | 'user', orgId?: number) {
+export async function completeClaudeLogin(code: string, state: string, verifier: string, scope: 'org' | 'user', orgId?: number) {
   return fetchApi('/api/v1/ai-auth/claude/login/complete', {
     method: 'POST',
-    body: JSON.stringify({ code, state, scope, org_id: orgId }),
+    body: JSON.stringify({ code, state, verifier, scope, org_id: orgId }),
   })
 }
 
@@ -1465,10 +1465,10 @@ export async function startAntigravityLogin(scope: 'org' | 'user', orgId?: numbe
   })
 }
 
-export async function completeAntigravityLogin(code: string, state: string, scope: 'org' | 'user', orgId?: number) {
+export async function completeAntigravityLogin(code: string, state: string, verifier: string, scope: 'org' | 'user', orgId?: number) {
   return fetchApi('/api/v1/ai-auth/antigravity/login/complete', {
     method: 'POST',
-    body: JSON.stringify({ code, state, scope, org_id: orgId }),
+    body: JSON.stringify({ code, state, verifier, scope, org_id: orgId }),
   })
 }
 

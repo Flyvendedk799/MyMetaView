@@ -513,4 +513,5 @@ export interface AiAuthFullStatus {
 export interface LoginStartResponse {
   url: string
   state: string
+  verifier: string
 }

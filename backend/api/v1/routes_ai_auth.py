@@ -77,6 +77,7 @@ class LoginCompleteRequest(BaseModel):
     state: str
     scope: str
     org_id: Optional[int] = None
+    verifier: Optional[str] = None
 
 class ApiKeyPutRequest(BaseModel):
     key: str
@@ -107,7 +108,7 @@ async def claude_login(
         'verifier': verifier,
         'created_at': time.time()
     }
-    return {"url": auth_url, "state": state}
+    return {"url": auth_url, "state": state, "verifier": verifier}
 
 @router.post("/claude/login/complete")
 async def claude_login_complete(
@@ -118,11 +119,12 @@ async def claude_login_complete(
     _check_access(db, req.scope, req.org_id, user)
     _cleanup_pending()
     
-    if req.state not in _pending_logins:
-        raise HTTPException(status_code=400, detail="Invalid or expired state")
-    
-    verifier = _pending_logins[req.state]['verifier']
-    del _pending_logins[req.state]
+    verifier = req.verifier
+    if not verifier:
+        if req.state not in _pending_logins:
+            raise HTTPException(status_code=400, detail="Invalid or expired state")
+        verifier = _pending_logins[req.state]['verifier']
+        del _pending_logins[req.state]
     
     try:
         # exchange_claude_code is async
@@ -198,7 +200,7 @@ async def antigravity_login(
         'verifier': verifier,
         'created_at': time.time()
     }
-    return {"url": auth_url, "state": state}
+    return {"url": auth_url, "state": state, "verifier": verifier}
 
 @router.post("/antigravity/login/complete")
 async def antigravity_login_complete(
@@ -209,11 +211,12 @@ async def antigravity_login_complete(
     _check_access(db, req.scope, req.org_id, user)
     _cleanup_pending()
     
-    if req.state not in _pending_logins:
-        raise HTTPException(status_code=400, detail="Invalid or expired state")
-    
-    verifier = _pending_logins[req.state]['verifier']
-    del _pending_logins[req.state]
+    verifier = req.verifier
+    if not verifier:
+        if req.state not in _pending_logins:
+            raise HTTPException(status_code=400, detail="Invalid or expired state")
+        verifier = _pending_logins[req.state]['verifier']
+        del _pending_logins[req.state]
     
     try:
         token_data = await exchange_antigravity_code(req.code, verifier)

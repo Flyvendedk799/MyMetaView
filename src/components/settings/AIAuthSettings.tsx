@@ -29,9 +29,11 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
   // Auth flow states
   const [claudeAuthUrl, setClaudeAuthUrl] = useState<string | null>(null)
   const [claudeStateValue, setClaudeStateValue] = useState<string | null>(null)
+  const [claudeVerifierValue, setClaudeVerifierValue] = useState<string | null>(null)
   const [claudeCodeState, setClaudeCodeState] = useState('')
   const [antigravityAuthUrl, setAntigravityAuthUrl] = useState<string | null>(null)
   const [antigravityStateValue, setAntigravityStateValue] = useState<string | null>(null)
+  const [antigravityVerifierValue, setAntigravityVerifierValue] = useState<string | null>(null)
   const [antigravityCodeState, setAntigravityCodeState] = useState('')
   const [projectIdInput, setProjectIdInput] = useState('')
 
@@ -70,6 +72,7 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
       const res = await startClaudeLogin(scope, orgId)
       setClaudeAuthUrl(res.url)
       setClaudeStateValue(res.state)
+      setClaudeVerifierValue(res.verifier)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start Claude login')
     }
@@ -96,8 +99,8 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
     try {
       setError(null)
       const { code, state } = parseCodeState(claudeCodeState, claudeStateValue);
-      if (!code || !state) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
-      await completeClaudeLogin(code, state, scope, orgId)
+      if (!code || !state || !claudeVerifierValue) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
+      await completeClaudeLogin(code, state, claudeVerifierValue, scope, orgId)
       setClaudeAuthUrl(null)
       setClaudeCodeState('')
       await loadStatus()
@@ -123,6 +126,7 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
       const res = await startAntigravityLogin(scope, orgId)
       setAntigravityAuthUrl(res.url)
       setAntigravityStateValue(res.state)
+      setAntigravityVerifierValue(res.verifier)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start Antigravity login')
     }
@@ -132,8 +136,8 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
     try {
       setError(null)
       const { code, state } = parseCodeState(antigravityCodeState, antigravityStateValue);
-      if (!code || !state) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
-      await completeAntigravityLogin(code, state, scope, orgId)
+      if (!code || !state || !antigravityVerifierValue) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
+      await completeAntigravityLogin(code, state, antigravityVerifierValue, scope, orgId)
       setAntigravityAuthUrl(null)
       setAntigravityCodeState('')
       await loadStatus()
