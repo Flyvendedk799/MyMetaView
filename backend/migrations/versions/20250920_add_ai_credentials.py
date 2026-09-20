@@ -4,7 +4,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = '20250920_add_ai_credentials'
-down_revision = None  # Will be auto-linked by Alembic
+down_revision = '20250308_add_ignore_site_branding_to_preview'
 branch_labels = None
 depends_on = None
 
