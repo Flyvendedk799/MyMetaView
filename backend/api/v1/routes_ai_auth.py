@@ -158,7 +158,8 @@ async def claude_status(
     account_id = _get_account_id(scope, org_id, user.id)
     
     status_data = await account_store.status(account_id)
-    return status_data.dict()
+    import dataclasses
+    return dataclasses.asdict(status_data)
 
 @router.delete("/claude")
 async def claude_disconnect(
@@ -238,7 +239,8 @@ async def antigravity_status(
     account_id = _get_account_id(scope, org_id, user.id)
     
     status_data = await account_store.status(account_id)
-    return status_data.dict()
+    import dataclasses
+    return dataclasses.asdict(status_data)
 
 @router.delete("/antigravity")
 async def antigravity_disconnect(
@@ -346,8 +348,9 @@ async def get_all_status(
     antigravity_status = await antigravity_store.status(account_id)
     keys_status = await api_key_store.list_hints()
     
+    import dataclasses
     return {
-        "claude": claude_status.dict(),
-        "antigravity": antigravity_status.dict(),
+        "claude": dataclasses.asdict(claude_status),
+        "antigravity": dataclasses.asdict(antigravity_status),
         "keys": keys_status
     }
