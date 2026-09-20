@@ -99,7 +99,10 @@ async def claude_login(
     _check_access(db, req.scope, req.org_id, user)
     _cleanup_pending()
     
-    auth_url, state, verifier = start_claude_login()
+    login_start = start_claude_login()
+    auth_url = login_start.url
+    state = login_start.state
+    verifier = login_start.verifier
     _pending_logins[state] = {
         'verifier': verifier,
         'created_at': time.time()
@@ -187,7 +190,10 @@ async def antigravity_login(
     _check_access(db, req.scope, req.org_id, user)
     _cleanup_pending()
     
-    auth_url, state, verifier = start_antigravity_login()
+    login_start = start_antigravity_login()
+    auth_url = login_start.url
+    state = login_start.state
+    verifier = login_start.verifier
     _pending_logins[state] = {
         'verifier': verifier,
         'created_at': time.time()
