@@ -72,11 +72,28 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
     }
   }
 
+  // Helper to parse pasted redirect URL or code#state
+  const parseCodeState = (raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      try {
+        const url = new URL(trimmed);
+        const code = url.searchParams.get('code');
+        const state = url.searchParams.get('state');
+        if (code && state) return { code, state };
+      } catch (e) {
+        // ignore
+      }
+    }
+    const parts = trimmed.split('#');
+    return { code: parts[0], state: parts[1] };
+  };
+
   const handleCompleteClaude = async () => {
     try {
       setError(null)
-      const [code, state] = claudeCodeState.split('#')
-      if (!code || !state) throw new Error('Invalid code/state format. Expecting code#state')
+      const { code, state } = parseCodeState(claudeCodeState);
+      if (!code || !state) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
       await completeClaudeLogin(code, state, scope, orgId)
       setClaudeAuthUrl(null)
       setClaudeCodeState('')
@@ -110,8 +127,8 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
   const handleCompleteAntigravity = async () => {
     try {
       setError(null)
-      const [code, state] = antigravityCodeState.split('#')
-      if (!code || !state) throw new Error('Invalid code/state format. Expecting code#state')
+      const { code, state } = parseCodeState(antigravityCodeState);
+      if (!code || !state) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
       await completeAntigravityLogin(code, state, scope, orgId)
       setAntigravityAuthUrl(null)
       setAntigravityCodeState('')
@@ -258,14 +275,14 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
                     </p>
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-secondary-700">
-                        2. Paste the code#state here:
+                        2. Paste the full redirect URL here:
                       </label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         value={claudeCodeState}
                         onChange={(e) => setClaudeCodeState(e.target.value)}
-                        placeholder="code#state"
+                        placeholder="https://..."
                       />
                     </div>
                     <div className="flex space-x-3">
@@ -344,14 +361,14 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
                     </p>
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-secondary-700">
-                        2. Paste the code#state here:
+                        2. Paste the full redirect URL here:
                       </label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         value={antigravityCodeState}
                         onChange={(e) => setAntigravityCodeState(e.target.value)}
-                        placeholder="code#state"
+                        placeholder="https://..."
                       />
                     </div>
                     <div className="flex space-x-3">
