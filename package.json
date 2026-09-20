@@ -13,6 +13,7 @@
     "test:package": "npm test --prefix packages/mymetaview"
   },
   "dependencies": {
+    "@flyvendedk799/ai-auth": "github:Flyvendedk799/ai-auth",
     "@heroicons/react": "^2.1.1",
     "@tiptap/extension-code-block-lowlight": "^3.14.0",
     "@tiptap/extension-image": "^3.14.0",

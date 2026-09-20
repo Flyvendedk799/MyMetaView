@@ -40,7 +40,8 @@ logger = StructuredLogger("ai_provider")
 class AIProvider(str, Enum):
     """Supported AI providers."""
     OPENAI = "openai"
-    ANTHROPIC = "anthropic"  # For future expansion
+    ANTHROPIC = "anthropic"
+    GEMINI = "gemini"
 
 
 class AIModel(str, Enum):
@@ -48,7 +49,12 @@ class AIModel(str, Enum):
     GPT4O = "gpt-4o"
     GPT4O_MINI = "gpt-4o-mini"
     GPT4_TURBO = "gpt-4-turbo"
-    # Add more models as needed
+    # Anthropic models (used via Claude subscription or API key)
+    CLAUDE_SONNET = "claude-sonnet-4-20250514"
+    CLAUDE_HAIKU = "claude-haiku-4-5-20241022"
+    # Gemini models (used via Antigravity subscription or API key)
+    GEMINI_PRO = "gemini-2.5-pro"
+    GEMINI_FLASH = "gemini-2.5-flash"
 
 
 @dataclass
@@ -500,3 +506,30 @@ def get_ai_service() -> AIService:
     if _ai_service is None:
         _ai_service = AIService(primary_provider=AIProvider.OPENAI)
     return _ai_service
+
+
+def get_ai_service_for_org(org_id: int, db=None, user_id: int = None) -> AIService:
+    """
+    Get an AI service that uses the org's or user's own credentials when available.
+
+    Resolution order:
+    1. User-level Claude subscription → AnthropicProvider with subscription token
+    2. Org-level Claude subscription → AnthropicProvider with subscription token
+    3. User-level Antigravity subscription → Gemini Cloud Code provider
+    4. Org-level Antigravity subscription → Gemini Cloud Code provider
+    5. User-level Anthropic API key → AnthropicProvider with API key
+    6. Org-level Anthropic API key → AnthropicProvider with API key
+    7. Falls back to the platform's global OpenAI provider
+
+    This function is async-compatible: the stores are async, so this returns
+    the default service synchronously and the caller can upgrade it if needed.
+
+    For now, this returns the global service — the actual credential resolution
+    happens at call time in the preview pipeline, which has access to the DB
+    session and can resolve credentials before each AI call.
+    """
+    # For the initial integration, we return the global service.
+    # The preview pipeline will be updated to resolve org credentials
+    # and construct appropriate provider instances at call time.
+    return get_ai_service()
+

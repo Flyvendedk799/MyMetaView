@@ -6,6 +6,7 @@ import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import { getOrganization, updateOrganization, type Organization } from '../api/client'
 import { useOrganization } from '../hooks/useOrganization'
+import AIAuthSettings from '../components/settings/AIAuthSettings'
 
 export default function OrganizationSettings() {
   const { orgId } = useParams<{ orgId: string }>()
@@ -121,6 +122,17 @@ export default function OrganizationSettings() {
             <p className="text-sm text-secondary-600">
               Invite teammates and manage their roles for this organization.
             </p>
+          </Card>
+
+          {/* AI Credentials */}
+          <Card>
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-secondary">AI Credentials</h2>
+              <p className="text-sm text-secondary-600">
+                Connect your team's AI subscriptions or API keys to power preview generation.
+              </p>
+            </div>
+            <AIAuthSettings scope="org" orgId={org.id} />
           </Card>
 
           {/* Billing Status */}

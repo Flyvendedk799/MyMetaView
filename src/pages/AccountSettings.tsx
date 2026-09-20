@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../components/ui/Modal'
 import { exportUserData, deleteUserAccount, changePassword } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { ExclamationTriangleIcon, ArrowDownTrayIcon, KeyIcon } from '@heroicons/react/24/outline'
+import AIAuthSettings from '../components/settings/AIAuthSettings'
 
 export default function AccountSettings() {
   const [exporting, setExporting] = useState(false)
@@ -115,6 +116,17 @@ export default function AccountSettings() {
           <a href="mailto:hello@mymetaview.com" className="text-primary-600 hover:text-primary-700">hello@mymetaview.com</a>{' '}
           if you need it moved.
         </p>
+      </Card>
+
+      {/* AI Credentials */}
+      <Card className="mb-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-secondary-900 mb-1">AI Credentials</h2>
+          <p className="text-secondary-600 text-sm">
+            Connect your personal AI subscriptions or API keys. These override your organization's credentials when set.
+          </p>
+        </div>
+        <AIAuthSettings scope="user" />
       </Card>
 
       {/* Change password */}
