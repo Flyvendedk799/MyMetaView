@@ -28,8 +28,10 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
 
   // Auth flow states
   const [claudeAuthUrl, setClaudeAuthUrl] = useState<string | null>(null)
+  const [claudeStateValue, setClaudeStateValue] = useState<string | null>(null)
   const [claudeCodeState, setClaudeCodeState] = useState('')
   const [antigravityAuthUrl, setAntigravityAuthUrl] = useState<string | null>(null)
+  const [antigravityStateValue, setAntigravityStateValue] = useState<string | null>(null)
   const [antigravityCodeState, setAntigravityCodeState] = useState('')
   const [projectIdInput, setProjectIdInput] = useState('')
 
@@ -67,13 +69,14 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
       setError(null)
       const res = await startClaudeLogin(scope, orgId)
       setClaudeAuthUrl(res.url)
+      setClaudeStateValue(res.state)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start Claude login')
     }
   }
 
   // Helper to parse pasted redirect URL or code#state
-  const parseCodeState = (raw: string) => {
+  const parseCodeState = (raw: string, fallbackState?: string | null) => {
     const trimmed = raw.trim();
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       try {
@@ -86,13 +89,13 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
       }
     }
     const parts = trimmed.split('#');
-    return { code: parts[0], state: parts[1] };
+    return { code: parts[0], state: parts[1] || fallbackState };
   };
 
   const handleCompleteClaude = async () => {
     try {
       setError(null)
-      const { code, state } = parseCodeState(claudeCodeState);
+      const { code, state } = parseCodeState(claudeCodeState, claudeStateValue);
       if (!code || !state) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
       await completeClaudeLogin(code, state, scope, orgId)
       setClaudeAuthUrl(null)
@@ -119,6 +122,7 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
       setError(null)
       const res = await startAntigravityLogin(scope, orgId)
       setAntigravityAuthUrl(res.url)
+      setAntigravityStateValue(res.state)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start Antigravity login')
     }
@@ -127,7 +131,7 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
   const handleCompleteAntigravity = async () => {
     try {
       setError(null)
-      const { code, state } = parseCodeState(antigravityCodeState);
+      const { code, state } = parseCodeState(antigravityCodeState, antigravityStateValue);
       if (!code || !state) throw new Error('Invalid format. Please paste the full redirect URL or code#state')
       await completeAntigravityLogin(code, state, scope, orgId)
       setAntigravityAuthUrl(null)
@@ -275,14 +279,14 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
                     </p>
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-secondary-700">
-                        2. Paste the full redirect URL here:
+                        2. Paste the code or redirect URL here:
                       </label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         value={claudeCodeState}
                         onChange={(e) => setClaudeCodeState(e.target.value)}
-                        placeholder="https://..."
+                        placeholder="e.g. 4/xxx... or https://..."
                       />
                     </div>
                     <div className="flex space-x-3">
@@ -361,14 +365,14 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
                     </p>
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-secondary-700">
-                        2. Paste the full redirect URL here:
+                        2. Paste the code or redirect URL here:
                       </label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         value={antigravityCodeState}
                         onChange={(e) => setAntigravityCodeState(e.target.value)}
-                        placeholder="https://..."
+                        placeholder="e.g. 4/xxx... or https://..."
                       />
                     </div>
                     <div className="flex space-x-3">
