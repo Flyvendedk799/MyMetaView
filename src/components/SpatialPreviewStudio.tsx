@@ -710,19 +710,19 @@ export default function SpatialPreviewStudio({ preview }: { preview?: any }) {
   const [layerElevation, setLayerElevation] = useState(25);
 
   // Post Content Customization
-  const [authorName, setAuthorName] = useState(preview?.brand?.brand_name || "Alex Rivera");
+  const [authorName, setAuthorName] = useState(preview?.brand?.brand_name || preview?.domain || "Alex Rivera");
   const [authorHandle, setAuthorHandle] = useState(
     preview?.domain ? preview.domain.split('.')[0] : "alexrivera_ui"
   );
   const [postCaption, setPostCaption] = useState(
-    preview?.description || "Building spatial 2.5D interfaces in React! Drag with mouse to orbit 360°, inspect depth layers, and preview post fidelity across mobile, laptop, & desktop views. ✨ #SpatialUI #DesignSystems"
+    preview?.description || preview?.title || "Building spatial 2.5D interfaces in React! Drag with mouse to orbit 360°, inspect depth layers, and preview post fidelity across mobile, laptop, & desktop views. ✨ #SpatialUI #DesignSystems"
   );
   const [postTimestamp, setPostTimestamp] = useState("2h ago");
   const [likeCount, setLikeCount] = useState("4.8K");
   const [repostCount, setRepostCount] = useState("1.2K");
   const [commentCount, setCommentCount] = useState("342");
   const [viewCount, setViewCount] = useState("98.4K");
-  const [mediaType, setMediaType] = useState("grid"); // "single", "grid", "video", "poll"
+  const [mediaType, setMediaType] = useState("single"); // "single", "grid", "video", "poll"
   const [isVerified, setIsVerified] = useState(true);
   const [pollVotedOption, setPollVotedOption] = useState(0);
 
