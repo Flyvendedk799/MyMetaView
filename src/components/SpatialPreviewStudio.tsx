@@ -947,7 +947,13 @@ export default function SpatialPreviewStudio({ preview }: { preview?: any }) {
               <img 
                 src={preview.composited_preview_image_url} 
                 alt="Generated Preview" 
-                style={{ width: "100%", height: "auto", display: "block" }} 
+                style={{ 
+                  width: "100%", 
+                  height: "auto", 
+                  display: "block",
+                  transform: "translateZ(0.1px)",
+                  backfaceVisibility: "hidden"
+                }} 
               />
             ) : (
               <div
@@ -1681,7 +1687,8 @@ export default function SpatialPreviewStudio({ preview }: { preview?: any }) {
             {/* Decoupled Interactive Pitch/Yaw Orbit Wrapper */}
             <div
               style={{
-                transform: `scale(${zoom}) rotateX(${pitch}deg) rotateY(${yaw}deg) rotateZ(${roll}deg)`,
+                zoom: 2,
+                transform: `scale(${zoom * 0.5}) rotateX(${pitch}deg) rotateY(${yaw}deg) rotateZ(${roll}deg)`,
                 transformStyle: "preserve-3d",
                 transition: isDragging.current ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
                 display: "flex",
