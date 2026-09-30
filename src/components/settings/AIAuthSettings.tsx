@@ -73,6 +73,9 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
       setClaudeAuthUrl(res.url)
       setClaudeStateValue(res.state)
       setClaudeVerifierValue(res.verifier)
+      sessionStorage.setItem('mv_ai_oauth', JSON.stringify({
+        provider: 'claude', verifier: res.verifier, state: res.state, scope, orgId,
+      }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start Claude login')
     }
@@ -127,6 +130,9 @@ export default function AIAuthSettings({ scope, orgId }: AIAuthSettingsProps) {
       setAntigravityAuthUrl(res.url)
       setAntigravityStateValue(res.state)
       setAntigravityVerifierValue(res.verifier)
+      sessionStorage.setItem('mv_ai_oauth', JSON.stringify({
+        provider: 'antigravity', verifier: res.verifier, state: res.state, scope, orgId,
+      }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start Antigravity login')
     }

@@ -44,6 +44,8 @@ class PreviewJobRequest(BaseModel):
     # identity, palette, logo, font and card preferences — is not applied. The
     # choice is stored on the preview, so a later re-roll keeps it.
     ignore_branding: bool = False
+    # fast | balanced | ultra | auto. Omitted keeps the product default (ultra).
+    quality_mode: Optional[str] = None
 
 
 class DiscoverUrlsRequest(BaseModel):
@@ -158,6 +160,7 @@ def create_preview_job(
             request.force,  # force_regenerate: bypass cache on re-roll
             created_at,
             request.ignore_branding,
+            request.quality_mode,
             job_timeout='10m'  # 10 minute timeout for AI generation
         )
 

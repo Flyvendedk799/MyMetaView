@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CheckCircleIcon, XCircleIcon, ClockIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -28,6 +29,8 @@ export default function Billing() {
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const { refreshUser } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const autoCheckoutStarted = useRef(false)
 
   useEffect(() => {
     loadData()
@@ -44,6 +47,20 @@ export default function Billing() {
       }, 2000)
     }
   }, [])
+
+  useEffect(() => {
+    const planKey = searchParams.get('plan')
+    if (!planKey || loading || plans.length === 0 || !myPlan || autoCheckoutStarted.current) return
+    autoCheckoutStarted.current = true
+    const next = new URLSearchParams(searchParams)
+    next.delete('plan')
+    setSearchParams(next, { replace: true })
+    if (myPlan.key !== planKey) {
+      handleSelectPlan(planKey)
+    }
+    // handleSelectPlan closes over the plans just loaded; run once when they arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, plans, myPlan])
 
   const loadData = async () => {
     try {
@@ -339,13 +356,18 @@ export default function Billing() {
                         : isProcessing
                         ? 'Processing...'
                         : !priceConfigured
-                        ? 'Coming soon'
+                        ? 'Billing isn’t configured'
                         : upgrade
                         ? `Upgrade to ${plan.name}`
                         : downgrade
                         ? `Switch to ${plan.name}`
                         : `Choose ${plan.name}`}
                     </Button>
+                    {!priceConfigured && !isCurrent && (
+                      <p className="text-xs text-secondary-500 mt-2 text-center">
+                        This tier has no Stripe price id yet. Set STRIPE_PRICE_TIER_* on the server.
+                      </p>
+                    )}
                   </div>
                 )
               })}

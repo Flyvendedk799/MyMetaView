@@ -13,9 +13,9 @@ from backend.db.session import get_db
 from backend.core.deps import get_current_user, get_paid_user, get_current_org, role_required
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
-from backend.services.preview_generator import generate_ai_preview
-from backend.services.generation_lane import record_ai_generation
 from backend.services.premium_card_renderer import CARD_SIZES
+from backend.services.manual_card import stamp_template_card
+from backend.core.plans import has_feature, F_HIDE_WATERMARK
 from backend.services.card_rerender import (
     DIRECTABLE_ACCENTS,
     DIRECTABLE_LAYOUTS,
@@ -27,9 +27,32 @@ from backend.services.card_rerender import (
 from backend.services.activity_logger import log_activity
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.cache import invalidate_preview, invalidate_public_preview_for_url
-from backend.services.rate_limiter import check_rate_limit, get_rate_limit_key_for_org
-
 router = APIRouter(prefix="/previews", tags=["previews"])
+
+
+def _stamp_if_imageless(preview, db, org, domain) -> None:
+    """Give a hand-created preview a real template-lane card.
+
+    A supplied image is kept. An empty image is rendered; failure aborts the
+    save so the library never stores a title with no card.
+    """
+    if preview.image_url:
+        preview.generation_mode = preview.generation_mode or "template"
+        return
+    brand = brand_resolver.resolve(db, org.id, domain.id) if domain is not None else None
+    hide = bool(
+        brand
+        and getattr(brand, "hide_watermark", False)
+        and has_feature(org, F_HIDE_WATERMARK)
+    )
+    try:
+        stamp_template_card(preview, brand, hide_watermark=hide)
+    except Exception as exc:
+        logger_msg = str(exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not render a card for this preview. Nothing was saved. ({logger_msg})",
+        ) from exc
 
 
 @router.get("", response_model=List[Preview])
@@ -98,8 +121,12 @@ def create_or_update_preview(
             existing_preview.image_url = preview_in.image_url
         if preview_in.domain is not None:
             existing_preview.domain = preview_in.domain
+        if preview_in.description is not None:
+            existing_preview.description = preview_in.description
         existing_preview.ignore_site_branding = bool(preview_in.ignore_site_branding)
-        
+        if not existing_preview.image_url:
+            _stamp_if_imageless(existing_preview, db, current_org, domain)
+
         db.commit()
         db.refresh(existing_preview)
         
@@ -131,8 +158,10 @@ def create_or_update_preview(
         organization_id=current_org.id,
         created_at=datetime.utcnow(),
         monthly_clicks=0,
+        generation_mode="template",
     )
     db.add(new_preview)
+    _stamp_if_imageless(new_preview, db, current_org, domain)
     db.commit()
     db.refresh(new_preview)
     
@@ -178,7 +207,21 @@ def update_preview(
             setattr(preview, field, "")
         else:
             setattr(preview, field, value)
-    
+
+    # Copy edits should show up on the card itself when we can re-render.
+    if preview.can_rerender and any(k in update_data for k in ("title", "description")):
+        spec = dict(preview.render_spec or {})
+        spec["subtitle"] = preview.description or ""
+        image_url, rendered_layout = rerender_card(
+            spec, url=preview.url, title=preview.title, subtitle=preview.description,
+        )
+        if image_url:
+            preview.image_url = image_url
+            preview.composited_image_url = image_url
+            preview.render_spec = spec
+            if rendered_layout:
+                preview.layout = rendered_layout
+
     db.commit()
     db.refresh(preview)
     
@@ -246,125 +289,17 @@ class PreviewGenerateRequest(BaseModel):
     domain: str
 
 
-@router.post("/generate", response_model=Preview, status_code=status.HTTP_201_CREATED)
+@router.post("/generate", status_code=status.HTTP_410_GONE)
 def generate_preview_with_ai(
     request: PreviewGenerateRequest,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_paid_user),
     current_org: Organization = Depends(get_current_org),
-    current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
 ):
-    """Generate a preview using AI for a given URL (owner/admin/editor only)."""
-    # Rate limiting: 100 generations per hour per organization
-    rate_limit_key = get_rate_limit_key_for_org(current_org.id)
-    if not check_rate_limit(rate_limit_key, limit=100, window_seconds=3600):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded. Please try again later."
-        )
-    # Step 1: Validate that domain belongs to current organization
-    domain = db.query(DomainModel).filter(
-        DomainModel.name == request.domain,
-        DomainModel.organization_id == current_org.id
-    ).first()
-    
-    if not domain:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Domain not found or not owned by this organization."
-        )
-    
-    # Step 1.5: Check domain verification
-    if domain.status != "verified":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Domain must be verified before generating previews."
-        )
-    
-    # Step 2: Load brand settings for THIS domain, falling back to the
-    # organization default when the domain has not been customised.
-    brand_settings = brand_resolver.resolve(db, current_org.id, domain.id)
-
-    if not brand_settings:
-        brand_settings = brand_resolver.get_or_create(
-            db, current_org.id, user_id=current_user.id, domain_id=domain.id
-        )
-
-    # Step 3: Call AI preview generator.
-    # This is the legacy synchronous path: it predates the unified engine and
-    # does not run the art director or the premium card renderer, so it cannot
-    # honour the template lane. It still costs a vision call, so it spends from
-    # the account's monthly AI allowance rather than quietly bypassing the meter.
-    # The metered, engine-backed path the dashboard uses is POST /jobs/preview.
-    record_ai_generation(
-        db,
-        organization_id=current_org.id,
-        user_id=current_user.id,
-        url=request.url,
-        domain=request.domain,
+    """Retired synchronous generator. The dashboard uses POST /jobs/preview."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="POST /api/v1/previews/generate is retired. Queue a generation with POST /api/v1/jobs/preview.",
     )
-    try:
-        from backend.schemas.brand import BrandSettings as BrandSettingsSchema
-        brand_schema = BrandSettingsSchema.model_validate(brand_settings)
-        ai_result = generate_ai_preview(request.url, brand_schema)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate preview: {str(e)}"
-        )
-    
-    # Step 4: Upsert Preview record
-    existing_preview = db.query(PreviewModel).filter(
-        PreviewModel.url == request.url,
-        PreviewModel.organization_id == current_org.id
-    ).first()
-    
-    if existing_preview:
-        # Update existing preview
-        existing_preview.title = ai_result["title"]
-        existing_preview.description = ai_result.get("description")
-        existing_preview.image_url = ai_result.get("image_url") or ""
-        # Determine type based on URL or keep existing
-        if not existing_preview.type:
-            # Simple heuristic: determine type from URL
-            url_lower = request.url.lower()
-            if "/product" in url_lower or "/shop" in url_lower:
-                existing_preview.type = "product"
-            elif "/blog" in url_lower or "/post" in url_lower:
-                existing_preview.type = "blog"
-            else:
-                existing_preview.type = "landing"
-        
-        db.commit()
-        db.refresh(existing_preview)
-        return existing_preview
-    else:
-        # Create new preview
-        # Determine type based on URL
-        url_lower = request.url.lower()
-        if "/product" in url_lower or "/shop" in url_lower:
-            preview_type = "product"
-        elif "/blog" in url_lower or "/post" in url_lower:
-            preview_type = "blog"
-        else:
-            preview_type = "landing"
-        
-        new_preview = PreviewModel(
-            url=request.url,
-            domain=request.domain,
-            title=ai_result["title"],
-            description=ai_result.get("description"),
-            type=preview_type,
-            image_url=ai_result.get("image_url") or "",
-            user_id=current_user.id,
-            organization_id=current_org.id,
-            created_at=datetime.utcnow(),
-            monthly_clicks=0,
-        )
-        db.add(new_preview)
-        db.commit()
-        db.refresh(new_preview)
-        return new_preview
 
 
 class PreviewRestyleRequest(BaseModel):

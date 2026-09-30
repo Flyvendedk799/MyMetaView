@@ -262,7 +262,30 @@ _META_KEY_RE = re.compile(
 )
 _CONTENT_RE = re.compile(r"""content\s*=\s*["']([^"']*)["']""", re.IGNORECASE)
 # The comment every server-side integration wraps its tags in.
-_INSTALL_MARKER_RE = re.compile(r"<!--\s*/?\s*MyMetaView\b", re.IGNORECASE)
+# The npm package writes "MyMetaView". WordPress writes "MyMetaView Previews",
+# and a white-label name keeps the "Previews" word after the brand is swapped.
+_INSTALL_MARKER_RE = re.compile(
+    r"<!--\s*/?\s*(?:MyMetaView\b|.{1,80}?Previews\b)",
+    re.IGNORECASE,
+)
+
+
+def _product_name(db: Session, org: Organization) -> str:
+    """Name printed on install artifacts. White-label plans can override it."""
+    from backend.core.plans import F_WHITE_LABEL, has_feature
+    from backend.services import brand_resolver
+
+    if not has_feature(org, F_WHITE_LABEL):
+        return "MyMetaView"
+    brand = brand_resolver.resolve(db, org.id, None)
+    custom = (getattr(brand, "white_label_name", None) or "").strip()
+    return custom or "MyMetaView"
+
+
+def _with_product(text: str, product: str) -> str:
+    if product == "MyMetaView":
+        return text
+    return text.replace("MyMetaView", product)
 
 
 def _looks_like_our_snippet(src: str) -> bool:
@@ -690,14 +713,15 @@ def download_wordpress_plugin(
 ):
     """A ready-to-upload WordPress plugin, pre-bound to the domain."""
     target = _resolve_target_domain(db, current_org, domain_id, domain)
+    product = _product_name(db, current_org)
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             "mymetaview-previews/mymetaview-previews.php",
-            _wordpress_plugin_source(target.name),
+            _with_product(_wordpress_plugin_source(target.name), product),
         )
-        archive.writestr("mymetaview-previews/readme.txt", _wordpress_readme(target.name))
+        archive.writestr("mymetaview-previews/readme.txt", _with_product(_wordpress_readme(target.name), product))
     buffer.seek(0)
 
     return Response(
@@ -720,6 +744,7 @@ def download_gtm_container(
 ):
     """A Google Tag Manager container the customer imports in one step."""
     target = _resolve_target_domain(db, current_org, domain_id, domain)
+    product = _product_name(db, current_org)
 
     container = {
         "exportFormatVersion": 2,
@@ -748,7 +773,7 @@ def download_gtm_container(
     }
 
     return Response(
-        content=json.dumps(container, indent=2),
+        content=_with_product(json.dumps(container, indent=2), product),
         media_type="application/json",
         headers={
             "Content-Disposition": 'attachment; filename="mymetaview-gtm-container.json"',
@@ -871,9 +896,10 @@ def download_cloudflare_worker(
 ):
     """An edge worker that injects tags server-side, for crawlers that ignore JS."""
     target = _resolve_target_domain(db, current_org, domain_id, domain)
+    product = _product_name(db, current_org)
 
     return Response(
-        content=_cloudflare_worker_source(target.name),
+        content=_with_product(_cloudflare_worker_source(target.name), product),
         media_type="application/javascript",
         headers={
             "Content-Disposition": 'attachment; filename="mymetaview-worker.js"',

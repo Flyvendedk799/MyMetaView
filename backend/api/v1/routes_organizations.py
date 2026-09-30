@@ -5,6 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from secrets import token_urlsafe
+import hashlib
+from backend.models.organization_invite import OrganizationInvite
+from backend.core.plans import plan_limit
 from backend.db.session import get_db
 from backend.core.deps import get_current_user, get_current_org, get_org_member_role, role_required, get_org_from_path
 from backend.models.user import User
@@ -26,8 +29,9 @@ from backend.core.config import settings
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
-# In-memory invite store (in production, use Redis or database)
-INVITE_TOKENS = {}  # token -> {org_id, role, expires_at, created_by}
+
+def _hash_invite(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 @router.post("", response_model=OrganizationPublic, status_code=status.HTTP_201_CREATED)
@@ -138,18 +142,27 @@ def create_invite(
     request: Request = None
 ):
     """Create an invite link for the organization (owner/admin only)."""
-    
-    # Generate invite token
+    seat_limit = plan_limit(current_org, "team_seats")
+    if seat_limit is not None:
+        member_count = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == org_id
+        ).count()
+        if member_count >= seat_limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"This plan includes {seat_limit} team seat{'s' if seat_limit != 1 else ''}.",
+            )
+
     invite_token = token_urlsafe(32)
     expires_at = datetime.utcnow() + timedelta(days=invite_in.expires_in_days)
-    
-    # Store invite (in production, use database)
-    INVITE_TOKENS[invite_token] = {
-        "organization_id": org_id,
-        "role": invite_in.role.value,
-        "expires_at": expires_at,
-        "created_by": current_user.id
-    }
+    db.add(OrganizationInvite(
+        organization_id=org_id,
+        role=invite_in.role.value,
+        token_hash=_hash_invite(invite_token),
+        created_by=current_user.id,
+        expires_at=expires_at,
+    ))
+    db.commit()
     
     # Build invite URL
     base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
@@ -160,10 +173,7 @@ def create_invite(
     # so this only fires when an email is present. Fire-and-forget; must never
     # fail invite creation.
     try:
-        invitee_email = (
-            getattr(invite_in, 'email', None)
-            or getattr(invite_in, 'invitee_email', None)
-        )
+        invitee_email = invite_in.email
         if invitee_email:
             send_org_invite_email(
                 to_email=invitee_email,
@@ -198,23 +208,25 @@ def join_organization(
     request: Request = None
 ):
     """Join an organization using an invite token."""
-    invite_data = INVITE_TOKENS.get(join_request.invite_token)
-    
-    if not invite_data:
+    invite = db.query(OrganizationInvite).filter(
+        OrganizationInvite.token_hash == _hash_invite(join_request.invite_token),
+        OrganizationInvite.accepted_at.is_(None),
+    ).first()
+
+    if not invite:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invalid invite token"
         )
-    
-    if datetime.utcnow() > invite_data["expires_at"]:
-        del INVITE_TOKENS[join_request.invite_token]
+
+    if datetime.utcnow() > invite.expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite token has expired"
         )
-    
-    org_id = invite_data["organization_id"]
-    role = OrganizationRole(invite_data["role"])
+
+    org_id = invite.organization_id
+    role = OrganizationRole(invite.role)
     
     # Check if user is already a member
     existing = db.query(OrganizationMember).filter(
@@ -228,15 +240,27 @@ def join_organization(
             detail="You are already a member of this organization"
         )
     
-    # Create membership
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    seat_limit = plan_limit(org, "team_seats") if org else None
+    if seat_limit is not None:
+        member_count = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == org_id
+        ).count()
+        if member_count >= seat_limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"This plan includes {seat_limit} team seats.",
+            )
+
     membership = OrganizationMember(
         organization_id=org_id,
         user_id=current_user.id,
         role=role
     )
     db.add(membership)
+    invite.accepted_at = datetime.utcnow()
     db.commit()
-    
+
     # Get organization
     org = db.query(Organization).filter(Organization.id == org_id).first()
     
@@ -402,5 +426,39 @@ def remove_member(
         request=request
     )
     
+    return {"success": True}
+
+
+@router.post("/{org_id}/leave")
+def leave_organization(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    request: Request = None,
+):
+    """Leave an organization. Owners transfer or delete the org instead."""
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+    if org.owner_user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Owners cannot leave. Transfer ownership by deleting the account, or delete the organization.",
+        )
+    membership = db.query(OrganizationMember).filter(
+        OrganizationMember.organization_id == org_id,
+        OrganizationMember.user_id == current_user.id,
+    ).first()
+    if not membership:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You are not a member of this organization")
+    db.delete(membership)
+    db.commit()
+    log_activity(
+        db,
+        user_id=current_user.id,
+        action="organization.left",
+        metadata={"organization_id": org_id},
+        request=request,
+    )
     return {"success": True}
 

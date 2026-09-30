@@ -11,7 +11,8 @@ import { getDemoContext } from '../lib/demoContext'
 export default function Signup() {
   const { signup, error: authError, loading } = useAuth()
   const [searchParams] = useSearchParams()
-  const next = searchParams.get('next') || undefined
+  const plan = searchParams.get('plan')
+  const next = searchParams.get('next') || (plan ? `/app/billing?plan=${encodeURIComponent(plan)}` : undefined)
   const demoContext = useMemo(() => getDemoContext(), [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -186,7 +187,7 @@ export default function Signup() {
 
           <p className="text-center text-sm text-secondary-600 mt-8 leading-relaxed">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
+            <Link to={next ? `/login?next=${encodeURIComponent(next)}` : '/login'} className="text-primary-600 hover:text-primary-700 font-semibold transition-colors">
               Sign in
             </Link>
           </p>

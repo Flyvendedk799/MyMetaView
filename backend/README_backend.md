@@ -325,11 +325,8 @@ The backend uses OpenAI's GPT-4o and DALL-E 3 APIs for AI-powered preview genera
    Ensure your OpenAI account has access to these models and sufficient credits.
 
 4. **Testing:**
-   - The AI generation endpoint (`POST /api/v1/previews/generate`) will fail gracefully if:
-     - `OPENAI_API_KEY` is not set
-     - API key is invalid
-     - Insufficient credits
-   - In such cases, the endpoint returns a 500 error with a descriptive message.
+   - Queue a preview with `POST /api/v1/jobs/preview`. `POST /api/v1/previews/generate` returns 410.
+   - Generation fails the job if `OPENAI_API_KEY` is missing, invalid, or out of credits.
 
 ### Cost Considerations
 

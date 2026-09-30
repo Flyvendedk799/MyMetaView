@@ -47,6 +47,7 @@ export interface BrandSettings {
   preview_accent: string
   force_brand_colors: boolean
   hide_watermark: boolean
+  white_label_name?: string | null
 }
 
 export interface BrandSettingsUpdate {
@@ -65,6 +66,7 @@ export interface BrandSettingsUpdate {
   preview_accent?: string
   force_brand_colors?: boolean
   hide_watermark?: boolean
+  white_label_name?: string | null
 }
 
 export interface Preview {
@@ -222,6 +224,7 @@ export interface PreviewUpdate {
   title?: string | null
   type?: string | null
   image_url?: string | null
+  description?: string | null
   ignore_site_branding?: boolean
 }
 

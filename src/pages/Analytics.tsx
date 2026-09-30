@@ -8,7 +8,9 @@ import {
   fetchAnalyticsOverview,
   fetchDomainAnalytics,
   fetchPreviewAnalytics,
+  getMyPlan,
 } from '../api/client'
+import { FEATURES } from '../lib/plans'
 import type {
   AnalyticsOverview,
   DomainAnalyticsItem,
@@ -162,15 +164,19 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [days, setDays] = useState<Days>(30)
+  const [advanced, setAdvanced] = useState(false)
 
   const loadAnalytics = useCallback(async (window: Days) => {
     try {
       setLoading(true)
       setError(null)
+      const plan = await getMyPlan().catch(() => null)
+      const canAdvanced = !!plan?.features?.includes(FEATURES.ADV_ANALYTICS)
+      setAdvanced(canAdvanced)
       const [overviewData, domainsData, previewsData] = await Promise.all([
         fetchAnalyticsOverview(window),
-        fetchDomainAnalytics(),
-        fetchPreviewAnalytics(10),
+        canAdvanced ? fetchDomainAnalytics() : Promise.resolve([]),
+        canAdvanced ? fetchPreviewAnalytics(10) : Promise.resolve([]),
       ])
       setOverview(overviewData)
       setDomains(domainsData)
@@ -292,6 +298,9 @@ export default function Analytics() {
             {/* Top domains */}
             <Card>
               <h3 className="text-[17px] font-semibold text-secondary-900 mb-4">Top domains</h3>
+              {!advanced ? (
+                <p className="text-sm text-secondary-500">Domain breakdowns are included on Growth and Agency.</p>
+              ) : (
               <div className="space-y-4">
                 {sortedDomains.length === 0 ? (
                   <p className="text-sm text-secondary-500">No domain data yet.</p>
@@ -312,12 +321,16 @@ export default function Analytics() {
                   ))
                 )}
               </div>
+              )}
             </Card>
           </div>
 
           {/* Top previews */}
           <Card>
             <h3 className="text-[17px] font-semibold text-secondary-900 mb-4">Top previews · last 30 days</h3>
+            {!advanced ? (
+              <p className="text-sm text-secondary-500">Per-page breakdowns are included on Growth and Agency.</p>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -359,6 +372,7 @@ export default function Analytics() {
                 </tbody>
               </table>
             </div>
+            )}
           </Card>
         </>
       ) : null}

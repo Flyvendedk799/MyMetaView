@@ -452,9 +452,6 @@ def get_system_overview(
         Preview.created_at >= twenty_four_hours_ago
     ).scalar() or 0
     
-    # Jobs running (stub - would need actual job tracking)
-    jobs_running = 0  # TODO: Implement actual job tracking
-    
     # Errors in past 24 hours
     errors_past_24h = db.query(func.count(Error.id)).filter(
         Error.timestamp >= twenty_four_hours_ago
@@ -462,12 +459,17 @@ def get_system_overview(
     
     # Redis queue length
     redis_queue_length = 0
+    jobs_running = 0
     try:
+        from rq import Queue
         redis_conn = get_rq_redis_connection()
         if redis_conn:
-            # RQ stores jobs in 'rq:queue:preview_generation' key
             queue_key = 'rq:queue:preview_generation'
             redis_queue_length = redis_conn.llen(queue_key) or 0
+            for name in ("preview_generation", "bulk_generation"):
+                queue = Queue(name, connection=redis_conn)
+                jobs_running += queue.started_job_registry.count
+                redis_queue_length += queue.count if name != "preview_generation" else 0
     except Exception:
         pass  # Redis not available or error
     
@@ -1345,3 +1347,73 @@ def clear_all_demo_cache(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear demo cache: {str(e)}"
         )
+
+
+@router.get("/preview-failures")
+def list_preview_failures(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """Recent dead-letter preview jobs."""
+    from backend.models.preview_job_failure import PreviewJobFailure
+    rows = (
+        db.query(PreviewJobFailure)
+        .order_by(PreviewJobFailure.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": row.id,
+            "url": row.url,
+            "organization_id": row.organization_id,
+            "error_message": (row.error_message or "")[:400],
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in rows
+    ]
+
+
+@router.post("/preview-failures/{failure_id}/retry")
+def retry_preview_failure(
+    failure_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(get_admin_user),
+):
+    """Re-queue a failed preview through the same worker path as a dashboard generate."""
+    from urllib.parse import urlparse
+    from uuid import uuid4
+    from rq import Queue
+    from backend.models.preview_job_failure import PreviewJobFailure
+    from backend.models.organization import Organization as OrgModel
+    from backend.jobs.bulk_preview_job import generate_tracked_preview_job, seed_batch
+    from backend.queue.queue_connection import get_rq_redis_connection
+
+    row = db.query(PreviewJobFailure).filter(PreviewJobFailure.id == failure_id).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Failure not found")
+    if not row.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failure has no organization to retry under")
+    org = db.query(OrgModel).filter(OrgModel.id == row.organization_id).first()
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+    host = (urlparse(row.url).hostname or "").removeprefix("www.")
+    batch_id = str(uuid4())
+    created_at = datetime.utcnow().isoformat()
+    seed_batch(batch_id, org.id, host, 1, created_at, kind="single", label=row.url)
+    queue = Queue("preview_generation", connection=get_rq_redis_connection())
+    job = queue.enqueue(
+        generate_tracked_preview_job,
+        batch_id,
+        org.owner_user_id,
+        org.id,
+        row.url,
+        host,
+        True,
+        created_at,
+        False,
+        None,
+        job_timeout="10m",
+    )
+    return {"success": True, "job_id": job.id, "batch_id": batch_id}

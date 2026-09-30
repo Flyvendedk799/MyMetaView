@@ -39,6 +39,9 @@ import ResetPassword from '../pages/ResetPassword'
 import Terms from '../pages/legal/Terms'
 import Privacy from '../pages/legal/Privacy'
 import NotFound from '../pages/NotFound'
+import Guides from '../pages/Guides'
+import Unsubscribe from '../pages/Unsubscribe'
+import AiCallback from '../pages/AiCallback'
 
 export default function Router() {
   return (
@@ -52,6 +55,8 @@ export default function Router() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/demo" element={<Demo />} />
+      <Route path="/guides" element={<Guides />} />
+      <Route path="/unsubscribe" element={<Unsubscribe />} />
       
       {/* Public Blog routes */}
       <Route path="/blog" element={<Blog />} />
@@ -115,6 +120,14 @@ export default function Router() {
         element={
           <ProtectedRoute>
             <Billing />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/account/ai-callback"
+        element={
+          <ProtectedRoute>
+            <AiCallback />
           </ProtectedRoute>
         }
       />

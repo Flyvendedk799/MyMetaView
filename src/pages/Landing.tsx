@@ -443,7 +443,7 @@ export default function Landing() {
                 </ul>
 
                 <Link
-                  to="/signup"
+                  to={`/signup?plan=${encodeURIComponent(plan.key)}`}
                   className={`block w-full text-center py-3 rounded-lg font-semibold text-sm transition-colors ${
                     plan.highlighted
                       ? 'bg-accent-500 text-paper hover:bg-accent-600'
@@ -514,15 +514,15 @@ export default function Landing() {
               <span className="mt-auto pt-2 font-mono text-[13px] text-primary-500">/docs → api</span>
             </a>
             <Link
-              to="/blog"
+              to="/guides"
               className="bg-surface rounded-xl p-6 border border-line shadow-card hover:border-primary-500 hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-2"
             >
               <span className="font-mono text-xs text-accent-700">03</span>
-              <h3 className="text-lg font-semibold text-secondary-900">Guides & blog</h3>
+              <h3 className="text-lg font-semibold text-secondary-900">Install guides</h3>
               <p className="text-sm leading-relaxed text-secondary-600">
-                Best practices for og:images, metadata SEO, and share-ready launches.
+                Node, Cloudflare, WordPress, or a snippet. The same tags, four ways in.
               </p>
-              <span className="mt-auto pt-2 font-mono text-[13px] text-primary-500">/blog</span>
+              <span className="mt-auto pt-2 font-mono text-[13px] text-primary-500">/guides</span>
             </Link>
           </div>
         </div>
@@ -564,7 +564,8 @@ export default function Landing() {
                 <li><a href="#features" className="hover:text-paper transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-paper transition-colors">Pricing</a></li>
                 <li><Link to="/app" className="hover:text-paper transition-colors">Dashboard</Link></li>
-                <li><a href="/docs" className="hover:text-paper transition-colors">Documentation</a></li>
+                <li><Link to="/guides" className="hover:text-paper transition-colors">Documentation</Link></li>
+                <li><a href="/docs" className="hover:text-paper transition-colors">API reference</a></li>
                 <li><Link to="/blog" className="hover:text-paper transition-colors">Blog</Link></li>
               </ul>
             </div>

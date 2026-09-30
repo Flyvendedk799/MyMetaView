@@ -574,7 +574,13 @@ export async function buildPlatformCards(
 
 // Job queue endpoints
 export async function createPreviewJob(
-  payload: { url: string; domain: string; force?: boolean; ignore_branding?: boolean }
+  payload: {
+    url: string
+    domain: string
+    force?: boolean
+    ignore_branding?: boolean
+    quality_mode?: 'auto' | 'fast' | 'balanced' | 'ultra'
+  }
 ): Promise<PreviewJobCreateResponse> {
   return fetchApi<PreviewJobCreateResponse>('/api/v1/jobs/preview', {
     method: 'POST',
@@ -810,6 +816,33 @@ export async function fetchAdminSystemOverview(): Promise<SystemOverview> {
   return fetchApi<SystemOverview>('/api/v1/admin/system/overview')
 }
 
+export async function invalidatePreviewCache(url: string): Promise<{ success: boolean; message: string }> {
+  return fetchApi('/api/v1/admin/cache/invalidate', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  })
+}
+
+export async function clearDemoCache(): Promise<{ success: boolean; deleted_count: number }> {
+  return fetchApi('/api/v1/admin/cache/clear-all-demo', { method: 'POST' })
+}
+
+export interface PreviewFailure {
+  id: number
+  url: string
+  organization_id: number | null
+  error_message: string
+  created_at: string | null
+}
+
+export async function fetchPreviewFailures(): Promise<PreviewFailure[]> {
+  return fetchApi('/api/v1/admin/preview-failures')
+}
+
+export async function retryPreviewFailure(id: number): Promise<{ success: boolean; job_id: string }> {
+  return fetchApi(`/api/v1/admin/preview-failures/${id}/retry`, { method: 'POST' })
+}
+
 export async function fetchAdminWorkerHealth(): Promise<WorkerHealth> {
   return fetchApi<WorkerHealth>('/api/v1/admin/system/worker-health')
 }
@@ -953,6 +986,37 @@ export async function createInviteLink(
     method: 'POST',
     body: JSON.stringify({ role, expires_in_days: expiresInDays }),
   })
+}
+
+export async function leaveOrganization(orgId: number): Promise<{ success: boolean }> {
+  return fetchApi(`/api/v1/organizations/${orgId}/leave`, { method: 'POST' })
+}
+
+export async function deleteOrganization(orgId: number): Promise<{ success: boolean }> {
+  return fetchApi(`/api/v1/account/organizations/${orgId}`, { method: 'DELETE' })
+}
+
+export interface ApiKeyRecord {
+  id: number
+  name: string
+  prefix: string
+  created_at: string
+  revoked_at?: string | null
+}
+
+export async function listApiKeys(): Promise<ApiKeyRecord[]> {
+  return fetchApi('/api/v1/api-keys')
+}
+
+export async function createApiKey(name: string): Promise<ApiKeyRecord & { token: string }> {
+  return fetchApi('/api/v1/api-keys', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })
+}
+
+export async function revokeApiKey(id: number): Promise<{ success: boolean }> {
+  return fetchApi(`/api/v1/api-keys/${id}`, { method: 'DELETE' })
 }
 
 export async function joinOrganization(data: OrganizationJoinRequest): Promise<Organization> {
@@ -1268,6 +1332,10 @@ export async function fetchNewsletterSubscribers(options?: {
   return fetchApi<NewsletterSubscriberList>(`/api/v1/newsletter/subscribers${query}`)
 }
 
+export async function removeNewsletterSubscriber(id: number): Promise<{ success: boolean }> {
+  return fetchApi(`/api/v1/newsletter/subscribers/${id}`, { method: 'DELETE' })
+}
+
 export async function exportNewsletterSubscribers(format: 'csv' | 'xlsx' = 'csv', source?: string): Promise<Blob> {
   const params = new URLSearchParams()
   params.append('format', format)
@@ -1420,6 +1488,64 @@ export async function createDemoJob(url: string): Promise<DemoJobResponse> {
     timeout: 30000, // 30 seconds for job creation (should be instant)
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   }, false) // Public endpoint; attach auth when available for user-scoped activity logs
+}
+
+async function downloadBinary(endpoint: string, filename: string, init?: RequestInit): Promise<void> {
+  const response = await fetch(`${getApiBaseUrl()}${endpoint}`, init)
+  if (!response.ok) {
+    let detail = response.statusText
+    try {
+      const body = await response.json()
+      detail = body.detail || detail
+    } catch {
+      /* binary error pages stay as status text */
+    }
+    throw new Error(typeof detail === 'string' ? detail : 'Export failed')
+  }
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(objectUrl)
+}
+
+/** Server-side PNG export of a demo (or any) preview image. */
+export function downloadDemoPng(previewUrl: string, filename = 'preview.png'): Promise<void> {
+  const query = new URLSearchParams({ preview_url: previewUrl })
+  return downloadBinary(`/api/v1/demo-v2/export/png?${query}`, filename)
+}
+
+export function downloadDemoPdf(previewUrls: string[], titles?: string[]): Promise<void> {
+  return downloadBinary('/api/v1/demo-v2/export/pdf', 'previews.pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ preview_urls: previewUrls, titles }),
+  })
+}
+
+export function downloadDemoZip(previewUrls: string[], titles?: string[]): Promise<void> {
+  return downloadBinary('/api/v1/demo-v2/export/zip', 'previews.zip', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ preview_urls: previewUrls, titles }),
+  })
+}
+
+export async function fetchDemoEmbedCode(input: {
+  page_url: string
+  preview_image_url: string
+  title?: string
+  description?: string
+}): Promise<string> {
+  const res = await fetchApi<{ embed_code: string }>('/api/v1/demo-v2/embed-code', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return res.embed_code
 }
 
 export async function getDemoJobStatus(jobId: string): Promise<DemoJobStatusResponse> {

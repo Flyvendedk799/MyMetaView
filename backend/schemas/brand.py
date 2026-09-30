@@ -29,6 +29,7 @@ class BrandSettingsBase(BaseModel):
     preview_accent: str = Field(default="auto", description="auto | bar | dot | shape")
     force_brand_colors: bool = Field(default=False, description="Always use these brand colours, ignore extracted")
     hide_watermark: bool = Field(default=False, description="Drop the 'metaview preview' footer on cards")
+    white_label_name: Optional[str] = Field(None, description="Product name used on install artifacts")
 
 
 class BrandSettingsUpdate(BaseModel):
@@ -48,6 +49,7 @@ class BrandSettingsUpdate(BaseModel):
     preview_accent: Optional[str] = None
     force_brand_colors: Optional[bool] = None
     hide_watermark: Optional[bool] = None
+    white_label_name: Optional[str] = None
 
 
 class BrandSettings(BrandSettingsBase):

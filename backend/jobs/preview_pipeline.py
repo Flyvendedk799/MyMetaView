@@ -106,6 +106,7 @@ def generate_preview_job(
     domain: str,
     force_regenerate: bool = False,
     ignore_site_branding: bool = False,
+    quality_mode: str | None = None,
 ) -> Dict:
     """
     Main background job to generate preview for a URL.
@@ -191,7 +192,11 @@ def generate_preview_job(
         # The profile comes from the same table the demo reads, pinned to
         # `ultra`, so a customer's preview is generated exactly as well as the
         # one they saw on the landing page before they signed up.
-        profile = get_quality_profile("ultra" if lane.lane == "ai" else "template")
+        # Template lane is always the cheap profile. The AI lane honours an
+        # explicit quality_mode (fast / balanced / ultra / auto) and otherwise
+        # stays on ultra, which is the product default.
+        requested_mode = "template" if lane.lane != "ai" else (quality_mode or "ultra")
+        profile = get_quality_profile(requested_mode, url=sanitized_url)
         logger.info(
             f"Using unified preview engine for: {sanitized_url} "
             f"(lane={lane.lane}, profile={profile.quality_mode})"

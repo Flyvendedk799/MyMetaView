@@ -208,6 +208,7 @@ export default function Brand() {
 
   const canCardControls = features.includes(FEATURES.CARD_CONTROLS)
   const canHideWatermark = features.includes(FEATURES.HIDE_WATERMARK)
+  const canWhiteLabel = features.includes(FEATURES.WHITE_LABEL)
 
   const refreshPreview = useCallback(async () => {
     setPreviewLoading(true)
@@ -305,6 +306,7 @@ export default function Brand() {
         preview_accent: form.preview_accent,
         force_brand_colors: form.force_brand_colors,
         hide_watermark: form.hide_watermark,
+        white_label_name: form.white_label_name ?? null,
       }
       const updated = await updateBrandSettings(payload, domainId)
       setSettings(updated)
@@ -679,6 +681,24 @@ export default function Brand() {
                   onChange={(v) => set({ hide_watermark: v })}
                   disabled={!canHideWatermark}
                 />
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1">
+                    Install product name
+                  </label>
+                  <input
+                    type="text"
+                    value={form.white_label_name || ''}
+                    disabled={!canWhiteLabel}
+                    placeholder={canWhiteLabel ? 'Shown on the Worker, plugin, and GTM container' : 'Agency feature'}
+                    onChange={(e) => set({ white_label_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-secondary-300 rounded-lg disabled:bg-secondary-50"
+                  />
+                  <p className="text-xs text-secondary-500 mt-1">
+                    {canWhiteLabel
+                      ? 'Replaces “MyMetaView” on downloaded install files. Cards still follow the watermark toggle.'
+                      : 'Agency feature — put your own name on downloaded install files.'}
+                  </p>
+                </div>
               </div>
             </Card>
           </div>

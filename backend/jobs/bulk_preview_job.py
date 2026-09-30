@@ -290,6 +290,7 @@ def generate_tracked_preview_job(
     force_regenerate: bool = False,
     created_at: Optional[str] = None,
     ignore_site_branding: bool = False,
+    quality_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Background job: generate ONE preview, reporting progress as a run of one.
 
@@ -308,6 +309,7 @@ def generate_tracked_preview_job(
             user_id, organization_id, url, domain,
             force_regenerate=force_regenerate,
             ignore_site_branding=ignore_site_branding,
+            quality_mode=quality_mode,
         )
 
     _write_status(redis_client, batch_id, "running", 1, 0, 0, [], domain, created_at, "single", url)
@@ -316,6 +318,7 @@ def generate_tracked_preview_job(
             user_id, organization_id, url, domain,
             force_regenerate=force_regenerate,
             ignore_site_branding=ignore_site_branding,
+            quality_mode=quality_mode,
         )
     except Exception as e:  # already recorded to DLQ inside generate_preview_job
         logger.warning("single %s: failed %s: %s", batch_id, url[:80], e)

@@ -128,6 +128,12 @@ def update_brand_settings(
         )
     # Free-text identity fields: trim, and treat "" as "unset" so the engine keeps
     # inferring rather than being handed an empty string.
+    if "white_label_name" in update_data:
+        from backend.core.plans import F_WHITE_LABEL, has_feature as _has_feature
+        if not _has_feature(current_org, F_WHITE_LABEL):
+            raise HTTPException(status_code=402, detail="White-label naming is not included in this plan.")
+        if isinstance(update_data["white_label_name"], str):
+            update_data["white_label_name"] = update_data["white_label_name"].strip() or None
     for field in ("brand_name", "tagline", "brand_description", "audience"):
         if field in update_data and isinstance(update_data[field], str):
             update_data[field] = update_data[field].strip() or None

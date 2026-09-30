@@ -93,6 +93,9 @@ class Settings:
     
     # Frontend URL for invite links
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    # Public app origin for Stripe return URLs. Falls back to FRONTEND_URL so a
+    # missing setting never sends checkout back to the first CORS origin.
+    APP_PUBLIC_URL: str = os.getenv("APP_PUBLIC_URL", "") or os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     # Public origin the embed snippet is served from and calls back to. This ends
     # up baked into every customer's <script> tag, so it must be the real

@@ -11,6 +11,15 @@ from backend.models.preview import Preview as PreviewModel
 from backend.models.preview_variant import PreviewVariant as PreviewVariantModel
 from backend.schemas.preview_variant import PreviewVariantPublic, PreviewVariantUpdate
 from backend.services.activity_logger import log_activity
+from backend.core.plans import has_feature, F_VARIANTS
+
+
+def _require_variants(org: Organization) -> None:
+    if not has_feature(org, F_VARIANTS):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="A/B preview variants are not included in this plan.",
+        )
 
 router = APIRouter(prefix="/preview-variants", tags=["preview-variants"])
 
@@ -86,6 +95,7 @@ def update_preview_variant(
     current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
 ):
     """Update a preview variant (owner/admin/editor only)."""
+    _require_variants(current_org)
     variant = db.query(PreviewVariantModel).filter(
         PreviewVariantModel.id == variant_id
     ).first()
@@ -138,6 +148,7 @@ def delete_preview_variant(
     current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN]))
 ):
     """Delete a preview variant (owner/admin only)."""
+    _require_variants(current_org)
     variant = db.query(PreviewVariantModel).filter(
         PreviewVariantModel.id == variant_id
     ).first()

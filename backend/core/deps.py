@@ -1,4 +1,5 @@
 """Shared dependencies for FastAPI routes."""
+from contextvars import ContextVar
 from fastapi import Depends, HTTPException, status, Query, Header, Path
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -10,6 +11,9 @@ from backend.models.organization_member import OrganizationMember, OrganizationR
 from backend.core.security import decode_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+# Set when the bearer token is an org API key, so get_current_org pins that org.
+_api_key_org_id: ContextVar[Optional[int]] = ContextVar("api_key_org_id", default=None)
 
 
 def get_current_user(
@@ -23,6 +27,28 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
+    _api_key_org_id.set(None)
+    if token.startswith("mv_"):
+        from backend.api.v1.routes_api_keys import hash_api_key
+        from backend.core.plans import F_API, has_feature
+        from backend.models.api_key import ApiKey
+
+        row = (
+            db.query(ApiKey)
+            .filter(ApiKey.key_hash == hash_api_key(token), ApiKey.revoked_at.is_(None))
+            .first()
+        )
+        if row is None:
+            raise credentials_exception
+        org = db.query(Organization).filter(Organization.id == row.organization_id).first()
+        if org is None or not has_feature(org, F_API):
+            raise credentials_exception
+        user = db.query(User).filter(User.id == row.created_by).first()
+        if user is None or not user.is_active:
+            raise credentials_exception
+        _api_key_org_id.set(org.id)
+        return user
+
     email = decode_access_token(token)
     if email is None:
         raise credentials_exception
@@ -59,8 +85,12 @@ def get_current_org(
     
     Raises 404 if no organization found or user is not a member.
     """
-    # Use query param
-    target_org_id = org_id_query
+    # An API key always acts as the organization it was issued for.
+    pinned = _api_key_org_id.get()
+    if pinned is not None:
+        target_org_id = pinned
+    else:
+        target_org_id = org_id_query
     
     # Try header if no query param
     if target_org_id is None and x_organization_id:

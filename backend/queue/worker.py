@@ -109,9 +109,29 @@ def main():
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
 
+    # Roll yesterday's analytics on an interval so the dashboard does not
+    # depend on an operator clicking Aggregate.
+    last_aggregate = 0.0
+
+    def _maybe_aggregate() -> None:
+        nonlocal last_aggregate
+        now = time.time()
+        if now - last_aggregate < 3600:
+            return
+        last_aggregate = now
+        try:
+            from backend.jobs.analytics_aggregation import aggregate_daily_analytics
+            aggregate_daily_analytics()
+            logger.info("analytics aggregation finished")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("analytics aggregation failed: %s", exc)
+
+    _maybe_aggregate()
+
     # Supervise: restart any worker that dies, unless we're shutting down.
     while not shutting_down["flag"]:
         time.sleep(5)
+        _maybe_aggregate()
         for pid, (p, spec) in list(procs.items()):
             if not p.is_alive():
                 del procs[pid]

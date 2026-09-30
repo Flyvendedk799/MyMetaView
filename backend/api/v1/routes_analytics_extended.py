@@ -13,8 +13,18 @@ from backend.models.domain import Domain as DomainModel
 from backend.models.preview import Preview as PreviewModel
 from backend.models.analytics_event import AnalyticsEvent
 from backend.models.analytics_aggregate import AnalyticsDailyAggregate
+from fastapi import HTTPException, status
+from backend.core.plans import F_ADV_ANALYTICS, has_feature
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+def _require_advanced(org: Organization) -> None:
+    if not has_feature(org, F_ADV_ANALYTICS):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Advanced analytics are not included in this plan.",
+        )
 
 
 class TimeseriesPoint(BaseModel):
@@ -117,6 +127,7 @@ def get_domain_analytics(
     current_org: Organization = Depends(get_current_org)
 ):
     """Get analytics per domain for the current organization."""
+    _require_advanced(current_org)
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
     
@@ -218,6 +229,7 @@ def get_preview_analytics(
     current_org: Organization = Depends(get_current_org)
 ):
     """Get top previews by analytics for the current organization."""
+    _require_advanced(current_org)
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
     
     # Get all previews for the organization (single query)

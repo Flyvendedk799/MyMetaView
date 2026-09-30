@@ -686,7 +686,35 @@ const styles: Record<string, React.CSSProperties> = {
   }
 };
 
-export default function SpatialPreviewStudio({ preview }: { preview?: any }) {
+export default function SpatialPreviewStudio({
+  preview,
+  onRestyle,
+  onSaveCopy,
+  saving = false,
+  layouts = [],
+  panels = [],
+  accents = [],
+  layout = 'typographic',
+  panelColor = 'primary',
+  accent = 'bar',
+  onLayout,
+  onPanelColor,
+  onAccent,
+}: {
+  preview?: any
+  onRestyle?: () => void
+  onSaveCopy?: (patch: { title: string; description: string }) => void
+  saving?: boolean
+  layouts?: string[]
+  panels?: string[]
+  accents?: string[]
+  layout?: string
+  panelColor?: string
+  accent?: string
+  onLayout?: (value: string) => void
+  onPanelColor?: (value: string) => void
+  onAccent?: (value: string) => void
+}) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   // Platform & Viewport Selection
   const [platform, setPlatform] = useState(TWEAK_DEFAULTS.defaultPlatform);
@@ -710,13 +738,13 @@ export default function SpatialPreviewStudio({ preview }: { preview?: any }) {
   const [layerElevation, setLayerElevation] = useState(25);
 
   // Post Content Customization
-  const [authorName, setAuthorName] = useState(preview?.brand?.brand_name || preview?.domain || "Alex Rivera");
+  const [authorName, setAuthorName] = useState(preview?.brand?.brand_name || preview?.domain || "Your brand");
   const [authorHandle, setAuthorHandle] = useState(
-    preview?.domain ? preview.domain.split('.')[0] : "alexrivera_ui"
+    preview?.domain ? preview.domain.replace(/^www\./, "") : "yourbrand"
   );
-  const [postCaption, setPostCaption] = useState(
-    preview?.description || preview?.title || "Building spatial 2.5D interfaces in React! Drag with mouse to orbit 360°, inspect depth layers, and preview post fidelity across mobile, laptop, & desktop views. ✨ #SpatialUI #DesignSystems"
-  );
+  const [postCaption, setPostCaption] = useState(preview?.description || preview?.title || "");
+  const [cardTitle, setCardTitle] = useState(preview?.title || "");
+  const [cardDescription, setCardDescription] = useState(preview?.description || "");
   const [postTimestamp, setPostTimestamp] = useState("2h ago");
   const [likeCount, setLikeCount] = useState("4.8K");
   const [repostCount, setRepostCount] = useState("1.2K");
@@ -1607,9 +1635,73 @@ export default function SpatialPreviewStudio({ preview }: { preview?: any }) {
             />
           </div>
 
+          {(onRestyle || onSaveCopy) && (
+            <div style={styles.drawerSection}>
+              <span style={styles.sectionLabel}>CARD — SAVED TO THIS PREVIEW</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+                <div>
+                  <label style={styles.inputLabel}>Title</label>
+                  <input
+                    type="text"
+                    value={cardTitle}
+                    onChange={(e) => setCardTitle(e.target.value)}
+                    style={styles.textInput}
+                  />
+                </div>
+                <div>
+                  <label style={styles.inputLabel}>Description</label>
+                  <textarea
+                    rows={3}
+                    value={cardDescription}
+                    onChange={(e) => setCardDescription(e.target.value)}
+                    style={{ ...styles.textInput, resize: "none" }}
+                  />
+                </div>
+                {onSaveCopy && (
+                  <button
+                    type="button"
+                    className="tweak-btn active"
+                    disabled={saving}
+                    onClick={() => onSaveCopy({ title: cardTitle, description: cardDescription })}
+                  >
+                    {saving ? "Saving…" : "Save title & description"}
+                  </button>
+                )}
+                {onRestyle && (
+                  <>
+                    <label style={styles.inputLabel}>Layout</label>
+                    <select value={layout} onChange={(e) => onLayout?.(e.target.value)} style={styles.textInput}>
+                      {layouts.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                    </select>
+                    <label style={styles.inputLabel}>Panel</label>
+                    <select value={panelColor} onChange={(e) => onPanelColor?.(e.target.value)} style={styles.textInput}>
+                      {panels.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                    </select>
+                    <label style={styles.inputLabel}>Accent</label>
+                    <select value={accent} onChange={(e) => onAccent?.(e.target.value)} style={styles.textInput}>
+                      {accents.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
+                    </select>
+                    <button type="button" className="tweak-btn active" disabled={saving} onClick={onRestyle}>
+                      {saving ? "Restyling…" : "Apply layout"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Section 5: Live Post Editor */}
           <div style={styles.drawerSection}>
-            <span style={styles.sectionLabel}>POST CONTENT EDITOR</span>
+            <span style={styles.sectionLabel}>SAMPLE POST CHROME</span>
+            <p style={{ fontSize: "10px", color: "#a1a1aa", marginTop: "6px" }}>
+              Author, caption, and engagement counts below are sample chrome so you can see the card in context. They are not your analytics and are not saved.
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
               <div>
                 <label style={styles.inputLabel}>Author Name</label>

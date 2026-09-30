@@ -73,8 +73,8 @@ def create_checkout_session(org: Organization, price_id: str) -> Dict[str, str]:
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url=f"{settings.ALLOWED_ORIGINS[0]}/app/billing?success=true",
-            cancel_url=f"{settings.ALLOWED_ORIGINS[0]}/app/billing?canceled=true",
+            success_url=f"{settings.APP_PUBLIC_URL.rstrip('/')}/app/billing?success=true",
+            cancel_url=f"{settings.APP_PUBLIC_URL.rstrip('/')}/app/billing?canceled=true",
             metadata={
                 "organization_id": str(org.id),
             }
@@ -105,7 +105,7 @@ def create_billing_portal(org: Organization) -> Dict[str, str]:
         # Create billing portal session
         portal_session = stripe.billing_portal.Session.create(
             customer=org.stripe_customer_id,
-            return_url=f"{settings.ALLOWED_ORIGINS[0]}/app/billing",
+            return_url=f"{settings.APP_PUBLIC_URL.rstrip('/')}/app/billing",
         )
         
         return {

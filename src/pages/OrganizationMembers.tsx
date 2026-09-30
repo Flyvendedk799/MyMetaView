@@ -16,12 +16,16 @@ import {
   updateMemberRole,
   removeMember,
   createInviteLink,
+  leaveOrganization,
+  deleteOrganization,
+  getMyPlan,
   type OrganizationMember,
   type OrganizationInviteResponse,
   type OrganizationRole,
 } from '../api/client'
 import { useOrganization } from '../hooks/useOrganization'
 import { useAuth } from '../hooks/useAuth'
+import { useToast } from '../components/ui/Toast'
 
 const roleLabels: Record<OrganizationRole, string> = {
   owner: 'Owner',
@@ -48,6 +52,15 @@ export default function OrganizationMembers() {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteRole, setInviteRole] = useState<OrganizationRole>('viewer')
   const [creatingInvite, setCreatingInvite] = useState(false)
+  const [seatLimit, setSeatLimit] = useState<number | null>(null)
+  const [copied, setCopied] = useState(false)
+  const toast = useToast()
+
+  useEffect(() => {
+    getMyPlan()
+      .then((plan) => setSeatLimit(plan.limits?.team_seats ?? null))
+      .catch(() => setSeatLimit(null))
+  }, [])
 
   useEffect(() => {
     if (orgId) {
@@ -121,14 +134,49 @@ export default function OrganizationMembers() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-secondary mb-2">Team Members</h1>
-          <p className="text-secondary-600">Manage team members and their roles.</p>
+          <p className="text-secondary-600">
+            {seatLimit === null
+              ? `${members.length} seats used · unlimited on this plan`
+              : `${members.length} of ${seatLimit} seats used`}
+          </p>
         </div>
-        {canManageMembers && (
-          <Button onClick={() => setShowInviteModal(true)}>
-            <UserGroupIcon className="w-5 h-5 mr-2" />
-            Invite Member
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {currentUserRole !== 'owner' && (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!orgId) return
+                await leaveOrganization(parseInt(orgId))
+                toast.success('You left the organization')
+                navigate('/app/organizations')
+              }}
+            >
+              Leave
+            </Button>
+          )}
+          {currentUserRole === 'owner' && (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!orgId || !confirm('Delete this organization?')) return
+                await deleteOrganization(parseInt(orgId))
+                toast.success('Organization deleted')
+                navigate('/app/organizations')
+              }}
+            >
+              Delete organization
+            </Button>
+          )}
+          {canManageMembers && (
+            <Button
+              onClick={() => setShowInviteModal(true)}
+              disabled={seatLimit !== null && members.length >= seatLimit}
+            >
+              <UserGroupIcon className="w-5 h-5 mr-2" />
+              Invite Member
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -258,10 +306,11 @@ export default function OrganizationMembers() {
                     variant="secondary"
                     onClick={() => {
                       navigator.clipboard.writeText(inviteLink)
-                      alert('Invite link copied to clipboard!')
+                      setCopied(true)
+                      toast.success('Invite link copied')
                     }}
                   >
-                    Copy
+                    {copied ? 'Copied' : 'Copy'}
                   </Button>
                 </div>
                 <p className="text-xs text-secondary-500 mt-2">

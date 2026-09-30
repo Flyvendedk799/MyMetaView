@@ -36,6 +36,11 @@ def test_wordpress_marker_counts_as_installed():
     assert _scan_html(WORDPRESS_HEAD)["snippet_found"] is True
 
 
+def test_renamed_product_marker_counts_as_installed():
+    html = "<html><head><!-- Northwind Previews --><meta property=\"og:title\" content=\"Hi\"><!-- /Northwind Previews --></head></html>"
+    assert _scan_html(html)["snippet_found"] is True
+
+
 def test_a_page_with_its_own_tags_is_not_an_install():
     html = (
         '<html><head><meta property="og:title" content="Their own title">'

@@ -10,7 +10,7 @@ const navLinks = [
   { label: 'Product', href: '/#product' },
   { label: 'Features', href: '/#features' },
   { label: 'Pricing', href: '/#pricing' },
-  { label: 'Docs', href: '/#docs' },
+  { label: 'Docs', href: '/guides' },
 ]
 
 export default function SiteNav() {

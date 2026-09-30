@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ExclamationTriangleIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import { fetchAdminSystemOverview, fetchAdminWorkerHealth, triggerDeployment, type SystemOverview, type WorkerHealth } from '../../api/client'
+import { fetchAdminSystemOverview, fetchAdminWorkerHealth, triggerDeployment, invalidatePreviewCache, clearDemoCache, fetchPreviewFailures, retryPreviewFailure, type SystemOverview, type WorkerHealth, type PreviewFailure } from '../../api/client'
 
 export default function AdminSystem() {
   const [overview, setOverview] = useState<SystemOverview | null>(null)
@@ -12,6 +12,9 @@ export default function AdminSystem() {
   const [error, setError] = useState<string | null>(null)
   const [deploying, setDeploying] = useState(false)
   const [deploymentResult, setDeploymentResult] = useState<{ success: boolean; message: string; branch_merged?: string } | null>(null)
+  const [cacheUrl, setCacheUrl] = useState('')
+  const [cacheNote, setCacheNote] = useState<string | null>(null)
+  const [failures, setFailures] = useState<PreviewFailure[]>([])
 
   useEffect(() => {
     loadData()
@@ -24,10 +27,12 @@ export default function AdminSystem() {
     try {
       setLoading(true)
       setError(null)
-      const [overviewData, healthData] = await Promise.all([
+      const [overviewData, healthData, failureData] = await Promise.all([
         fetchAdminSystemOverview(),
         fetchAdminWorkerHealth(),
+        fetchPreviewFailures().catch(() => []),
       ])
+      setFailures(failureData)
       setOverview(overviewData)
       setWorkerHealth(healthData)
     } catch (err) {
@@ -187,6 +192,61 @@ export default function AdminSystem() {
                   </p>
                 )}
               </div>
+            )}
+          </Card>
+
+          <Card className="mb-6">
+            <h2 className="text-xl font-semibold text-secondary mb-4">Cache and failed jobs</h2>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <input
+                value={cacheUrl}
+                onChange={(e) => setCacheUrl(e.target.value)}
+                placeholder="URL to drop from the preview cache"
+                className="flex-1 min-w-[16rem] px-3 py-2 border border-secondary-300 rounded-lg text-sm"
+              />
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  const res = await invalidatePreviewCache(cacheUrl)
+                  setCacheNote(res.message)
+                }}
+                disabled={!cacheUrl.trim()}
+              >
+                Invalidate URL
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  const res = await clearDemoCache()
+                  setCacheNote(`Cleared ${res.deleted_count} demo cache entries`)
+                }}
+              >
+                Clear demo cache
+              </Button>
+            </div>
+            {cacheNote && <p className="text-sm text-secondary-600 mb-4">{cacheNote}</p>}
+            {failures.length === 0 ? (
+              <p className="text-sm text-secondary-500">No failed preview jobs.</p>
+            ) : (
+              <ul className="space-y-2">
+                {failures.map((failure) => (
+                  <li key={failure.id} className="flex items-start justify-between gap-3 text-sm">
+                    <div>
+                      <p className="font-mono text-xs text-secondary-800 break-all">{failure.url}</p>
+                      <p className="text-secondary-500">{failure.error_message}</p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        await retryPreviewFailure(failure.id)
+                        setCacheNote('Retry queued')
+                      }}
+                    >
+                      Retry
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
 

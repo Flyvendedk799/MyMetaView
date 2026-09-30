@@ -60,6 +60,7 @@ class OrganizationInviteCreate(BaseModel):
     """Schema for creating an invite."""
     role: OrganizationRole = OrganizationRole.VIEWER
     expires_in_days: int = 7
+    email: Optional[str] = None
 
 
 class OrganizationInviteResponse(BaseModel):

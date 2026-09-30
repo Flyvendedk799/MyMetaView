@@ -2,7 +2,7 @@
 import re
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc, or_, func
 from pydantic import BaseModel, Field
@@ -510,6 +510,32 @@ def get_rss_feed(
 # ============================================================================
 # Admin Endpoints (Auth Required)
 # ============================================================================
+
+@router.post("/admin/images")
+async def admin_upload_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_admin),
+):
+    """Store a blog image and return its public URL."""
+    from uuid import uuid4
+    from backend.services.r2_client import upload_file_to_r2
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(raw) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be 8MB or smaller")
+    ext = "png"
+    name = (file.filename or "").lower()
+    if name.endswith(".jpg") or name.endswith(".jpeg"):
+        ext = "jpg"
+    elif name.endswith(".webp"):
+        ext = "webp"
+    elif name.endswith(".gif"):
+        ext = "gif"
+    url = upload_file_to_r2(raw, f"blog/{uuid4()}.{ext}", file.content_type or "image/png")
+    return {"url": url}
+
 
 @router.get("/admin/posts", response_model=PaginatedBlogPosts)
 def admin_get_all_posts(

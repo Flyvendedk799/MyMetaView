@@ -11,6 +11,7 @@ import Button from '../../components/ui/Button'
 import {
   fetchNewsletterSubscribers,
   exportNewsletterSubscribers,
+  removeNewsletterSubscriber,
   type NewsletterSubscriber,
   type NewsletterSubscriberList,
 } from '../../api/client'
@@ -195,12 +196,13 @@ export default function AdminNewsletter() {
                   <th className="text-left py-3 px-4 font-semibold text-secondary-700">Status</th>
                   <th className="text-left py-3 px-4 font-semibold text-secondary-700">Consent</th>
                   <th className="text-left py-3 px-4 font-semibold text-secondary-700">IP Address</th>
+                  <th className="text-left py-3 px-4 font-semibold text-secondary-700"></th>
                 </tr>
               </thead>
               <tbody>
                 {subscribers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-secondary-500">
+                    <td colSpan={7} className="text-center py-12 text-secondary-500">
                       No subscribers found
                     </td>
                   </tr>
@@ -238,6 +240,18 @@ export default function AdminNewsletter() {
                       </td>
                       <td className="py-3 px-4 text-sm text-secondary-500">
                         {subscriber.ip_address || '-'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button
+                          variant="secondary"
+                          onClick={async () => {
+                            if (!window.confirm(`Remove ${subscriber.email}?`)) return
+                            await removeNewsletterSubscriber(subscriber.id)
+                            loadSubscribers()
+                          }}
+                        >
+                          Remove
+                        </Button>
                       </td>
                     </tr>
                   ))

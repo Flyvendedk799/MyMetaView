@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import RichTextEditor from '../../components/editor/RichTextEditor'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
@@ -631,9 +632,13 @@ export default function AdminBlogEditor() {
                   
                   {/* Content */}
                   <div>
-                    <label className="block text-sm font-medium text-secondary-700 mb-2">Content (Markdown)</label>
-                    
-                    {/* Formatting Toolbar */}
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Content</label>
+                    <RichTextEditor
+                      content={formData.content}
+                      onChange={(html) => updateFormData('content', html)}
+                    />
+                    {false && (
+                    <div>
                     <div className="flex items-center gap-1 p-2 bg-secondary-50 border border-secondary-200 border-b-0 rounded-t-lg">
                       <button
                         type="button"
@@ -792,6 +797,8 @@ More content here..."
                       rows={20}
                       className="w-full px-4 py-3 border border-secondary-200 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 font-mono text-sm resize-y min-h-[400px]"
                     />
+                    </div>
+                    )}
                     <div className="flex justify-between mt-1">
                       <span className="text-xs text-secondary-400">
                         {formData.content.split(/\s+/).filter(Boolean).length} words • ~{readTime} min read
@@ -802,6 +809,9 @@ More content here..."
               ) : (
                 <div className="prose prose-lg max-w-none">
                   {formData.content ? (
+                    formData.content.includes('<') ? (
+                      <div dangerouslySetInnerHTML={{ __html: formData.content }} />
+                    ) : (
                     <div className="space-y-4">
                       {formData.content.split('\n').map((line, i) => {
                         const trimmed = line.trim()
@@ -823,6 +833,7 @@ More content here..."
                         return null
                       })}
                     </div>
+                    )
                   ) : (
                     <p className="text-secondary-400 italic">Start writing to see preview...</p>
                   )}
@@ -860,6 +871,30 @@ More content here..."
                 <p className="text-sm text-secondary-500">Enter image URL below</p>
               </div>
             )}
+            <input
+              type="file"
+              accept="image/*"
+              className="block w-full text-sm text-secondary-600 mb-2"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                const body = new FormData()
+                body.append('file', file)
+                const token = localStorage.getItem('access_token')
+                const base = (await import('../../api/client')).getApiBaseUrl()
+                const res = await fetch(`${base}/api/v1/blog/admin/images`, {
+                  method: 'POST',
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                  body,
+                })
+                if (!res.ok) {
+                  alert('Image upload failed')
+                  return
+                }
+                const data = await res.json()
+                updateFormData('featured_image', data.url)
+              }}
+            />
             <input
               type="text"
               value={formData.featured_image}

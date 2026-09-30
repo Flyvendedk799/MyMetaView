@@ -20,7 +20,10 @@ import {
   getRecentBulkJobs,
   createPreviewJob,
   restylePreview,
+  updatePreview as updatePreviewApi,
+  getMyPlan,
 } from '../api/client'
+import { FEATURES } from '../lib/plans'
 import type {
   Preview,
   PreviewCreate,
@@ -325,10 +328,28 @@ export default function Previews() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   // Only covers handing the job to the server — generation itself continues without us.
   const [isStartingGeneration, setIsStartingGeneration] = useState(false)
+  const [qualityMode, setQualityMode] = useState<'auto' | 'fast' | 'balanced' | 'ultra'>('ultra')
+  const [planFeatures, setPlanFeatures] = useState<string[]>([])
+  const canVariants = planFeatures.includes(FEATURES.VARIANTS)
+
+  useEffect(() => {
+    let active = true
+    getMyPlan()
+      .then((plan) => {
+        if (active) setPlanFeatures(plan.features || [])
+      })
+      .catch(() => {
+        if (active) setPlanFeatures([])
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Load variants for previews — in parallel; the old serial loop made a
   // 30-card gallery wait through 30 sequential requests.
   useEffect(() => {
+    if (!canVariants) return
     const missing = previews.filter(
       (preview) => !previewVariants[preview.id] && !loadingVariants[preview.id]
     )
@@ -365,7 +386,7 @@ export default function Previews() {
       })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previews])
+  }, [previews, canVariants])
 
   // Solid evergreen placeholder surface per preview type (no gradients in the identity)
   const getPlaceholderSurface = (type: string) => {
@@ -383,10 +404,12 @@ export default function Previews() {
       url: '',
       domain: domains.length > 0 ? domains[0].name : '',
       title: '',
+      description: '',
       type: 'product',
       image_url: null,
       ignore_site_branding: false,
     })
+    setQualityMode('ultra')
     setFormError(null)
     setIsModalOpen(true)
   }, [domains])
@@ -409,6 +432,7 @@ export default function Previews() {
         url: preview.url,
         domain: preview.domain,
         title: preview.title,
+        description: preview.description || '',
         type: preview.type,
         image_url: preview.image_url || null,
         ignore_site_branding: !!preview.ignore_site_branding,
@@ -420,6 +444,7 @@ export default function Previews() {
           url: preview.url,
           domain: preview.domain,
           title: variantData.title,
+          description: variantData.description || '',
           type: preview.type,
           image_url: variantData.image_url || preview.highlight_image_url || preview.image_url || null,
           ignore_site_branding: !!preview.ignore_site_branding,
@@ -429,6 +454,7 @@ export default function Previews() {
           url: preview.url,
           domain: preview.domain,
           title: preview.title,
+          description: preview.description || '',
           type: preview.type,
           image_url: preview.image_url || null,
           ignore_site_branding: !!preview.ignore_site_branding,
@@ -447,6 +473,7 @@ export default function Previews() {
       url: '',
       domain: '',
       title: '',
+      description: '',
       type: 'product',
       image_url: null,
       ignore_site_branding: false,
@@ -496,6 +523,7 @@ export default function Previews() {
           // Update main preview
           const updatePayload: PreviewUpdate = {
             title: formData.title,
+            description: formData.description || '',
             type: formData.type,
             image_url: formData.image_url || null,
             // Stored now, honoured by the next generation — the card in front
@@ -555,6 +583,7 @@ export default function Previews() {
         url: formData.url,
         domain: formData.domain,
         ignore_branding: !!formData.ignore_site_branding,
+        quality_mode: qualityMode,
       })
       handleCloseModal()
       toast.info('Generating in the background', 'Track it under Generation activity — you can close this tab.')
@@ -659,6 +688,7 @@ export default function Previews() {
     try {
       const updated = await restylePreview(preview.id, direction)
       replacePreview(updated)
+      setDetailPreview((current) => (current && current.id === updated.id ? updated : current))
       toast.success('Card restyled', 'No AI credit was used.')
     } catch (err) {
       toast.error(
@@ -893,7 +923,7 @@ export default function Previews() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {visiblePreviews.map((preview) => {
                 const displayData = getDisplayData(preview)
-                const variants = previewVariants[preview.id] || []
+                const variants = canVariants ? previewVariants[preview.id] || [] : []
                 const hasVariants = variants.length > 0
                 
                 return (
@@ -1144,6 +1174,7 @@ export default function Previews() {
       )}
 
       <PreviewDetailModal
+        key={detailPreview?.id ?? 'closed'}
         preview={detailPreview}
         variant={
           detailPreview
@@ -1154,6 +1185,29 @@ export default function Previews() {
         }
         isOpen={detailPreview !== null}
         onClose={() => setDetailPreview(null)}
+        onRestyle={async (direction) => {
+          if (!detailPreview) return
+          await handleRestyle(detailPreview, direction)
+        }}
+        onSaveCopy={async ({ title, description }) => {
+          if (!detailPreview) return
+          const variantKey = activeVariants[detailPreview.id] || 'main'
+          if (canVariants && variantKey !== 'main') {
+            const variantRow = (previewVariants[detailPreview.id] || []).find(
+              (v) => v.variant_key === variantKey
+            )
+            if (!variantRow) return
+            await updatePreviewVariant(variantRow.id, { title, description })
+            const variants = await fetchPreviewVariants(detailPreview.id)
+            setPreviewVariants((prev) => ({ ...prev, [detailPreview.id]: variants }))
+            toast.success('Variant updated')
+            return
+          }
+          const updated = await updatePreviewApi(detailPreview.id, { title, description })
+          replacePreview(updated)
+          setDetailPreview(updated)
+          toast.success('Card updated')
+        }}
       />
 
       {/* Create/Edit Preview Modal */}
@@ -1235,7 +1289,7 @@ export default function Previews() {
           </div>
 
           {/* Variant Switcher in Edit Mode */}
-          {editingPreview !== null && previewVariants[editingPreview] && previewVariants[editingPreview].length > 0 && (
+          {canVariants && editingPreview !== null && previewVariants[editingPreview] && previewVariants[editingPreview].length > 0 && (
             <div>
               <label className="block text-sm font-medium text-secondary-700 mb-2">
                 Edit Variant
@@ -1286,21 +1340,40 @@ export default function Previews() {
             />
           </div>
           
-          {editingPreview !== null && editingVariant !== 'main' && (
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-2">
+              Description
+            </label>
+            <textarea
+              placeholder="Preview description"
+              value={formData.description || ''}
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value || undefined })
+                setFormError(null)
+              }}
+              rows={3}
+              className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all"
+            />
+          </div>
+
+          {editingPreview === null && (
             <div>
               <label className="block text-sm font-medium text-secondary-700 mb-2">
-                Description
+                Quality
               </label>
-              <textarea
-                placeholder="Preview description"
-                value={formData.description || ''}
-                onChange={(e) => {
-                  setFormData({ ...formData, description: e.target.value || undefined })
-                  setFormError(null)
-                }}
-                rows={3}
+              <select
+                value={qualityMode}
+                onChange={(e) => setQualityMode(e.target.value as typeof qualityMode)}
                 className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all"
-              />
+              >
+                <option value="ultra">Ultra — best card, slower</option>
+                <option value="balanced">Balanced</option>
+                <option value="fast">Fast</option>
+                <option value="auto">Auto — pick from the URL</option>
+              </select>
+              <p className="text-xs text-secondary-500 mt-1">
+                Applies to Generate with AI. Create manually always uses the template card.
+              </p>
             </div>
           )}
 

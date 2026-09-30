@@ -18,6 +18,15 @@ from backend.services.rate_limiter import check_rate_limit, get_rate_limit_key_f
 router = APIRouter(prefix="/newsletter", tags=["newsletter"])
 
 
+def _public_unsub(row) -> NewsletterSubscriberResponse:
+    from backend.core.config import settings
+    payload = NewsletterSubscriberResponse.model_validate(row)
+    token = unsubscribe_token(row.email)
+    origin = settings.APP_PUBLIC_URL.rstrip("/")
+    payload.unsubscribe_url = f"{origin}/unsubscribe?token={token}"
+    return payload
+
+
 @router.post("/subscribe", response_model=NewsletterSubscriberResponse, status_code=status.HTTP_201_CREATED)
 def subscribe_to_newsletter(
     request_data: NewsletterSubscribeRequest,
@@ -50,9 +59,8 @@ def subscribe_to_newsletter(
             existing.consent_given = request_data.consent_given
             db.commit()
             db.refresh(existing)
-            return existing
-        # Already subscribed and active
-        return existing
+            return _public_unsub(existing)
+        return _public_unsub(existing)
     
     # Create new subscriber
     subscriber = NewsletterSubscriberModel(
@@ -65,8 +73,8 @@ def subscribe_to_newsletter(
     db.add(subscriber)
     db.commit()
     db.refresh(subscriber)
-    
-    return subscriber
+
+    return _public_unsub(subscriber)
 
 
 @router.get("/subscribers", response_model=NewsletterSubscriberListResponse)
@@ -206,4 +214,55 @@ def export_subscribers(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="XLSX export requires openpyxl package. Please install it or use CSV format."
             )
+
+
+def unsubscribe_token(email: str) -> str:
+    """Public token a subscriber can use to leave the list."""
+    import hashlib
+    import hmac
+    from backend.core.config import settings
+    sig = hmac.new(settings.SECRET_KEY.encode("utf-8"), email.lower().encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{email}|{sig}"
+
+
+def _email_from_token(token: str) -> Optional[str]:
+    import hashlib
+    import hmac
+    from backend.core.config import settings
+    if "|" not in token:
+        return None
+    email, sig = token.rsplit("|", 1)
+    expected = hmac.new(settings.SECRET_KEY.encode("utf-8"), email.lower().encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        return None
+    return email
+
+
+@router.get("/unsubscribe")
+def unsubscribe(token: str = Query(...), db: Session = Depends(get_db)):
+    """Public unsubscribe. The token is the address plus a signature."""
+    email = _email_from_token(token)
+    if not email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid unsubscribe link")
+    row = db.query(NewsletterSubscriberModel).filter(
+        func.lower(NewsletterSubscriberModel.email) == email.lower()
+    ).first()
+    if row:
+        row.is_active = False
+        db.commit()
+    return {"success": True, "message": "You are unsubscribed."}
+
+
+@router.delete("/subscribers/{subscriber_id}")
+def remove_subscriber(
+    subscriber_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    row = db.query(NewsletterSubscriberModel).filter(NewsletterSubscriberModel.id == subscriber_id).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscriber not found")
+    db.delete(row)
+    db.commit()
+    return {"success": True}
 

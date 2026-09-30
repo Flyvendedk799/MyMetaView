@@ -20,6 +20,7 @@ class Organization(Base):
     subscription_status = Column(String, default="inactive", nullable=False)
     subscription_plan = Column(String, nullable=True)
     trial_ends_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     owner = relationship("User", foreign_keys=[owner_user_id], back_populates="owned_organizations")

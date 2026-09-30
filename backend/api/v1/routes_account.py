@@ -212,27 +212,47 @@ def delete_user_account(
     """
     from backend.services.activity_logger import log_activity
     
-    # Soft delete user
     current_user.is_active = False
-    # Note: If you add a deleted_at field later, set it here:
-    # current_user.deleted_at = datetime.utcnow()
-    
-    # Anonymize email (keep for uniqueness but mark as deleted)
+    current_user.deleted_at = datetime.utcnow()
+
     original_email = current_user.email
     current_user.email = f"deleted_{current_user.id}_{datetime.utcnow().timestamp()}@deleted.local"
-    
-    # For organizations owned by this user:
-    # Keep org but mark owner as deleted (product decision needed for transfer)
+
     owned_orgs = db.query(Organization).filter(
-        Organization.owner_user_id == current_user.id
+        Organization.owner_user_id == current_user.id,
+        Organization.deleted_at.is_(None),
     ).all()
-    
-    # TODO: Product decision needed - should we:
-    # 1. Transfer ownership to another member?
-    # 2. Keep org but mark as "orphaned"?
-    # 3. Soft delete org?
-    # For now: Keep org but owner_user_id remains (will be invalid, but data preserved)
-    
+    outcomes = []
+    for org in owned_orgs:
+        successor = (
+            db.query(OrganizationMember)
+            .filter(
+                OrganizationMember.organization_id == org.id,
+                OrganizationMember.user_id != current_user.id,
+                OrganizationMember.role.in_([OrganizationRole.ADMIN, OrganizationRole.OWNER]),
+            )
+            .order_by(OrganizationMember.created_at.asc())
+            .first()
+        )
+        if successor is None:
+            successor = (
+                db.query(OrganizationMember)
+                .filter(
+                    OrganizationMember.organization_id == org.id,
+                    OrganizationMember.user_id != current_user.id,
+                )
+                .order_by(OrganizationMember.created_at.asc())
+                .first()
+            )
+        if successor is not None:
+            org.owner_user_id = successor.user_id
+            successor.role = OrganizationRole.OWNER
+            outcomes.append({"organization_id": org.id, "action": "transferred", "new_owner_user_id": successor.user_id})
+        else:
+            org.deleted_at = datetime.utcnow()
+            org.name = f"deleted_{org.id}_{datetime.utcnow().timestamp()}"
+            outcomes.append({"organization_id": org.id, "action": "deleted"})
+
     db.commit()
     
     # Log account deletion (before email is anonymized)
@@ -247,7 +267,11 @@ def delete_user_account(
     except Exception:
         pass  # Don't fail if logging fails
     
-    return {"success": True, "message": "Account deleted successfully"}
+    return {
+        "success": True,
+        "message": "Account deleted successfully",
+        "organizations": outcomes,
+    }
 
 
 @router.delete("/organizations/{org_id}")
@@ -282,8 +306,7 @@ def delete_organization(
             detail="Only the organization owner can delete the organization"
         )
     
-    # Soft delete organization (mark as inactive/deleted)
-    # Note: If you add a deleted_at field later, set it here
+    org.deleted_at = datetime.utcnow()
     org_name = org.name
     org.name = f"deleted_{org_id}_{datetime.utcnow().timestamp()}"
     

@@ -24,7 +24,13 @@ import {
   ShareIcon,
 } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
-import { subscribeToNewsletter } from '../api/client'
+import {
+  subscribeToNewsletter,
+  downloadDemoPng,
+  downloadDemoPdf,
+  downloadDemoZip,
+  fetchDemoEmbedCode,
+} from '../api/client'
 import ReconstructedPreview from '../components/ReconstructedPreview'
 import DemoGenerating from '../components/DemoGenerating'
 import SpatialPreviewStudio from '../components/SpatialPreviewStudio'
@@ -82,6 +88,9 @@ export default function Demo() {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [consentChecked, setConsentChecked] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [exportBusy, setExportBusy] = useState<string | null>(null)
+  const [exportNote, setExportNote] = useState<string | null>(null)
+  const [embedCode, setEmbedCode] = useState<string | null>(null)
   const [urlHistory, setUrlHistory] = useState<string[]>([])
 
   const imageToCopyRef = useRef<HTMLImageElement | null>(null)
@@ -1260,6 +1269,68 @@ export default function Demo() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {preview.composited_preview_image_url && (
+                    <div className="mt-4 max-w-2xl mx-auto px-2 flex flex-wrap items-center justify-center gap-2">
+                      {(
+                        [
+                          ['png', 'PNG', () => downloadDemoPng(preview.composited_preview_image_url!, 'preview.png')],
+                          ['pdf', 'PDF', () => downloadDemoPdf([preview.composited_preview_image_url!], [preview.title])],
+                          ['zip', 'ZIP', () => downloadDemoZip([preview.composited_preview_image_url!], [preview.title])],
+                        ] as const
+                      ).map(([key, label, run]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          disabled={exportBusy !== null}
+                          onClick={async () => {
+                            setExportBusy(key)
+                            setExportNote(null)
+                            try {
+                              await run()
+                            } catch (err) {
+                              setExportNote(err instanceof Error ? err.message : 'Export failed')
+                            } finally {
+                              setExportBusy(null)
+                            }
+                          }}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-paper/10 text-paper hover:bg-paper/20 disabled:opacity-50"
+                        >
+                          {exportBusy === key ? 'Preparing…' : label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        disabled={exportBusy !== null}
+                        onClick={async () => {
+                          setExportBusy('embed')
+                          setExportNote(null)
+                          try {
+                            const code = await fetchDemoEmbedCode({
+                              page_url: preview.url,
+                              preview_image_url: preview.composited_preview_image_url!,
+                              title: preview.title,
+                              description: preview.description || undefined,
+                            })
+                            setEmbedCode(code)
+                            await navigator.clipboard.writeText(code)
+                            setExportNote('Embed code copied')
+                          } catch (err) {
+                            setExportNote(err instanceof Error ? err.message : 'Could not build embed code')
+                          } finally {
+                            setExportBusy(null)
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs rounded-lg bg-paper/10 text-paper hover:bg-paper/20 disabled:opacity-50"
+                      >
+                        {exportBusy === 'embed' ? 'Preparing…' : 'Copy embed'}
+                      </button>
+                      {exportNote && <span className="text-xs text-paper/70">{exportNote}</span>}
+                      {embedCode && (
+                        <pre className="w-full mt-2 text-left text-[11px] text-paper/80 bg-black/30 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">{embedCode}</pre>
+                      )}
                     </div>
                   )}
 

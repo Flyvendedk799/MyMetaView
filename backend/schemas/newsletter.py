@@ -19,6 +19,7 @@ class NewsletterSubscriberResponse(BaseModel):
     subscribed_at: datetime
     is_active: bool
     consent_given: bool
+    unsubscribe_url: Optional[str] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
 

@@ -31,6 +31,9 @@ class BrandSettings(Base):
     preview_accent = Column(String, nullable=False, server_default="auto")   # auto | bar | dot | shape
     force_brand_colors = Column(Boolean, nullable=False, server_default="0")  # always use my colours, ignore extracted
     hide_watermark = Column(Boolean, nullable=False, server_default="0")      # drop the "metaview preview" footer
+    # Name printed on install artifacts when the org has white-label. Empty
+    # means the artifacts still say MyMetaView.
+    white_label_name = Column(String, nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     organization_id = Column(Integer, ForeignKey("organizations.id"), index=True, nullable=True)
