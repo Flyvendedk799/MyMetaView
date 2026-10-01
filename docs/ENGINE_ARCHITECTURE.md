@@ -99,21 +99,59 @@ generic by construction.
 
 Brand settings are configured per connected domain on the app's **My Site** tab,
 and the SaaS job resolves the row for the domain being previewed (falling back
-to the organization default) before it builds the engine config. `preview/
-branding.py` names the fields that actually change a card, and everything that
-consumes them goes through it, so the list cannot drift:
+to the organization default) before it builds the engine config.
+`preview/branding.py` owns the whole contract, so the list cannot drift:
+
+- `engine_payload(row, …)` is the **only** way a row becomes engine settings. It
+  carries every field in `SIGNIFICANT_FIELDS` and applies plan gating (card
+  controls collapse to `auto`, the watermark stays without the entitlement). The
+  job used to hand-pick six fields, so *what you do*, *who it's for* and *tone
+  of voice* were saved and never reached the prompt.
+- `STOCK_PALETTE` / `STOCK_FONTS` say which values are nobody's choice. A row
+  still holding MetaView's stock blue does not stand in for a page with no
+  palette (`customised_palette`), and the stock font is the card's own type
+  (`chosen_font`). "Inter" was the stock font and was never drawable — it is
+  neither embedded nor installed — so every app card lost the Bricolage display
+  face the demo draws with. It now reads as `auto`.
 
 | what the user set | where it lands |
 |---|---|
 | name, tagline, what they do, audience, voice | the art director's brief (`identity_brief`), and the wordmark / subtitle on the card |
-| palette | forced when *always use my brand colours* is on; otherwise used when the page yielded no real palette of its own |
-| logo | fetched and drawn in place of the scraped mark |
-| font | the card's display and body stacks (`_font_stacks`) |
+| palette | forced when *always use my brand colours* is on; otherwise used when the page yielded no real palette of its own — but only colours actually customised |
+| logo | read from our own storage (or a guarded fetch) and drawn in place of the scraped mark, after the usability and panel-contrast check |
+| font | the card's display and body stacks (`_font_stacks`), when one was chosen |
 | layout / panel / accent | composition overrides, on the authored card *and* the deterministic fallback |
 | hide the MetaView mark | the watermark, when the plan includes it |
+| voice (explicit only) | also a post-hoc rewrite of the meta description; `auto` makes no extra model call |
 
 The demo has no brand settings, so none of this touches it: an empty payload
 takes every path exactly where it went before.
+
+**Inheritance.** Reading a domain's brand writes nothing: a domain without its
+own row shows — and follows — the organization default (`inherits_default`).
+The first save gives it its own row, seeded from the default; `DELETE
+/brand?domain_id=` puts it back. Editing the default invalidates the cached view
+of every domain that follows it.
+
+**The sample.** `preview/brand_sample.py` draws the My Site sample with the
+engine's own rules — `engine_payload` gating, `apply_card_preferences`,
+`chosen_font`, and `fit_logo` (the same usability + contrast fix as
+`build_spec`) — and renders the **unsaved draft** posted by the form, returned
+inline as a data URI rather than uploaded per keystroke.
+
+**Fill from my site.** `preview/extraction/site_brand.py` reads the domain's
+home page with the engine's own extractors and returns suggestions (name,
+strapline from `<title>`, description, palette, logo). A palette the domain
+brand cache sampled from a real screenshot wins over the HTML-only read, and the
+sampler's synthetic slate is never suggested. Nothing is saved until the user
+saves.
+
+**Validation.** `schemas/brand.py` normalises colours to `#rrggbb`, restricts
+layout / panel / accent / voice / font to what the renderer and prompt
+understand, requires an http(s) `logo_url`, and trims free text (empty means
+"keep inferring"). Only a *change* to the white-label name needs the plan —
+the tab always sends the field, and treating a carried-along `null` as an
+attempt to set it returned 402 on every save for every non-Agency account.
 
 **Disregarding it.** A page that is not really the site's — a guest post, a
 co-branded landing page — can be generated from the page alone: the gallery's
@@ -238,5 +276,16 @@ wordmark rather than failing.
 - **`enable_multi_agent` is gone.** So is the orchestrator. Tests assert its
   absence; that is deliberate.
 - **Anything new that changes a card from brand settings belongs in
-  `branding.SIGNIFICANT_FIELDS`**, or the result cache will keep serving cards
-  generated before the customer changed it.
+  `branding.SIGNIFICANT_FIELDS`** *and* `branding.engine_payload`, or the
+  result cache will keep serving cards generated before the customer changed
+  it — or the field will never reach the engine at all. `test_site_branding`
+  asserts every significant field survives the real job.
+- **The card's faces are embedded in `assets/premium_fonts.css`.** Every rule
+  once carried `format('woff2') format('woff2')`, which voids the `src`
+  descriptor: Chromium registered no face and every card was drawn in a system
+  sans, silently. `test_card_fonts.py` checks the rules, and asks Chromium to
+  load Bricolage wherever a browser is available. Regenerate that file with
+  care.
+- **A stock value is not a choice.** New defaults belong in
+  `branding.STOCK_PALETTE` / `STOCK_FONTS`, or an untouched account gets
+  MetaView's look presented as its own.

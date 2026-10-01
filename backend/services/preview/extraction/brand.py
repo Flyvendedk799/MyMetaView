@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from backend.services.preview.branding import disregarded, settings_of
+from backend.services.preview.branding import customised_palette, disregarded, settings_of
 from backend.services.preview.caching.layers import BrandCache, domain_of
 from backend.services.preview.extraction.logo_resolver import logo_degradation, resolve_logo
 from backend.services.preview.observability.reason_codes import (
@@ -171,12 +171,11 @@ def _apply_brand_settings(state: PipelineState, result: BrandResult) -> BrandRes
             Degradation.COMPOSITION_BRAND_OVERRIDES_APPLIED, Stage.EXTRACTION,
             detail="org forced its own brand colors",
         )
-    elif _palette_is_guesswork(result) and _has_colors(settings):
-        result.colors = {
-            "primary_color": settings.get("primary_color") or result.colors.get("primary_color"),
-            "secondary_color": settings.get("secondary_color") or result.colors.get("secondary_color"),
-            "accent_color": settings.get("accent_color") or result.colors.get("accent_color"),
-        }
+    elif _palette_is_guesswork(result) and customised_palette(settings):
+        # Only colours the customer actually set. An untouched row still holds
+        # MetaView's stock blue, and painting that onto a page with no palette
+        # gave unconfigured accounts our brand instead of theirs.
+        result.colors = {**(result.colors or {}), **customised_palette(settings)}
         result.palette_source = PaletteSource.BRAND_SETTINGS
         state.trace.palette_source = result.palette_source
         state.trace.degrade(
@@ -184,7 +183,7 @@ def _apply_brand_settings(state: PipelineState, result: BrandResult) -> BrandRes
             detail="page had no usable palette; using the site's own colours",
         )
 
-    uploaded = _uploaded_logo(settings.get("logo_url"))
+    uploaded = uploaded_logo(settings.get("logo_url"))
     if uploaded:
         result.logo_data_uri = uploaded
     return result
@@ -200,14 +199,7 @@ def _palette_is_guesswork(result: BrandResult) -> bool:
     return primary in {c.lower() for c in SYNTHETIC_SLATE_PRIMARIES}
 
 
-def _has_colors(settings: Dict[str, Any]) -> bool:
-    return any(
-        settings.get(key)
-        for key in ("primary_color", "secondary_color", "accent_color")
-    )
-
-
-def _uploaded_logo(logo_url: Optional[str]) -> Optional[str]:
+def uploaded_logo(logo_url: Optional[str]) -> Optional[str]:
     """The customer's uploaded mark, as a data URI Chromium can draw.
 
     SVG passes straight through: the renderer is a browser, so a vector mark is
@@ -216,22 +208,30 @@ def _uploaded_logo(logo_url: Optional[str]) -> Optional[str]:
     if not logo_url:
         return None
     try:
-        from backend.services.preview.net import fetch
+        from backend.services.r2_client import read_stored_asset
 
-        result = fetch(str(logo_url), timeout=8.0)
-        if not result.ok:
-            logger.info("Uploaded logo unreachable (%s): %s", logo_url, result.error)
-            return None
+        content = read_stored_asset(str(logo_url))
+        content_type = ""
+        if content is None:
+            from backend.services.preview.net import fetch
 
-        content_type = (result.content_type or "").lower()
-        if "svg" in content_type or result.content[:200].lstrip().startswith(b"<svg"):
+            result = fetch(str(logo_url), timeout=8.0)
+            if not result.ok:
+                logger.info("Uploaded logo unreachable (%s): %s", logo_url, result.error)
+                return None
+            content, content_type = result.content, (result.content_type or "").lower()
+
+        head = content[:400].lstrip()
+        if "svg" in content_type or head.startswith(b"<svg") or (
+            head.startswith(b"<?xml") and b"<svg" in content[:2000]
+        ):
             import base64
 
-            return "data:image/svg+xml;base64," + base64.b64encode(result.content).decode()
+            return "data:image/svg+xml;base64," + base64.b64encode(content).decode()
 
         from backend.services.preview.assets.logo import normalize_logo
 
-        return normalize_logo(result.content, content_type=content_type)
+        return normalize_logo(content, content_type=content_type)
     except Exception as exc:  # noqa: BLE001
         logger.info("Uploaded logo fetch failed: %s", exc)
         return None

@@ -4,6 +4,7 @@ import type {
   DomainCreate,
   BrandSettings,
   BrandSettingsUpdate,
+  BrandSuggestion,
   Preview,
   PreviewCreate,
   PreviewUpdate,
@@ -502,11 +503,32 @@ export async function uploadBrandLogo(file: File, domainId?: number | null): Pro
   return response.json() as Promise<BrandSettings>
 }
 
-/** Render a live SAMPLE share-card from a domain's currently-saved brand settings. */
-export async function renderBrandPreview(domainId?: number | null): Promise<{ image_url: string }> {
-  return fetchApi<{ image_url: string }>(`/api/v1/brand/preview${brandQuery(domainId)}`, {
+/**
+ * Render a SAMPLE share-card for a domain's brand. Pass the unsaved form as
+ * `draft` to see an edit before saving; it is laid over what is saved and
+ * rendered with the same rules (plan gating, font, logo contrast) real cards use.
+ */
+export async function renderBrandPreview(
+  domainId?: number | null,
+  draft?: BrandSettingsUpdate
+): Promise<{ image_data_uri: string }> {
+  return fetchApi<{ image_data_uri: string }>(`/api/v1/brand/preview${brandQuery(domainId)}`, {
     method: 'POST',
+    body: draft ? JSON.stringify(draft) : undefined,
     timeout: 30000,
+  })
+}
+
+/** Put a domain back on the account-wide default brand. */
+export async function resetBrandSettings(domainId: number): Promise<BrandSettings> {
+  return fetchApi<BrandSettings>(`/api/v1/brand${brandQuery(domainId)}`, { method: 'DELETE' })
+}
+
+/** Read name, strapline, palette and logo off the domain's home page. Saves nothing. */
+export async function detectBrandFromSite(domainId: number): Promise<BrandSuggestion> {
+  return fetchApi<BrandSuggestion>(`/api/v1/brand/detect${brandQuery(domainId)}`, {
+    method: 'POST',
+    timeout: 45000,
   })
 }
 

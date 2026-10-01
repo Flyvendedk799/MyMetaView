@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PhotoIcon, ArrowPathIcon, TrashIcon, ArrowUpTrayIcon, LockClosedIcon } from '@heroicons/react/24/outline'
+import {
+  PhotoIcon,
+  ArrowPathIcon,
+  TrashIcon,
+  ArrowUpTrayIcon,
+  LockClosedIcon,
+  SparklesIcon,
+  ArrowUturnLeftIcon,
+} from '@heroicons/react/24/outline'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import {
@@ -8,13 +16,66 @@ import {
   updateBrandSettings,
   uploadBrandLogo,
   renderBrandPreview,
+  resetBrandSettings,
+  detectBrandFromSite,
   getMyPlan,
 } from '../api/client'
-import type { BrandSettings, BrandSettingsUpdate } from '../api/types'
+import type { BrandSettings, BrandSettingsUpdate, BrandSuggestion } from '../api/types'
 import { useDomains } from '../hooks/useDomains'
 import { FEATURES } from '../lib/plans'
 
-const FONT_OPTIONS = ['Inter', 'Bricolage Grotesque', 'IBM Plex Sans', 'System']
+// Must match FONT_CHOICES in backend/schemas/brand.py. These are the faces the
+// renderer can actually draw; "auto" is the card's own type.
+const FONT_OPTIONS: [string, string][] = [
+  ['auto', 'Auto — MetaView display type (recommended)'],
+  ['Bricolage Grotesque', 'Bricolage Grotesque'],
+  ['IBM Plex Sans', 'IBM Plex Sans'],
+  ['System', 'System UI'],
+]
+const HEX_RE = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
+const COLOR_FIELDS = ['primary_color', 'secondary_color', 'accent_color'] as const
+// How long the form must sit still before the sample is redrawn.
+const PREVIEW_DEBOUNCE_MS = 600
+
+/** "Inter" was the stock value and never rendered as Inter; it means auto. */
+function normalizeLoaded(s: BrandSettings): BrandSettings {
+  const font = (s.font_family || '').toLowerCase()
+  return font === 'inter' || font === '' ? { ...s, font_family: 'auto' } : s
+}
+
+/** The form as the API takes it. The white-label name only goes when the plan has it. */
+function toPayload(form: BrandSettings, canWhiteLabel: boolean): BrandSettingsUpdate {
+  const payload: BrandSettingsUpdate = {
+    primary_color: form.primary_color,
+    secondary_color: form.secondary_color,
+    accent_color: form.accent_color,
+    font_family: form.font_family,
+    logo_url: form.logo_url ?? null,
+    brand_name: form.brand_name ?? null,
+    tagline: form.tagline ?? null,
+    brand_description: form.brand_description ?? null,
+    audience: form.audience ?? null,
+    voice: form.voice,
+    preview_layout: form.preview_layout,
+    preview_panel: form.preview_panel,
+    preview_accent: form.preview_accent,
+    force_brand_colors: form.force_brand_colors,
+    hide_watermark: form.hide_watermark,
+  }
+  if (canWhiteLabel) payload.white_label_name = form.white_label_name ?? null
+  return payload
+}
+
+/** A sentence naming what "Fill from my site" applied. */
+function describeSuggestion(found: BrandSuggestion): string {
+  const parts: string[] = []
+  if (found.brand_name) parts.push('name')
+  if (found.tagline) parts.push('tagline')
+  if (found.brand_description) parts.push('description')
+  if (found.primary_color) parts.push('colours')
+  if (found.logo_url) parts.push('logo')
+  return parts.join(', ')
+}
 // Must match VOICE_CHOICES in backend/schemas/brand.py.
 const VOICE_OPTIONS: [string, string][] = [
   ['auto', 'Auto — infer it from my brand'],
@@ -126,6 +187,7 @@ function ColorField({
   onChange: (v: string) => void
 }) {
   const safe = /^#[0-9a-fA-F]{6}$/.test(value) ? value : '#000000'
+  const invalid = !HEX_RE.test(value.trim())
   return (
     <div>
       <label className="block text-sm font-medium text-secondary-700 mb-1.5">{label}</label>
@@ -142,9 +204,13 @@ function ColorField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="#000000"
-          className="flex-1 px-3 py-2 border border-secondary-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+          aria-invalid={invalid}
+          className={`flex-1 px-3 py-2 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary focus:border-transparent outline-none ${
+            invalid ? 'border-error-500 bg-error-50' : 'border-secondary-300'
+          }`}
         />
       </div>
+      {invalid && <p className="text-xs text-error-700 mt-1">Use a hex colour like #1a2b3c.</p>}
     </div>
   )
 }
@@ -204,25 +270,54 @@ export default function Brand() {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [features, setFeatures] = useState<string[]>([])
+  const [detecting, setDetecting] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [resetting, setResetting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // Each sample request gets a number; only the newest one may paint, so a
+  // slow render for an older edit never overwrites a newer one.
+  const previewSeq = useRef(0)
 
   const canCardControls = features.includes(FEATURES.CARD_CONTROLS)
   const canHideWatermark = features.includes(FEATURES.HIDE_WATERMARK)
   const canWhiteLabel = features.includes(FEATURES.WHITE_LABEL)
 
-  const refreshPreview = useCallback(async () => {
-    setPreviewLoading(true)
-    setPreviewError(null)
-    try {
-      const { image_url } = await renderBrandPreview(domainId)
-      const bust = image_url + (image_url.includes('?') ? '&' : '?') + 't=' + Date.now()
-      setPreviewUrl(bust)
-    } catch (e) {
-      setPreviewError(e instanceof Error ? e.message : 'Could not render preview')
-    } finally {
-      setPreviewLoading(false)
-    }
-  }, [domainId])
+  const colorsValid = !!form && COLOR_FIELDS.every((k) => HEX_RE.test((form[k] || '').trim()))
+
+  // Draws the sample from the form as it stands — saved or not — so every
+  // control answers immediately instead of after a save.
+  const refreshPreview = useCallback(
+    async (draft?: BrandSettingsUpdate) => {
+      const seq = ++previewSeq.current
+      setPreviewLoading(true)
+      setPreviewError(null)
+      try {
+        const { image_data_uri } = await renderBrandPreview(domainId, draft)
+        if (seq === previewSeq.current) setPreviewUrl(image_data_uri)
+      } catch (e) {
+        if (seq === previewSeq.current) {
+          setPreviewError(e instanceof Error ? e.message : 'Could not render preview')
+        }
+      } finally {
+        if (seq === previewSeq.current) setPreviewLoading(false)
+      }
+    },
+    [domainId]
+  )
+
+  const redrawNow = () => {
+    if (form && colorsValid) refreshPreview(toPayload(form, canWhiteLabel))
+  }
+
+  const draftKey = form && colorsValid ? JSON.stringify(toPayload(form, canWhiteLabel)) : null
+  useEffect(() => {
+    if (!draftKey) return
+    const timer = window.setTimeout(
+      () => refreshPreview(JSON.parse(draftKey) as BrandSettingsUpdate),
+      PREVIEW_DEBOUNCE_MS
+    )
+    return () => window.clearTimeout(timer)
+  }, [draftKey, refreshPreview])
 
   // The API returns domains newest-first; sort by name so the picker order and
   // the default choice stay stable as domains are added.
@@ -264,8 +359,9 @@ export default function Brand() {
     ;(async () => {
       setLoading(true)
       setLoadError(null)
+      setNotice(null)
       try {
-        const s = await fetchBrandSettings(domainId)
+        const s = normalizeLoaded(await fetchBrandSettings(domainId))
         if (!active) return
         setSettings(s)
         setForm(s)
@@ -274,46 +370,31 @@ export default function Brand() {
       } finally {
         if (active) setLoading(false)
       }
-      if (active) refreshPreview()
     })()
     return () => {
       active = false
     }
-  }, [domainId, domainPicked, refreshPreview])
+  }, [domainId, domainPicked])
 
   const dirty = !!(settings && form && JSON.stringify(settings) !== JSON.stringify(form))
   const set = (patch: Partial<BrandSettings>) => setForm((f) => (f ? { ...f, ...patch } : f))
+  const domainName = sortedDomains.find((d) => d.id === domainId)?.name ?? null
+  const inherits = domainId !== null && !!settings?.inherits_default
 
   const handleSave = async () => {
-    if (!form) return
+    if (!form || !colorsValid) return
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
     try {
-      const payload: BrandSettingsUpdate = {
-        primary_color: form.primary_color,
-        secondary_color: form.secondary_color,
-        accent_color: form.accent_color,
-        font_family: form.font_family,
-        logo_url: form.logo_url ?? null,
-        brand_name: form.brand_name ?? null,
-        tagline: form.tagline ?? null,
-        brand_description: form.brand_description ?? null,
-        audience: form.audience ?? null,
-        voice: form.voice,
-        preview_layout: form.preview_layout,
-        preview_panel: form.preview_panel,
-        preview_accent: form.preview_accent,
-        force_brand_colors: form.force_brand_colors,
-        hide_watermark: form.hide_watermark,
-        white_label_name: form.white_label_name ?? null,
-      }
-      const updated = await updateBrandSettings(payload, domainId)
+      const updated = normalizeLoaded(
+        await updateBrandSettings(toPayload(form, canWhiteLabel), domainId)
+      )
       setSettings(updated)
       setForm(updated)
+      setNotice(null)
       setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 2500)
-      await refreshPreview()
+      setTimeout(() => setSaveSuccess(false), 3500)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Failed to save settings')
     } finally {
@@ -321,15 +402,16 @@ export default function Brand() {
     }
   }
 
+  // Uploading saves the logo immediately (it has to be stored somewhere), but
+  // keeps whatever else the user has edited and not saved yet.
   const handleLogoFile = async (file: File | null | undefined) => {
     if (!file) return
     setLogoBusy(true)
     setSaveError(null)
     try {
-      const updated = await uploadBrandLogo(file, domainId)
+      const updated = normalizeLoaded(await uploadBrandLogo(file, domainId))
       setSettings(updated)
       setForm((f) => (f ? { ...f, logo_url: updated.logo_url } : updated))
-      await refreshPreview()
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Logo upload failed')
     } finally {
@@ -338,18 +420,58 @@ export default function Brand() {
     }
   }
 
-  const handleRemoveLogo = async () => {
-    setLogoBusy(true)
+  // Removing is just an edit: it shows on the sample now and lands on Save.
+  const handleRemoveLogo = () => set({ logo_url: null })
+
+  const handleDetect = async () => {
+    if (domainId === null) return
+    setDetecting(true)
+    setSaveError(null)
+    setNotice(null)
+    try {
+      const found = await detectBrandFromSite(domainId)
+      const patch: Partial<BrandSettings> = {}
+      if (found.brand_name) patch.brand_name = found.brand_name
+      if (found.tagline) patch.tagline = found.tagline
+      if (found.brand_description) patch.brand_description = found.brand_description
+      if (found.primary_color) patch.primary_color = found.primary_color
+      if (found.secondary_color) patch.secondary_color = found.secondary_color
+      if (found.accent_color) patch.accent_color = found.accent_color
+      if (found.logo_url) patch.logo_url = found.logo_url
+      const what = describeSuggestion(found)
+      if (!what) {
+        setNotice(`We could read ${found.source_url} but found nothing usable to fill in.`)
+        return
+      }
+      set(patch)
+      setNotice(`Filled ${what} from ${found.source_url}. Check the sample, then save.`)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Could not read your site')
+    } finally {
+      setDetecting(false)
+    }
+  }
+
+  const handleReset = async () => {
+    if (domainId === null) return
+    if (
+      !window.confirm(
+        `Put ${domainName ?? 'this site'} back on the account default brand? Its own settings will be removed.`
+      )
+    ) {
+      return
+    }
+    setResetting(true)
     setSaveError(null)
     try {
-      const updated = await updateBrandSettings({ logo_url: null }, domainId)
+      const updated = normalizeLoaded(await resetBrandSettings(domainId))
       setSettings(updated)
-      setForm((f) => (f ? { ...f, logo_url: null } : updated))
-      await refreshPreview()
+      setForm(updated)
+      setNotice(`${domainName ?? 'This site'} now follows the account default.`)
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Failed to remove logo')
+      setSaveError(e instanceof Error ? e.message : 'Could not reset this site')
     } finally {
-      setLogoBusy(false)
+      setResetting(false)
     }
   }
 
@@ -399,10 +521,47 @@ export default function Brand() {
             </div>
             <p className="text-xs text-secondary-500 max-w-sm">
               {domainId === null
-                ? 'These settings apply to any domain that has not been given its own brand.'
-                : 'Each domain has its own brand. Changes here affect this domain only.'}
+                ? 'These settings apply to every site that has not been given its own brand.'
+                : inherits
+                  ? 'This site follows the account default. Saving here gives it a brand of its own.'
+                  : 'This site has its own brand. Changes here affect this site only.'}
             </p>
           </div>
+          {domainId !== null && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-secondary-100 pt-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={detecting}
+                disabled={loading}
+                icon={<SparklesIcon className="w-4 h-4" />}
+                onClick={handleDetect}
+              >
+                Fill from {domainName ?? 'my site'}
+              </Button>
+              {!inherits && settings?.id != null && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  loading={resetting}
+                  icon={<ArrowUturnLeftIcon className="w-4 h-4" />}
+                  onClick={handleReset}
+                >
+                  Use account default
+                </Button>
+              )}
+              <p className="text-xs text-secondary-500">
+                Reads your name, strapline, colours and logo off your home page. Nothing is saved
+                until you save.
+              </p>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {notice && (
+        <Card className="mb-6 bg-accent-50 border-accent-200">
+          <p className="text-accent-800 text-sm">{notice}</p>
         </Card>
       )}
 
@@ -418,7 +577,10 @@ export default function Brand() {
       )}
       {saveSuccess && (
         <Card className="mb-6 bg-success-50 border-success-200">
-          <p className="text-success-800">Saved. Your previews will use these settings.</p>
+          <p className="text-success-800">
+            Saved. New previews{domainName && domainId !== null ? ` for ${domainName}` : ''} use these
+            settings, and cached cards were cleared so regenerating picks them up.
+          </p>
         </Card>
       )}
 
@@ -581,21 +743,19 @@ export default function Brand() {
 
               {/* Font */}
               <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1.5">
-                  Font family
-                </label>
-                <select
+                <Select
+                  label="Headline font"
                   value={form.font_family}
-                  onChange={(e) => set({ font_family: e.target.value })}
-                  className={inputClass}
-                >
-                  {FONT_OPTIONS.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                </select>
+                  options={FONT_OPTIONS}
+                  onChange={(v) => set({ font_family: v })}
+                  hint="Auto draws headlines in the same display face as our showcase cards."
+                />
               </div>
+              <p className="text-xs text-secondary-500 mt-4">
+                {form.force_brand_colors
+                  ? 'Cards always use this palette.'
+                  : 'Cards use the colours we find on each page, and fall back to this palette when a page has none of its own.'}
+              </p>
             </Card>
 
             {/* Preview-card controls */}
@@ -711,7 +871,7 @@ export default function Brand() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={refreshPreview}
+                  onClick={redrawNow}
                   disabled={previewLoading}
                   icon={<ArrowPathIcon className={`w-4 h-4 ${previewLoading ? 'animate-spin' : ''}`} />}
                 >
@@ -745,7 +905,7 @@ export default function Brand() {
                 {previewError && !previewUrl && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center">
                     <p className="text-sm text-secondary-500">Couldn’t render the preview.</p>
-                    <Button variant="secondary" size="sm" onClick={refreshPreview}>
+                    <Button variant="secondary" size="sm" onClick={redrawNow}>
                       Try again
                     </Button>
                   </div>
@@ -753,13 +913,20 @@ export default function Brand() {
               </div>
 
               <p className="text-xs text-secondary-500 mt-3">
-                A sample card rendered from your <span className="font-medium">saved</span> settings.
-                {dirty && ' Save to update it.'}
+                {dirty
+                  ? 'Showing your unsaved changes — drawn the way real cards will be. Save to apply them.'
+                  : 'A sample card drawn the way your real cards will be.'}
+                {!canCardControls && ' Layout controls apply on Growth and above.'}
               </p>
 
               <div className="mt-4">
-                <Button fullWidth onClick={handleSave} loading={saving} disabled={!dirty && !saving}>
-                  {dirty ? 'Save changes' : 'Saved'}
+                <Button
+                  fullWidth
+                  onClick={handleSave}
+                  loading={saving}
+                  disabled={(!dirty && !saving) || !colorsValid}
+                >
+                  {!colorsValid ? 'Fix the colours to save' : dirty ? 'Save changes' : 'Saved'}
                 </Button>
               </div>
             </Card>

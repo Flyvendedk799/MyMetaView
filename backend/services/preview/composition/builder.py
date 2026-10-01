@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
 from backend.services.preview.assets.focal import crop_focus
@@ -12,7 +12,7 @@ from backend.services.preview.assets.logo import (
     logo_is_usable,
     resolve_logo_contrast,
 )
-from backend.services.preview.branding import disregarded, settings_of
+from backend.services.preview.branding import chosen_font, disregarded, settings_of
 from backend.services.preview.observability.reason_codes import Degradation, Stage
 from backend.services.preview.stages import (
     BrandResult,
@@ -64,23 +64,7 @@ def _apply_customer_overrides(
     if not prefs or disregarded(prefs):
         return composition
 
-    changed = []
-    layout = prefs.get("preview_layout")
-    if layout and layout != "auto":
-        composition["layout"] = layout
-        composition["use_visual"] = layout in PANEL_LAYOUTS
-        changed.append(f"layout={layout}")
-
-    panel = prefs.get("preview_panel")
-    if panel and panel != "auto":
-        composition["panel_color_role"] = panel
-        changed.append(f"panel={panel}")
-
-    accent = prefs.get("preview_accent")
-    if accent and accent != "auto":
-        composition["accent_moment"] = accent
-        changed.append(f"accent={accent}")
-
+    composition, changed = apply_card_preferences(composition, prefs)
     if changed:
         state.trace.degrade(
             Degradation.COMPOSITION_BRAND_OVERRIDES_APPLIED, Stage.COMPOSITION,
@@ -110,8 +94,12 @@ def _hide_watermark(state: PipelineState) -> bool:
 
 
 def _brand_font(state: PipelineState, prefs: Dict[str, Any]) -> Optional[str]:
-    """The display font chosen on the My Site tab, if it is not the default."""
-    font = str(prefs.get("font_family") or "").strip()
+    """The display font chosen on the My Site tab, if one was actually chosen.
+
+    The stock value is not a choice. Treating it as one is what put every app
+    card in a fallback sans while the demo drew the same page in Bricolage.
+    """
+    font = chosen_font(prefs)
     if not font:
         return None
     state.trace.degrade(
@@ -119,6 +107,74 @@ def _brand_font(state: PipelineState, prefs: Dict[str, Any]) -> Optional[str]:
         detail=f"font={font}",
     )
     return font
+
+
+def fit_logo(
+    composition: Dict[str, Any],
+    colors: Dict[str, str],
+    logo_uri: Optional[str],
+    *,
+    trace: Any = None,
+) -> Tuple[Dict[str, Any], Optional[str]]:
+    """Make sure the mark is worth drawing and visible where it will be drawn.
+
+    Drops a crop that reads as a smudge, then moves the panel or adds a plate
+    when the mark would vanish against it. Shared by the engine and the My Site
+    sample, so the sample shows the customer the logo treatment their real
+    cards will get rather than a hopeful one.
+    """
+    if logo_uri and not logo_is_usable(logo_uri):
+        if trace is not None:
+            trace.degrade(
+                Degradation.COMPOSITION_LOGO_DROPPED_UNUSABLE, Stage.COMPOSITION,
+                detail="logo crop reads as a smudge at card size; using the wordmark",
+            )
+        return composition, None
+    if not logo_uri:
+        return composition, None
+
+    role = composition.get("panel_color_role", "primary")
+    alternate_role = "light" if role != "light" else "dark"
+    fix = resolve_logo_contrast(
+        logo_uri,
+        panel_hex=_panel_hex(colors, role),
+        panel_color_role=role,
+        alternate_panel_hex=_panel_hex(colors, alternate_role),
+        alternate_role=alternate_role,
+    )
+    if fix.changed and trace is not None:
+        trace.degrade(
+            Degradation.COMPOSITION_LOGO_PANEL_CONTRAST_FIX, Stage.COMPOSITION,
+            detail=fix.detail,
+        )
+    composition = apply_contrast_fix_to_spec(composition, fix)
+    return composition, (None if fix.drop_logo else fix.logo_data_uri)
+
+
+def apply_card_preferences(
+    composition: Dict[str, Any], prefs: Dict[str, Any]
+) -> Tuple[Dict[str, Any], list]:
+    """Fold explicit layout / panel / accent choices into a composition.
+
+    Returns the composition and a list of what changed, for the trace.
+    """
+    changed = []
+    layout = prefs.get("preview_layout")
+    if layout and layout != "auto":
+        composition["layout"] = layout
+        composition["use_visual"] = layout in PANEL_LAYOUTS
+        changed.append(f"layout={layout}")
+
+    panel = prefs.get("preview_panel")
+    if panel and panel != "auto":
+        composition["panel_color_role"] = panel
+        changed.append(f"panel={panel}")
+
+    accent = prefs.get("preview_accent")
+    if accent and accent != "auto":
+        composition["accent_moment"] = accent
+        changed.append(f"accent={accent}")
+    return composition, changed
 
 
 def resolve_visual(
@@ -185,31 +241,9 @@ def build_spec(
         composition["use_visual"] = False
         composition["visual_source"] = "none"
 
-    logo_uri = brand.logo_data_uri
-    if logo_uri and not logo_is_usable(logo_uri):
-        state.trace.degrade(
-            Degradation.COMPOSITION_LOGO_DROPPED_UNUSABLE, Stage.COMPOSITION,
-            detail="logo crop reads as a smudge at card size; using the wordmark",
-        )
-        logo_uri = None
-
-    if logo_uri:
-        role = composition.get("panel_color_role", "primary")
-        alternate_role = "light" if role != "light" else "dark"
-        fix = resolve_logo_contrast(
-            logo_uri,
-            panel_hex=_panel_hex(colors, role),
-            panel_color_role=role,
-            alternate_panel_hex=_panel_hex(colors, alternate_role),
-            alternate_role=alternate_role,
-        )
-        if fix.changed:
-            state.trace.degrade(
-                Degradation.COMPOSITION_LOGO_PANEL_CONTRAST_FIX, Stage.COMPOSITION,
-                detail=fix.detail,
-            )
-        composition = apply_contrast_fix_to_spec(composition, fix)
-        logo_uri = None if fix.drop_logo else fix.logo_data_uri
+    composition, logo_uri = fit_logo(
+        composition, colors, brand.logo_data_uri, trace=state.trace,
+    )
 
     prefs = _card_prefs(state)
     subtitle = reasoning.subtitle or prefs.get("tagline")
@@ -264,7 +298,6 @@ def build_minimal_spec(
     colors = dict(brand.colors or {})
 
     prefs = _card_prefs(state)
-    logo_uri = brand.logo_data_uri if logo_is_usable(brand.logo_data_uri) else None
 
     state.trace.degrade(
         Degradation.COMPOSITION_MINIMAL_SPEC, Stage.COMPOSITION,
@@ -274,6 +307,14 @@ def build_minimal_spec(
     # layout, panel, accent and font still apply. Dropping them here is what
     # made a degraded generation look like somebody else's product.
     composition = _apply_customer_overrides(dict(DEFAULT_COMPOSITION), state)
+    # A fallback has no screenshot crop, so a forced panel layout would reserve
+    # a panel nothing fills.
+    composition["use_visual"] = False
+    # The mark gets the same contrast treatment as on an authored card: a white
+    # logo on a light fallback panel is just as invisible here.
+    composition, logo_uri = fit_logo(
+        composition, colors, brand.logo_data_uri, trace=state.trace,
+    )
     return CompositionSpec(
         title=resolved_title,
         subtitle=subtitle or _description_from_page(capture) or prefs.get("tagline"),

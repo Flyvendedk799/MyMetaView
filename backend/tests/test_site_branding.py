@@ -218,8 +218,9 @@ class TestTheJobCarriesTheChoice:
     """What the gallery's toggle actually does to a generation."""
 
     @staticmethod
-    def _run(ignore_site_branding: bool):
+    def _run(ignore_site_branding: bool, **row):
         """Run the production job far enough to capture the engine config."""
+        from types import SimpleNamespace
         from unittest.mock import MagicMock, patch
 
         from backend.jobs import preview_pipeline
@@ -235,11 +236,11 @@ class TestTheJobCarriesTheChoice:
                 patch.object(preview_pipeline, "rewrite_to_brand_voice") as mock_voice, \
                 patch.object(preview_pipeline, "log_activity"):
             MockSession.return_value = MagicMock()
-            mock_brand.resolve.return_value = MagicMock()
-            MockSchema.model_validate.return_value = MagicMock(
-                primary_color="#2979FF", secondary_color="#0A1A3C",
-                accent_color="#3FFFD3", font_family="IBM Plex Sans", logo_url=None,
-            )
+            # The saved row, as the resolver returns it. Voice is explicit so
+            # the rewrite path runs unless a test says otherwise.
+            saved = SimpleNamespace(**{**BRAND, "voice": "confident", **row})
+            mock_brand.resolve.return_value = saved
+            MockSchema.model_validate.return_value = saved
             mock_voice.return_value = "rewritten in the brand's voice"
             mock_lane.return_value = LaneDecision("ai", used=0, limit=None)
             MockEngine.return_value.generate.return_value = MagicMock(
@@ -262,6 +263,34 @@ class TestTheJobCarriesTheChoice:
         assert upserted["description"] == "rewritten in the brand's voice"
         assert upserted["ignore_site_branding"] is False
 
+    def test_every_field_on_the_tab_reaches_the_engine(self):
+        """The job used to hand-pick six fields: "what you do", "who it's for"
+        and the voice were saved and shown back, and never reached the prompt."""
+        from backend.services.preview.branding import SIGNIFICANT_FIELDS
+
+        with patch_plan(card_controls=True, hide_watermark=True):
+            config, _ = self._run(False)
+        for field in SIGNIFICANT_FIELDS:
+            assert field in config.brand_settings, field
+        assert config.brand_settings["preview_layout"] == "split"
+        brief = identity_brief(config.brand_settings)
+        assert "We show SaaS teams which features drive retention." in brief
+        assert "Product managers at B2B SaaS companies" in brief
+        assert "confident" in brief
+
+    def test_card_controls_collapse_without_the_plan(self):
+        with patch_plan(card_controls=False, hide_watermark=False):
+            config, _ = self._run(False, hide_watermark=True)
+        assert config.brand_settings["preview_layout"] == "auto"
+        assert config.brand_settings["preview_panel"] == "auto"
+        assert config.brand_settings["hide_watermark"] is False
+
+    def test_no_voice_means_no_rewrite(self):
+        """"auto" used to rewrite the art director's copy in a voice guessed
+        from hex substrings of the primary colour."""
+        _, upserted = self._run(False, voice="auto")
+        assert upserted["description"] == "the page's own description"
+
     def test_disregarding_it_reaches_the_engine_too(self):
         """The flag travels with the settings so the trace can explain the card."""
         config, upserted = self._run(True)
@@ -276,3 +305,18 @@ class TestTheJobCarriesTheChoice:
         """A re-roll has to run the same way, so it cannot live on the request."""
         _, upserted = self._run(True)
         assert upserted["ignore_site_branding"] is True
+
+
+def patch_plan(*, card_controls: bool, hide_watermark: bool):
+    """Pin which card features the org's plan includes."""
+    from unittest.mock import patch
+
+    from backend.core import plans
+
+    def has_feature(_org, feature):
+        return {
+            plans.F_CARD_CONTROLS: card_controls,
+            plans.F_HIDE_WATERMARK: hide_watermark,
+        }.get(feature, False)
+
+    return patch.object(plans, "has_feature", side_effect=has_feature)
