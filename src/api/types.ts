@@ -26,9 +26,12 @@ export interface DomainCreate {
 }
 
 export interface BrandSettings {
-  id: number
+  /** Null while nothing has been saved for this scope (stock values). */
+  id: number | null
   /** Domain these settings belong to; null is the organization-wide default. */
   domain_id?: number | null
+  /** True when this domain has no brand of its own and follows the account default. */
+  inherits_default?: boolean
   primary_color: string
   secondary_color: string
   accent_color: string
@@ -48,6 +51,19 @@ export interface BrandSettings {
   force_brand_colors: boolean
   hide_watermark: boolean
   white_label_name?: string | null
+}
+
+/** What "Fill from my site" found. Every field is optional; nothing is saved. */
+export interface BrandSuggestion {
+  source_url: string
+  brand_name?: string | null
+  tagline?: string | null
+  brand_description?: string | null
+  primary_color?: string | null
+  secondary_color?: string | null
+  accent_color?: string | null
+  logo_url?: string | null
+  palette_source?: string | null
 }
 
 export interface BrandSettingsUpdate {

@@ -12,7 +12,8 @@ class BrandSettings(Base):
     primary_color = Column(String, nullable=False)
     secondary_color = Column(String, nullable=False)
     accent_color = Column(String, nullable=False)
-    font_family = Column(String, nullable=False, default="Inter")
+    # "auto" = the card's own type. See schemas/brand.py FONT_CHOICES.
+    font_family = Column(String, nullable=False, default="auto", server_default="auto")
     logo_url = Column(String, nullable=True)
 
     # --- Identity: who the site is, in the user's own words. Feeds the copy the

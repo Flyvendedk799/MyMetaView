@@ -4,7 +4,7 @@ from backend.db.session import SessionLocal
 from backend.models.domain import Domain as DomainModel
 from backend.schemas.brand import BrandSettings as BrandSettingsSchema
 from backend.services import brand_resolver
-from backend.services.preview.branding import DISREGARD_KEY
+from backend.services.preview.branding import engine_payload
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.preview_engine import PreviewEngine, PreviewEngineConfig, PreviewEngineResult
 from backend.services.preview_type_predictor import predict_preview_type
@@ -22,17 +22,6 @@ import logging
 import traceback
 
 logger = logging.getLogger("preview_worker")
-
-
-def _derive_brand_tone_hint(brand_schema):
-    """Derive brand tone hint from brand settings."""
-    primary = brand_schema.primary_color.lower()
-    if any(c in primary for c in ['ff', 'f00', 'e00']):
-        return "bold"
-    elif any(c in primary for c in ['00f', '009', '006']):
-        return "professional"
-    else:
-        return "neutral"
 
 
 def _replace_variants(
@@ -146,13 +135,14 @@ def generate_preview_job(
         # Step 3: Load brand settings for THIS domain. Each connected domain is
         # its own site with its own identity; a domain that has not been
         # customised falls back to the organization default.
-        brand_settings = brand_resolver.resolve(db, organization_id, domain_obj.id)
-
-        # If the account has no brand settings at all, create the domain's row.
-        if not brand_settings:
-            brand_settings = brand_resolver.get_or_create(
-                db, organization_id, user_id=user_id, domain_id=domain_obj.id
-            )
+        # An account that never opened the tab runs on the stock values, which
+        # read as "no preference" downstream. Nothing is written: a generation
+        # creating a per-domain row would detach that domain from the account
+        # default the user edits later.
+        brand_settings = (
+            brand_resolver.resolve(db, organization_id, domain_obj.id)
+            or brand_resolver.stock_row(organization_id, domain_obj.id)
+        )
 
         # Step 4: Convert to schema for brand rewriting
         brand_schema = BrandSettingsSchema.model_validate(brand_settings)
@@ -215,33 +205,14 @@ def generate_preview_job(
             min_soft_pass_overall=profile.min_soft_pass_overall,
             min_soft_pass_visual=profile.min_soft_pass_visual,
             min_soft_pass_fidelity=profile.min_soft_pass_fidelity,
-            brand_settings={
-                # A preview added with branding disregarded carries the flag into
-                # the engine rather than arriving with an empty payload: the
-                # stages read it to explain the choice in the job trace, and it
-                # is part of the cache signature, so a disregarded card and a
-                # branded one for the same URL never stand in for each other.
-                DISREGARD_KEY: bool(ignore_site_branding),
-                "primary_color": brand_schema.primary_color,
-                "secondary_color": brand_schema.secondary_color,
-                "accent_color": brand_schema.accent_color,
-                "font_family": brand_schema.font_family,
-                "logo_url": brand_schema.logo_url,
-                # Identity the user typed in (Brand & identity page). Blank fields
-                # mean "keep inferring from the page", so nothing regresses for
-                # accounts that never filled these in.
-                "brand_name": (getattr(brand_schema, "brand_name", None) or "").strip() or None,
-                "tagline": (getattr(brand_schema, "tagline", None) or "").strip() or None,
-                # User's preview-card preferences — honoured by the engine's
-                # compositing step (layout/panel/accent overrides, force-brand-
-                # colours, hide-watermark). Layout/panel/accent are gated behind
-                # F_CARD_CONTROLS; without it they collapse to "auto".
-                "preview_layout": getattr(brand_schema, "preview_layout", "auto") if _can_card_controls else "auto",
-                "preview_panel": getattr(brand_schema, "preview_panel", "auto") if _can_card_controls else "auto",
-                "preview_accent": getattr(brand_schema, "preview_accent", "auto") if _can_card_controls else "auto",
-                "force_brand_colors": bool(getattr(brand_schema, "force_brand_colors", False)),
-                "hide_watermark": bool(getattr(brand_schema, "hide_watermark", False)) and _can_hide_watermark,
-            }
+            # Built in one place from the row, so every field on the My Site
+            # tab reaches the engine — and plan gating matches the sample.
+            brand_settings=engine_payload(
+                brand_settings,
+                can_card_controls=_can_card_controls,
+                can_hide_watermark=_can_hide_watermark,
+                ignore_site_branding=ignore_site_branding,
+            ),
         )
         
         engine = PreviewEngine(config)
@@ -258,11 +229,15 @@ def generate_preview_job(
             sanitized_url, cache_key_prefix=f"saas:preview:{lane.lane}:"
         )
         
-        # Step 6: Apply brand voice rewriting to description. Disregarding the
-        # site's branding means the page speaks for itself, voice included.
+        # Step 6: Apply brand voice rewriting to description — only when the
+        # customer picked a voice. "auto" used to trigger a rewrite anyway, in a
+        # voice guessed from hex substrings of the primary colour, over copy the
+        # art director had just written. Disregarding the site's branding means
+        # the page speaks for itself, voice included.
+        chosen_voice = (getattr(brand_schema, "voice", None) or "auto").strip().lower()
         rewritten_description = (
             engine_result.description
-            if ignore_site_branding
+            if ignore_site_branding or chosen_voice == "auto"
             else rewrite_to_brand_voice(engine_result.description, brand_schema)
         )
         

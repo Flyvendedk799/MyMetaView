@@ -17,7 +17,7 @@ defined once.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -26,11 +26,14 @@ from backend.models.domain import Domain as DomainModel
 
 logger = logging.getLogger(__name__)
 
+# What a scope holds before anyone has saved it. These read as "no preference"
+# to the engine (see preview/branding.py STOCK_PALETTE / STOCK_FONTS): the
+# palette is MetaView's own, and "auto" is the card's own type.
 DEFAULT_BRAND = {
     "primary_color": "#2979FF",
     "secondary_color": "#0A1A3C",
     "accent_color": "#3FFFD3",
-    "font_family": "Inter",
+    "font_family": "auto",
 }
 
 # Copied onto a new per-domain row so it starts out looking like the account
@@ -53,6 +56,21 @@ INHERITED_FIELDS = (
     "force_brand_colors",
     "hide_watermark",
 )
+
+
+# Non-null columns: a null in an update means "leave it", never "clear it".
+REQUIRED_FIELDS = frozenset({
+    "primary_color",
+    "secondary_color",
+    "accent_color",
+    "font_family",
+    "voice",
+    "preview_layout",
+    "preview_panel",
+    "preview_accent",
+    "force_brand_colors",
+    "hide_watermark",
+})
 
 
 def get_org_default(db: Session, organization_id: int) -> Optional[BrandSettingsModel]:
@@ -94,6 +112,58 @@ def resolve(
         if settings is not None:
             return settings
     return get_org_default(db, organization_id)
+
+
+def resolve_view(
+    db: Session, organization_id: int, domain_id: Optional[int] = None
+) -> Tuple[BrandSettingsModel, bool]:
+    """What the My Site tab shows for a scope, and whether it is inherited.
+
+    Read-only. This used to be ``get_or_create``, so merely *opening* the tab on
+    a domain wrote a copy of the account default for it — and from then on that
+    domain no longer followed the default the user went on to edit. A domain
+    now gets a row of its own only when something is saved for it.
+
+    Returns ``(row, inherits_default)``. The row may be transient (stock values,
+    never added to the session) when nothing has been saved at all.
+    """
+    if domain_id is not None:
+        own = get_for_domain(db, organization_id, domain_id)
+        if own is not None:
+            return own, False
+        default = get_org_default(db, organization_id)
+        if default is not None:
+            return default, True
+        return stock_row(organization_id, domain_id), True
+    default = get_org_default(db, organization_id)
+    return (default if default is not None else stock_row(organization_id, None)), False
+
+
+def stock_row(
+    organization_id: Optional[int], domain_id: Optional[int] = None
+) -> BrandSettingsModel:
+    """An unsaved row holding the stock values — never added to a session."""
+    return BrandSettingsModel(
+        **DEFAULT_BRAND,
+        voice="auto",
+        preview_layout="auto",
+        preview_panel="auto",
+        preview_accent="auto",
+        force_brand_colors=False,
+        hide_watermark=False,
+        organization_id=organization_id,
+        domain_id=domain_id,
+    )
+
+
+def delete_for_domain(db: Session, organization_id: int, domain_id: int) -> bool:
+    """Drop a domain's own brand so it follows the account default again."""
+    row = get_for_domain(db, organization_id, domain_id)
+    if row is None:
+        return False
+    db.delete(row)
+    db.commit()
+    return True
 
 
 def resolve_for_domain_name(

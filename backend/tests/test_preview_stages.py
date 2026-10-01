@@ -349,14 +349,31 @@ class TestBrandExtraction:
         from backend.services.preview.observability.reason_codes import PaletteSource
 
         state.config.brand_settings = {
-            "primary_color": "#2979FF", "accent_color": "#3FFFD3",
+            "primary_color": "#C2410C", "accent_color": "#FACC15",
         }
         result = _apply_brand_settings(state, BrandResult(
             colors={"primary_color": "#475569"},   # SYNTHETIC_SLATE_PRIMARIES
             palette_source=PaletteSource.DERIVED,
         ))
-        assert result.colors["primary_color"] == "#2979FF"
+        assert result.colors["primary_color"] == "#C2410C"
+        assert result.colors["accent_color"] == "#FACC15"
         assert Degradation.BRAND_COLORS_FROM_SETTINGS.value in \
+               state.trace.degradation_codes()
+
+    def test_the_stock_palette_never_stands_in_for_the_site(self, state):
+        """An untouched row holds MetaView's blue — our brand, not theirs."""
+        from backend.services.preview.extraction.brand import _apply_brand_settings
+        from backend.services.preview.observability.reason_codes import PaletteSource
+
+        state.config.brand_settings = {
+            "primary_color": "#2979FF", "secondary_color": "#0A1A3C", "accent_color": "#3FFFD3",
+        }
+        result = _apply_brand_settings(state, BrandResult(
+            colors={"primary_color": "#475569"},
+            palette_source=PaletteSource.DERIVED,
+        ))
+        assert result.colors["primary_color"] == "#475569"
+        assert Degradation.BRAND_COLORS_FROM_SETTINGS.value not in \
                state.trace.degradation_codes()
 
     def test_a_real_read_off_the_page_still_wins(self, state):

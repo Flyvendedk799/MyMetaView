@@ -4,32 +4,41 @@ Brands are scoped per domain: an organization can connect several sites and each
 has its own identity. Every endpoint here takes an optional ``domain_id``.
 Omitting it operates on the organization-wide default row, which is what these
 endpoints did before brands became per-domain.
+
+A domain with no brand of its own *follows* the default: reading it does not
+write anything (``inherits_default`` says so), saving it creates its own row,
+and ``DELETE`` puts it back on the default.
 """
+from types import SimpleNamespace
 from typing import Optional
 from uuid import uuid4
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
-from backend.schemas.brand import BrandSettings, BrandSettingsUpdate, VOICE_CHOICES
+
+from backend.core.deps import get_current_org, get_current_user, role_required
+from backend.db.session import get_db
 from backend.models.brand import BrandSettings as BrandSettingsModel
 from backend.models.domain import Domain as DomainModel
-from backend.models.user import User
-from backend.db.session import get_db
-from backend.core.deps import get_current_user, get_current_org, role_required
 from backend.models.organization import Organization
 from backend.models.organization_member import OrganizationRole
+from backend.models.user import User
+from backend.schemas.brand import BrandSettings, BrandSettingsUpdate, BrandSuggestion
 from backend.services import brand_resolver
 from backend.services.cache import (
     get_cached_brand_settings,
+    invalidate_brand_settings,
     set_cached_brand_settings,
-    invalidate_brand_settings
 )
 
 router = APIRouter(prefix="/brand", tags=["brand"])
 
+_EDITORS = role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR])
 
-def _checked_domain_id(
+
+def _checked_domain(
     db: Session, current_org: Organization, domain_id: Optional[int]
-) -> Optional[int]:
+) -> Optional[DomainModel]:
     """Reject a domain that is not the caller's, so brands cannot leak across orgs."""
     if domain_id is None:
         return None
@@ -40,37 +49,37 @@ def _checked_domain_id(
     )
     if not owned:
         raise HTTPException(status_code=404, detail="Domain not found")
-    return domain_id
+    return owned
 
 
-def _invalidate_previews(db, organization_id: int, domain_id, reason: str) -> None:
-    """Bust the preview caches a brand change makes stale."""
+def _view(row: BrandSettingsModel, *, domain_id: Optional[int], inherits: bool) -> dict:
+    """What the tab reads for a scope. Cache-safe (plain JSON types).
+
+    Built from the schema rather than a hand-kept field list — the hand-kept one
+    left out ``white_label_name``, so a cached read showed it blank and the next
+    save wiped it.
+    """
+    data = BrandSettings.model_validate(row).model_dump()
+    data["domain_id"] = domain_id
+    data["inherits_default"] = inherits
+    if inherits:
+        data["id"] = None
+    return data
+
+
+def _invalidate(db: Session, org: Organization, domain_id: Optional[int], reason: str) -> None:
+    """Drop the cached settings views and the previews a brand change makes stale.
+
+    Editing the account default changes every domain that follows it, so their
+    cached views go too — otherwise those domains keep showing the old default.
+    """
     from backend.services.preview.caching.invalidation import invalidate_org_previews
 
-    invalidate_org_previews(db, organization_id, domain_id=domain_id, reason=reason)
-
-
-def _as_dict(settings: BrandSettingsModel) -> dict:
-    """Cache-safe view of a row."""
-    return {
-        "id": settings.id,
-        "domain_id": getattr(settings, "domain_id", None),
-        "primary_color": settings.primary_color,
-        "secondary_color": settings.secondary_color,
-        "accent_color": settings.accent_color,
-        "font_family": settings.font_family,
-        "logo_url": settings.logo_url,
-        "brand_name": getattr(settings, "brand_name", None),
-        "tagline": getattr(settings, "tagline", None),
-        "brand_description": getattr(settings, "brand_description", None),
-        "audience": getattr(settings, "audience", None),
-        "voice": getattr(settings, "voice", "auto") or "auto",
-        "preview_layout": getattr(settings, "preview_layout", "auto") or "auto",
-        "preview_panel": getattr(settings, "preview_panel", "auto") or "auto",
-        "preview_accent": getattr(settings, "preview_accent", "auto") or "auto",
-        "force_brand_colors": bool(getattr(settings, "force_brand_colors", False)),
-        "hide_watermark": bool(getattr(settings, "hide_watermark", False)),
-    }
+    invalidate_brand_settings(org.id, domain_id)
+    if domain_id is None:
+        for (other_id,) in db.query(DomainModel.id).filter(DomainModel.organization_id == org.id):
+            invalidate_brand_settings(org.id, other_id)
+    invalidate_org_previews(db, org.id, domain_id=domain_id, reason=reason)
 
 
 @router.get("", response_model=BrandSettings)
@@ -78,27 +87,50 @@ def get_brand_settings(
     domain_id: Optional[int] = Query(None, description="Domain to read; omit for the organization default"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    current_org: Organization = Depends(get_current_org)
+    current_org: Organization = Depends(get_current_org),
 ):
-    """Get brand settings for a domain, or for the organization when none is given.
+    """Brand settings for a domain, or for the organization when none is given.
 
-    A domain that has never been customised gets a row seeded from the
-    organization default, so it opens showing the account's existing brand
-    rather than stock colours.
+    Read-only. A domain that has not been customised shows the organization
+    default with ``inherits_default: true`` — it used to get a copy written on
+    first view, which silently detached it from the default the user edited
+    afterwards.
     """
-    domain_id = _checked_domain_id(db, current_org, domain_id)
+    _checked_domain(db, current_org, domain_id)
 
     cached = get_cached_brand_settings(current_org.id, domain_id)
-    if cached:
+    if cached and "inherits_default" in cached:
         return BrandSettings(**cached)
 
-    settings = brand_resolver.get_or_create(
-        db, current_org.id, user_id=current_user.id, domain_id=domain_id
-    )
+    row, inherits = brand_resolver.resolve_view(db, current_org.id, domain_id)
+    view = _view(row, domain_id=domain_id, inherits=inherits)
+    set_cached_brand_settings(current_org.id, view, domain_id)
+    return BrandSettings(**view)
 
-    set_cached_brand_settings(current_org.id, _as_dict(settings), domain_id)
 
-    return settings
+def _check_white_label(
+    org: Organization, row: BrandSettingsModel, update: dict
+) -> None:
+    """Only a *change* to the white-label name needs the plan.
+
+    The tab always sends every field, so a form that merely carries the value
+    along (null on almost every account) is not an attempt to set one — and
+    treating it as one returned 402 on every save for every plan without
+    white-label. That is what "My Site does not save" was.
+    """
+    if "white_label_name" not in update:
+        return
+    from backend.core.plans import F_WHITE_LABEL, has_feature
+
+    if has_feature(org, F_WHITE_LABEL):
+        return
+    if update["white_label_name"] == (getattr(row, "white_label_name", None) or None):
+        update.pop("white_label_name")
+        return
+    if update["white_label_name"] is None:
+        # Clearing a name left over from a downgraded plan is always allowed.
+        return
+    raise HTTPException(status_code=402, detail="White-label naming is not included in this plan.")
 
 
 @router.put("", response_model=BrandSettings)
@@ -108,48 +140,49 @@ def update_brand_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org),
-    current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
+    current_role: OrganizationRole = Depends(_EDITORS),
 ):
-    """Update brand settings for a domain (owner/admin/editor only)."""
-    domain_id = _checked_domain_id(db, current_org, domain_id)
+    """Update brand settings for a domain (owner/admin/editor only).
 
-    # Creates the row if this is the first edit for the scope, seeded from the
-    # organization default, then applies EVERY provided field (uniform path so
-    # the preview-preference columns persist too, not just colour/font).
+    The first save for a domain gives it its own row, seeded from the
+    organization default, so it starts where the account left off.
+    """
+    _checked_domain(db, current_org, domain_id)
+
     settings = brand_resolver.get_or_create(
         db, current_org.id, user_id=current_user.id, domain_id=domain_id
     )
-
     update_data = settings_update.model_dump(exclude_unset=True)
-    if "voice" in update_data and update_data["voice"] not in VOICE_CHOICES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"voice must be one of: {', '.join(VOICE_CHOICES)}",
-        )
-    # Free-text identity fields: trim, and treat "" as "unset" so the engine keeps
-    # inferring rather than being handed an empty string.
-    if "white_label_name" in update_data:
-        from backend.core.plans import F_WHITE_LABEL, has_feature as _has_feature
-        if not _has_feature(current_org, F_WHITE_LABEL):
-            raise HTTPException(status_code=402, detail="White-label naming is not included in this plan.")
-        if isinstance(update_data["white_label_name"], str):
-            update_data["white_label_name"] = update_data["white_label_name"].strip() or None
-    for field in ("brand_name", "tagline", "brand_description", "audience"):
-        if field in update_data and isinstance(update_data[field], str):
-            update_data[field] = update_data[field].strip() or None
+    _check_white_label(current_org, settings, update_data)
+
     for field, value in update_data.items():
+        if field in brand_resolver.REQUIRED_FIELDS and value is None:
+            continue  # a non-null column cannot be "unset"; keep what is stored
         setattr(settings, field, value)
 
     db.commit()
     db.refresh(settings)
+    _invalidate(db, current_org, domain_id, "brand settings updated")
+    return BrandSettings(**_view(settings, domain_id=domain_id, inherits=False))
 
-    # Invalidate the settings row *and* the previews built from it. Clearing
-    # only the row is why a customer could change their colors and keep seeing
-    # the old card until the preview TTL ran out.
-    invalidate_brand_settings(current_org.id, domain_id)
-    _invalidate_previews(db, current_org.id, domain_id, "brand settings updated")
 
-    return settings
+@router.delete("", response_model=BrandSettings)
+def reset_brand_settings(
+    domain_id: int = Query(..., description="Domain to put back on the organization default"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
+    current_role: OrganizationRole = Depends(_EDITORS),
+):
+    """Forget a domain's own brand so it follows the organization default again."""
+    _checked_domain(db, current_org, domain_id)
+    if brand_resolver.delete_for_domain(db, current_org.id, domain_id):
+        _invalidate(db, current_org, domain_id, "domain brand reset to default")
+    else:
+        invalidate_brand_settings(current_org.id, domain_id)
+
+    row, inherits = brand_resolver.resolve_view(db, current_org.id, domain_id)
+    return BrandSettings(**_view(row, domain_id=domain_id, inherits=inherits))
 
 
 @router.post("/logo", response_model=BrandSettings)
@@ -159,12 +192,12 @@ async def upload_brand_logo(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org),
-    current_role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))
+    current_role: OrganizationRole = Depends(_EDITORS),
 ):
-    """Upload a brand logo, store it in R2, and set logo_url on that domain's brand settings."""
+    """Upload a brand logo, store it, and set logo_url on that domain's brand settings."""
     from backend.services.r2_client import upload_file_to_r2
 
-    domain_id = _checked_domain_id(db, current_org, domain_id)
+    _checked_domain(db, current_org, domain_id)
 
     content = await file.read()
     if not content:
@@ -188,94 +221,72 @@ async def upload_brand_logo(
     settings.logo_url = url
     db.commit()
     db.refresh(settings)
-    invalidate_brand_settings(current_org.id, domain_id)
-    # A new logo changes every card this org will serve. Without this the
+    # A new logo changes every card this scope will serve. Without this the
     # customer waits out the cache TTL and reasonably concludes the upload
     # silently failed.
-    _invalidate_previews(db, current_org.id, domain_id, "brand logo uploaded")
-    return settings
+    _invalidate(db, current_org, domain_id, "brand logo uploaded")
+    return BrandSettings(**_view(settings, domain_id=domain_id, inherits=False))
 
 
 @router.post("/preview")
 def render_brand_preview(
+    draft: Optional[BrandSettingsUpdate] = Body(None),
     domain_id: Optional[int] = Query(None, description="Domain to sample; omit for the organization default"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org),
 ):
-    """Render a SAMPLE share-card from a domain's brand settings + preview prefs so
-    the user sees their customization live. Returns {"image_url": <r2 url>}."""
-    import base64 as _b64
-    import requests
-    from backend.services.premium_card_renderer import render_premium_card
-    from backend.services.r2_client import upload_file_to_r2
+    """Render a sample share-card from a scope's brand settings.
 
-    domain_id = _checked_domain_id(db, current_org, domain_id)
-    s = brand_resolver.resolve(db, current_org.id, domain_id)
+    An optional body is the unsaved draft from the form, laid over what is
+    saved, so the sample answers every edit before it is saved. Gating, the
+    font rule and the logo treatment are the engine's own (``brand_sample``).
+    Returns ``{"image_data_uri": "data:image/png;base64,..."}``.
+    """
+    from backend.core.plans import F_CARD_CONTROLS, F_HIDE_WATERMARK, has_feature
+    from backend.services.preview.brand_sample import render_sample_data_uri, sample_host
+    from backend.services.preview.branding import engine_payload
 
-    primary = getattr(s, "primary_color", None) or "#0B3B2E"
-    secondary = getattr(s, "secondary_color", None) or "#12523F"
-    accent = getattr(s, "accent_color", None) or "#E8622C"
-    from backend.core.plans import has_feature, F_HIDE_WATERMARK, F_CARD_CONTROLS
-    # Layout/panel/accent are Growth+ (F_CARD_CONTROLS); collapse to "auto" otherwise
-    # so the sample matches what previews will actually render for this plan.
-    _can_card_controls = has_feature(current_org, F_CARD_CONTROLS)
-    layout = (getattr(s, "preview_layout", "auto") or "auto") if _can_card_controls else "auto"
-    panel = (getattr(s, "preview_panel", "auto") or "auto") if _can_card_controls else "auto"
-    accent_moment = (getattr(s, "preview_accent", "auto") or "auto") if _can_card_controls else "auto"
-    hide_watermark = bool(getattr(s, "hide_watermark", False)) and has_feature(current_org, F_HIDE_WATERMARK)
-    logo_url = getattr(s, "logo_url", None)
+    domain = _checked_domain(db, current_org, domain_id)
+    row, _ = brand_resolver.resolve_view(db, current_org.id, domain_id)
 
-    composition = {
-        "layout": "typographic" if layout == "auto" else layout,
-        "use_visual": False,  # sample has no page screenshot
-        "panel_color_role": "primary" if panel == "auto" else panel,
-        "accent_moment": "bar" if accent_moment == "auto" else accent_moment,
-        "mood": "confident",
-    }
-
-    logo_data_uri = None
-    if logo_url:
-        try:
-            r = requests.get(logo_url, timeout=8)
-            if r.status_code == 200 and r.content:
-                ct = r.headers.get("content-type", "image/png")
-                logo_data_uri = f"data:{ct};base64," + _b64.b64encode(r.content).decode()
-        except Exception:
-            logo_data_uri = None
-
-    # The sample uses the saved identity where it exists, so a name/tagline change
-    # is visible on the card the moment it's saved.
-    brand_name = (getattr(s, "brand_name", None) or current_org.name or "").strip() or None
-    tagline = (getattr(s, "tagline", None) or "").strip() or None
-
-    # Show the real hostname on the sample when we know which site this is for.
-    sample_host = None
-    if domain_id is not None:
-        domain = db.query(DomainModel).filter(DomainModel.id == domain_id).first()
-        sample_host = domain.name if domain else None
-    if not sample_host:
-        sample_host = f"{(brand_name or 'yourdomain').lower().replace(' ', '')}.com"
+    merged = {c.name: getattr(row, c.name, None) for c in BrandSettingsModel.__table__.columns}
+    if draft is not None:
+        merged.update(draft.model_dump(exclude_unset=True))
+    settings = engine_payload(
+        SimpleNamespace(**merged),
+        can_card_controls=has_feature(current_org, F_CARD_CONTROLS),
+        can_hide_watermark=has_feature(current_org, F_HIDE_WATERMARK),
+    )
+    host = sample_host(settings.get("brand_name") or current_org.name, domain.name if domain else None)
 
     try:
-        png = render_premium_card(
-            title="Plans that scale with your team",
-            subtitle=tagline or "Usage-based pricing that grows only when you do.",
-            url=f"{sample_host}/pricing",
-            brand_name=brand_name,
-            colors={"primary_color": primary, "secondary_color": secondary, "accent_color": accent},
-            composition=composition,
-            logo_data_uri=logo_data_uri,
-            hide_watermark=hide_watermark,
-            # The sample has to be drawn in the font the cards will be drawn in,
-            # or the one control with no other feedback is the one that lies.
-            font_family=getattr(s, "font_family", None),
-        )
+        image = render_sample_data_uri(settings, host=host, fallback_name=current_org.name)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Preview render failed: {e}")
+    return {"image_data_uri": image}
 
-    out_url = upload_file_to_r2(png, f"brand-previews/{current_org.id}/{uuid4()}.png", "image/png")
-    if not out_url:
-        raise HTTPException(status_code=500, detail="Preview upload failed")
-    return {"image_url": out_url}
 
+@router.post("/detect", response_model=BrandSuggestion)
+def detect_brand_from_site(
+    domain_id: int = Query(..., description="Domain whose home page to read"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_org),
+    current_role: OrganizationRole = Depends(_EDITORS),
+):
+    """Read name, strapline, description, palette and logo off the domain's home page.
+
+    Suggestions only: nothing is saved until the user saves the form.
+    """
+    from backend.services.preview.extraction.site_brand import SiteUnreachable, detect_site_brand
+
+    domain = _checked_domain(db, current_org, domain_id)
+    try:
+        found = detect_site_brand(domain.name, organization_id=current_org.id)
+    except SiteUnreachable as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not read https://{domain.name}/ ({exc}). Fill the form in by hand.",
+        )
+    return BrandSuggestion(**found)

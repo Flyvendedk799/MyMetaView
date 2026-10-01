@@ -12,6 +12,7 @@ development works with zero cloud configuration.
 import logging
 import os
 import re
+from typing import Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -74,6 +75,38 @@ def store_file_locally(file_bytes: bytes, filename: str) -> str:
     url = f"{base}/static/media/{'/'.join(segments)}"
     logger.info(f"Stored asset locally: {path} -> {url}")
     return url
+
+
+def read_stored_asset(url: Optional[str]) -> Optional[bytes]:
+    """Bytes of an asset *we* stored on local disk, read straight from disk.
+
+    A brand logo uploaded while R2 is unconfigured lives under MEDIA_ROOT and is
+    addressed as ``{ASSET_BASE_URL}/static/media/...``. Fetching that back over
+    HTTP goes through the SSRF guard, which (rightly) refuses ``localhost`` and
+    private addresses — so on a self-hosted deploy the customer's own logo never
+    reached their cards. Returns None for anything that is not ours, so callers
+    fall through to a guarded fetch.
+    """
+    if not url:
+        return None
+    base = (settings.ASSET_BASE_URL or "http://localhost:8000").rstrip("/")
+    prefix = f"{base}/static/media/"
+    if not str(url).startswith(prefix):
+        return None
+    relative = str(url)[len(prefix):].split("?", 1)[0].split("#", 1)[0]
+    segments = [seg for seg in relative.split("/") if seg not in ("", ".", "..")]
+    if not segments or any(_SAFE_SEGMENT.search(seg) for seg in segments):
+        return None
+    media_root = os.path.abspath(settings.MEDIA_ROOT)
+    path = os.path.abspath(os.path.join(media_root, *segments))
+    if not path.startswith(media_root + os.sep) or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except OSError as e:
+        logger.warning(f"Stored asset unreadable ({path}): {e}")
+        return None
 
 
 @sync_retry(max_attempts=3, base_delay=1.0, retry_on=(ClientError,))
