@@ -39,6 +39,8 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useDemoGeneration, GENERATION_STAGES } from '../hooks/useDemoGeneration'
 import { logger } from '../utils/logger'
 import { saveDemoContext } from '../lib/demoContext'
+import { MagneticCursor } from '../components/demo/MagneticCursor'
+import { Scrollytelling } from '../components/demo/Scrollytelling'
 
 type Step = 'input' | 'preview'
 
@@ -475,6 +477,7 @@ export default function Demo() {
 
   return (
     <ErrorBoundary>
+      <MagneticCursor />
       <div className="min-h-screen bg-ink text-paper overflow-x-hidden">
       <Seo title="Live Demo — Generate a Free URL Preview" description="Enter any URL and watch MetaView generate an on-brand share preview in about 20 seconds. No account needed." path="/demo" />
       {/* Premium Animated Background */}
@@ -1550,6 +1553,8 @@ export default function Demo() {
           )}
         </div>
       </section>
+      
+      <Scrollytelling />
 
       {/* Custom animations */}
       <style>{`
