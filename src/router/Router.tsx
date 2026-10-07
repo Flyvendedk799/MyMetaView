@@ -31,6 +31,7 @@ import OrganizationMembers from '../pages/OrganizationMembers'
 import OrganizationSettings from '../pages/OrganizationSettings'
 import JoinOrganization from '../pages/JoinOrganization'
 import AccountSettings from '../pages/AccountSettings'
+import Profile from '../pages/Profile'
 import Blog from '../pages/Blog'
 import BlogPost from '../pages/BlogPost'
 import Demo from '../pages/Demo'
@@ -128,6 +129,14 @@ export default function Router() {
         element={
           <ProtectedRoute>
             <AiCallback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         }
       />

@@ -1653,3 +1653,10 @@ export async function deleteAiKey(provider: string, scope: 'org' | 'user', orgId
   if (orgId) params.set('org_id', String(orgId))
   return fetchApi(`/api/v1/ai-auth/keys/${provider}?${params}`, { method: 'DELETE' })
 }
+
+export async function updateCurrentUser(data: { display_name?: string | null, bio?: string | null }): Promise<User> {
+  return fetchApi<User>(
+    '/api/v1/auth/me',
+    { method: 'PUT', body: JSON.stringify(data) }
+  )
+}

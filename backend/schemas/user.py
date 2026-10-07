@@ -5,6 +5,8 @@ from pydantic import BaseModel, EmailStr
 
 
 class UserBase(BaseModel):
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
     """Base user schema."""
     email: EmailStr
 
@@ -46,3 +48,8 @@ class TokenData(BaseModel):
     """Token data schema."""
     email: Optional[str] = None
 
+
+class UserUpdate(BaseModel):
+    """Schema for updating user profile."""
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
