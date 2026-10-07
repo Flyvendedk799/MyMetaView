@@ -7,7 +7,13 @@ export default function DemoMicroInteractions() {
   const [btnOffset, setBtnOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    let ticking = false;
+    let latestEvent: MouseEvent | null = null;
+
+    const updatePosition = () => {
+      if (!latestEvent) return;
+      const e = latestEvent;
+
       setCursorPos({ x: e.clientX, y: e.clientY });
 
       if (buttonRef.current) {
@@ -30,10 +36,23 @@ export default function DemoMicroInteractions() {
           setBtnOffset({ x: 0, y: 0 });
         }
       }
+
+      ticking = false;
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      latestEvent = e;
+      if (!ticking) {
+        window.requestAnimationFrame(updatePosition);
+        ticking = true;
+      }
     };
 
     window.addEventListener('mousemove', onMouseMove);
-    return () => window.removeEventListener('mousemove', onMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      latestEvent = null;
+    };
   }, []);
 
   return (

@@ -1,64 +1,96 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Sphere, OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
 
-export default function DemoDataSphere() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const ParticleSphere = () => {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const particleCount = 200;
 
-    let animationFrameId: number;
-    let time = 0;
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const colors = useMemo(() => {
+    const array = new Float32Array(particleCount * 3);
+    const color1 = new THREE.Color('#00F0FF');
+    const color2 = new THREE.Color('#7000FF');
 
-    const render = () => {
-      time += 0.01;
-      const width = canvas.width;
-      const height = canvas.height;
-      ctx.clearRect(0, 0, width, height);
+    for (let i = 0; i < particleCount; i++) {
+      const color = i % 2 === 0 ? color1 : color2;
+      color.toArray(array, i * 3);
+    }
+    return array;
+  }, [particleCount]);
 
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const radius = Math.min(width, height) * 0.3;
+  useFrame((state) => {
+    if (!meshRef.current) return;
 
-      for (let i = 0; i < 50; i++) {
-        const angle = (i / 50) * Math.PI * 2 + time;
-        const x = centerX + Math.cos(angle) * radius * Math.sin(time + i);
-        const y = centerY + Math.sin(angle) * radius * Math.cos(time + i);
+    const time = state.clock.getElapsedTime();
 
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = i % 2 === 0 ? '#00F0FF' : '#7000FF';
-        ctx.fill();
+    for (let i = 0; i < particleCount; i++) {
+      // Golden ratio spiral distribution
+      const phi = Math.acos(-1 + (2 * i) / particleCount);
+      const theta = Math.sqrt(particleCount * Math.PI) * phi;
 
-        // Connect to center
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = i % 2 === 0 ? 'rgba(0, 240, 255, 0.1)' : 'rgba(112, 0, 255, 0.1)';
-        ctx.stroke();
-      }
+      const r = 3 + Math.sin(time + i * 0.1) * 0.5;
 
-      animationFrameId = requestAnimationFrame(render);
-    };
+      const x = r * Math.cos(theta) * Math.sin(phi);
+      const y = r * Math.sin(theta) * Math.sin(phi);
+      const z = r * Math.cos(phi);
 
-    render();
+      dummy.position.set(x, y, z);
+      dummy.scale.setScalar(1 + Math.sin(time * 2 + i) * 0.5);
+      dummy.updateMatrix();
 
-    return () => cancelAnimationFrame(animationFrameId);
-  }, []);
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    }
+
+    meshRef.current.instanceMatrix.needsUpdate = true;
+    meshRef.current.rotation.y = time * 0.1;
+    meshRef.current.rotation.z = time * 0.05;
+  });
 
   return (
-    <div className="relative w-full h-[600px] overflow-hidden bg-[#05050A]" style={{ '--camera-easing': 'cubic-bezier(0.85, 0, 0.15, 1)' } as React.CSSProperties}>
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        className="absolute inset-0 w-full h-full"
-        style={{ transition: 'transform 1s var(--camera-easing)' }}
-      />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <h1 className="text-6xl font-black text-transparent bg-clip-text bg-white/50 backdrop-blur-md" style={{ WebkitTextStroke: '1px rgba(255,255,255,0.1)' }}>
+    <instancedMesh ref={meshRef} args={[undefined, undefined, particleCount]}>
+      <sphereGeometry args={[0.05, 16, 16]}>
+        <instancedBufferAttribute
+          attach="attributes-color"
+          args={[colors, 3]}
+        />
+      </sphereGeometry>
+      <meshBasicMaterial vertexColors toneMapped={false} />
+    </instancedMesh>
+  );
+};
+
+export default function DemoDataSphere() {
+  return (
+    <div className="relative w-full h-[600px] bg-[#05050A]" style={{ '--camera-easing': 'cubic-bezier(0.85, 0, 0.15, 1)' } as React.CSSProperties}>
+      <div className="absolute inset-0 z-0">
+        <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
+          <color attach="background" args={['#05050A']} />
+          <ambientLight intensity={0.5} />
+          <ParticleSphere />
+          <OrbitControls
+            enableZoom={false}
+            enablePan={false}
+            autoRotate
+            autoRotateSpeed={0.5}
+          />
+        </Canvas>
+      </div>
+
+      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+        <h1
+          className="text-6xl md:text-8xl font-black tracking-tighter"
+          style={{
+            color: 'rgba(255, 255, 255, 0.1)',
+            WebkitTextStroke: '1px rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text'
+          }}
+        >
           Data Sphere
         </h1>
       </div>
