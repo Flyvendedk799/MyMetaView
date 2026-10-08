@@ -117,7 +117,7 @@ export default function AccountSettings() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-semibold tracking-display text-secondary-900 mb-1.5">Account</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-display text-secondary-900 mb-1.5">Account Settings</h1>
         <p className="text-[15px] text-secondary-600">Your sign-in details, data, and privacy</p>
       </div>
 
@@ -127,17 +127,19 @@ export default function AccountSettings() {
         </div>
       )}
 
-      {/* Profile */}
+      {/* Profile Link */}
       <Card className="mb-6">
-        <h2 className="text-xl font-semibold text-secondary-900 mb-1">Profile</h2>
-        <p className="text-secondary-600 text-sm mb-4">
-          Signed in as <span className="font-medium text-secondary-900">{user?.email}</span>
-        </p>
-        <p className="text-[13px] text-secondary-500">
-          Your email address is your account identity and can't be changed here — write to{' '}
-          <a href="mailto:hello@mymetaview.com" className="text-primary-600 hover:text-primary-700">hello@mymetaview.com</a>{' '}
-          if you need it moved.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-secondary-900 mb-1">Profile</h2>
+            <p className="text-secondary-600 text-sm">
+              Manage your display name, bio, and public identity.
+            </p>
+          </div>
+          <Link to="/app/profile" className="text-sm font-medium text-primary-600 hover:text-primary-700 bg-primary-50 px-4 py-2 rounded-lg transition-colors">
+            Go to Profile
+          </Link>
+        </div>
       </Card>
 
       {/* AI Credentials */}

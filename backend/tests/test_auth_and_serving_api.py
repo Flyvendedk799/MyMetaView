@@ -226,3 +226,35 @@ class TestPublicServing:
         )
         assert r.status_code == 200
         assert r.json()["status"] == "ignored"
+
+
+def test_profile_update(client, test_db, normal_user_token):
+    # Test valid update
+    headers = {"Authorization": f"Bearer {normal_user_token}"}
+    payload = {
+        "display_name": "Test User",
+        "bio": "I am a test user."
+    }
+    response = client.put("/api/v1/auth/me", headers=headers, json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["display_name"] == "Test User"
+    assert data["bio"] == "I am a test user."
+
+    # Test invalid update (if any validation exists, otherwise just check persistence)
+    response = client.get("/api/v1/auth/me", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["display_name"] == "Test User"
+    assert data["bio"] == "I am a test user."
+
+    # Test clearing fields
+    payload = {
+        "display_name": None,
+        "bio": None
+    }
+    response = client.put("/api/v1/auth/me", headers=headers, json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["display_name"] is None
+    assert data["bio"] is None

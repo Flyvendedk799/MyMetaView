@@ -255,3 +255,45 @@ def get_current_user_info(
     
     return current_user
 
+
+
+from backend.schemas.user import UserUpdate
+
+@router.put("/me", response_model=User)
+def update_current_user_info(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current authenticated user information."""
+    if user_update.display_name is not None:
+        current_user.display_name = user_update.display_name
+    if user_update.bio is not None:
+        current_user.bio = user_update.bio
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    # We still want to include organization info like in get_current_user_info
+    from backend.models.organization import Organization
+    from backend.models.organization_member import OrganizationMember
+    
+    org = db.query(Organization).filter(
+        Organization.owner_user_id == current_user.id
+    ).first()
+    
+    if not org:
+        membership = db.query(OrganizationMember).join(Organization).filter(
+            OrganizationMember.user_id == current_user.id
+        ).first()
+        if membership:
+            org = db.query(Organization).filter(Organization.id == membership.organization_id).first()
+            
+    if org:
+        current_user.subscription_status = org.subscription_status
+        current_user.subscription_plan = org.subscription_plan
+        current_user.trial_ends_at = org.trial_ends_at
+        current_user.stripe_customer_id = org.stripe_customer_id
+        current_user.stripe_subscription_id = org.stripe_subscription_id
+        
+    return current_user

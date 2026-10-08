@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
+  Cog6ToothIcon,
   HomeIcon,
   GlobeAltIcon,
   PaintBrushIcon,
@@ -50,8 +51,9 @@ const settingsNavigation: NavItem[] = [
   { name: 'Analytics', href: '/app/analytics', icon: ChartBarIcon },
   { name: 'Billing', href: '/app/billing', icon: CreditCardIcon },
   { name: 'Activity', href: '/app/activity', icon: ClockIcon },
+  { name: 'Profile', href: '/app/profile', icon: UserCircleIcon },
   { name: 'Organizations', href: '/app/organizations', icon: BuildingOfficeIcon },
-  { name: 'Account', href: '/app/account', icon: UserCircleIcon },
+  { name: 'Account Settings', href: '/app/account', icon: Cog6ToothIcon },
 ]
 
 const adminNavigation: NavItem[] = [

@@ -187,7 +187,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 
                 <div className="py-2">
                   <Link
-                    to="/app/account"
+                    to="/app/profile"
                     onClick={() => setShowUserMenu(false)}
                     className="dropdown-item"
                   >

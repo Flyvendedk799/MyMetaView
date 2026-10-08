@@ -266,6 +266,8 @@ export interface User {
   id: number
   email: string
   is_active: boolean
+  display_name?: string | null
+  bio?: string | null
   is_admin?: boolean
   created_at: string
   stripe_customer_id?: string | null
@@ -326,6 +328,8 @@ export interface AdminUserSummary {
   id: number
   email: string
   is_active: boolean
+  display_name?: string | null
+  bio?: string | null
   subscription_status: string
   subscription_plan?: string | null
   created_at: string
@@ -337,6 +341,8 @@ export interface AdminUserDetail {
   id: number
   email: string
   is_active: boolean
+  display_name?: string | null
+  bio?: string | null
   is_admin: boolean
   subscription_status: string
   subscription_plan?: string | null
