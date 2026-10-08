@@ -1,10 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function DemoMicroInteractions() {
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const [isHovering, setIsHovering] = useState(false);
+  const cursorRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [btnOffset, setBtnOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     let ticking = false;
@@ -14,7 +12,9 @@ export default function DemoMicroInteractions() {
       if (!latestEvent) return;
       const e = latestEvent;
 
-      setCursorPos({ x: e.clientX, y: e.clientY });
+      let isHovering = false;
+      let btnOffsetX = 0;
+      let btnOffsetY = 0;
 
       if (buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
@@ -25,16 +25,19 @@ export default function DemoMicroInteractions() {
         const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
         if (distance < 100) {
-          setIsHovering(true);
+          isHovering = true;
           // Magnetic pull
-          setBtnOffset({
-            x: distanceX * 0.2,
-            y: distanceY * 0.2
-          });
-        } else {
-          setIsHovering(false);
-          setBtnOffset({ x: 0, y: 0 });
+          btnOffsetX = distanceX * 0.2;
+          btnOffsetY = distanceY * 0.2;
         }
+
+        // Apply transforms directly to DOM node to avoid React state re-renders on every mouse move
+        buttonRef.current.style.transform = `translate(${btnOffsetX}px, ${btnOffsetY}px)`;
+      }
+
+      if (cursorRef.current) {
+        const scale = isHovering ? 1.5 : 1;
+        cursorRef.current.style.transform = `translate(${e.clientX - 16}px, ${e.clientY - 16}px) scale(${scale})`;
       }
 
       ticking = false;
@@ -59,9 +62,10 @@ export default function DemoMicroInteractions() {
     <>
       {/* Custom Cursor Ring */}
       <div
+        ref={cursorRef}
         className="fixed top-0 left-0 w-8 h-8 border-2 border-white rounded-full pointer-events-none z-[9999] transition-transform duration-75 ease-out"
         style={{
-          transform: `translate(${cursorPos.x - 16}px, ${cursorPos.y - 16}px) scale(${isHovering ? 1.5 : 1})`,
+          transform: `translate(-100px, -100px) scale(1)`,
           mixBlendMode: 'difference'
         }}
       />
@@ -72,7 +76,7 @@ export default function DemoMicroInteractions() {
           ref={buttonRef}
           className="px-8 py-4 bg-white text-black font-bold rounded-full transition-transform duration-300"
           style={{
-            transform: `translate(${btnOffset.x}px, ${btnOffset.y}px)`,
+            transform: `translate(0px, 0px)`,
             transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
           }}
         >

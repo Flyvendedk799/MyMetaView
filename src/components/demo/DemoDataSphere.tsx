@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Sphere, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
 const ParticleSphere = () => {
@@ -79,16 +79,40 @@ export default function DemoDataSphere() {
         </Canvas>
       </div>
 
-      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-        <h1
-          className="text-6xl md:text-8xl font-black tracking-tighter"
+      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none select-none">
+        {/* True typography mask using SVG clipPath for the backdrop-filter */}
+        <svg className="absolute w-full h-full">
+          <defs>
+            <clipPath id="text-mask">
+              <text
+                x="50%"
+                y="50%"
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="text-6xl md:text-8xl font-black tracking-tighter"
+              >
+                Data Sphere
+              </text>
+            </clipPath>
+          </defs>
+        </svg>
+
+        <div
+          className="absolute inset-0"
           style={{
-            color: 'rgba(255, 255, 255, 0.1)',
-            WebkitTextStroke: '1px rgba(255, 255, 255, 0.2)',
+            clipPath: 'url(#text-mask)',
+            WebkitClipPath: 'url(#text-mask)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text'
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          }}
+        />
+
+        <h1
+          className="absolute text-6xl md:text-8xl font-black tracking-tighter"
+          style={{
+            color: 'transparent',
+            WebkitTextStroke: '1px rgba(255, 255, 255, 0.2)',
           }}
         >
           Data Sphere
