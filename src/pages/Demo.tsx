@@ -39,6 +39,11 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useDemoGeneration, GENERATION_STAGES } from '../hooks/useDemoGeneration'
 import { logger } from '../utils/logger'
 import { saveDemoContext } from '../lib/demoContext'
+import DemoDataSphere from '../components/demo/DemoDataSphere'
+import DemoScrollytelling from '../components/demo/DemoScrollytelling'
+import DemoActionHub from '../components/demo/DemoActionHub'
+import DemoDataSandbox from '../components/demo/DemoDataSandbox'
+import DemoMicroInteractions from '../components/demo/DemoMicroInteractions'
 
 type Step = 'input' | 'preview'
 
@@ -506,6 +511,14 @@ export default function Demo() {
       {/* Navigation (shared dark identity) */}
       <SiteNav />
 
+      {/* New UI Components Showcase */}
+      <DemoMicroInteractions />
+      <DemoActionHub />
+      <DemoDataSphere />
+      <DemoScrollytelling />
+      <div className="max-w-7xl mx-auto px-4 mb-20">
+        <DemoDataSandbox />
+      </div>
 
       {/* Hero Section */}
       <section className="relative pt-20 sm:pt-24 md:pt-28 pb-8 sm:pb-12 md:pb-20 px-3 sm:px-4 md:px-6 lg:px-12">
