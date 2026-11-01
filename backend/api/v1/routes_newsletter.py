@@ -240,7 +240,44 @@ def _email_from_token(token: str) -> Optional[str]:
 
 @router.get("/unsubscribe")
 def unsubscribe(token: str = Query(...), db: Session = Depends(get_db)):
-    """Public unsubscribe. The token is the address plus a signature."""
+    """Public unsubscribe. Works for both weekly performance digest and newsletter subscriptions.
+
+    The token can be:
+    1. A signed, expiring token for weekly digest emails.
+       Validating it updates user.weekly_digest_enabled to False and returns confirmation.
+    2. A legacy newsletter subscriber token (email|signature).
+    """
+    from backend.services.digest_token_service import verify_digest_unsubscribe_token
+
+    # 1. First check if it is a weekly performance digest token
+    is_valid, email, status_reason = verify_digest_unsubscribe_token(token)
+    if status_reason == "expired":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This unsubscribe link has expired.",
+        )
+    elif status_reason == "tampered":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid unsubscribe link (tampered).",
+        )
+    elif is_valid and email:
+        user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
+        if user:
+            user.weekly_digest_enabled = False
+            db.commit()
+        sub = db.query(NewsletterSubscriberModel).filter(
+            func.lower(NewsletterSubscriberModel.email) == email.lower()
+        ).first()
+        if sub:
+            sub.is_active = False
+            db.commit()
+        return {
+            "success": True,
+            "message": "You have been unsubscribed from weekly performance emails.",
+        }
+
+    # 2. Fall back to checking newsletter subscriber token
     email = _email_from_token(token)
     if not email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid unsubscribe link")

@@ -440,3 +440,99 @@ def get_job_status(
             detail=f"Job not found: {str(e)}"
         )
 
+
+class WeeklyDigestJobRequest(BaseModel):
+    """Optional payload for weekly digest trigger."""
+    dry_run: Optional[bool] = None
+    as_of_date: Optional[str] = None
+    secret: Optional[str] = None
+
+
+@router.post("/weekly-digest")
+async def trigger_weekly_digest(
+    request: Request,
+    dry_run: Optional[bool] = None,
+    as_of_date: Optional[str] = None,
+    secret: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Trigger the weekly performance digest run (C5).
+
+    Protected by shared secret from env (CRON_SECRET or WEEKLY_DIGEST_SECRET).
+    Supports ?dry_run=true or {"dry_run": true} which calculates and returns
+    what would be sent without sending emails or recording sends.
+    """
+    import os
+    import hmac
+    from datetime import datetime as dt, date as dt_date
+    from backend.services.weekly_digest_service import process_weekly_digest
+    from backend.core.config import settings
+
+    # Parse optional json body if present
+    body_data = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            body_data = await request.json()
+        except Exception:
+            body_data = {}
+
+    expected_secret = (
+        os.getenv("CRON_SECRET")
+        or os.getenv("WEEKLY_DIGEST_SECRET")
+        or getattr(settings, "CRON_SECRET", "")
+        or settings.SECRET_KEY
+    )
+
+    # Determine supplied secret
+    provided_secret = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        provided_secret = auth_header[7:].strip()
+    elif request.headers.get("X-Cron-Secret"):
+        provided_secret = request.headers.get("X-Cron-Secret")
+    elif request.headers.get("X-Weekly-Digest-Secret"):
+        provided_secret = request.headers.get("X-Weekly-Digest-Secret")
+    elif secret:
+        provided_secret = secret
+    elif request.query_params.get("secret"):
+        provided_secret = request.query_params.get("secret")
+    elif request.query_params.get("cron_secret"):
+        provided_secret = request.query_params.get("cron_secret")
+    elif body_data.get("secret"):
+        provided_secret = body_data.get("secret")
+
+    if not expected_secret or not provided_secret or not hmac.compare_digest(provided_secret, expected_secret):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing cron secret.",
+        )
+
+    # Determine dry_run flag
+    is_dry_run = False
+    if dry_run is not None:
+        is_dry_run = dry_run
+    elif "dry_run" in request.query_params:
+        is_dry_run = request.query_params.get("dry_run", "").lower() in ("true", "1", "yes")
+    elif "dry_run" in body_data:
+        is_dry_run = bool(body_data["dry_run"])
+
+    # Determine as_of_date
+    parsed_date = None
+    raw_date = as_of_date or request.query_params.get("as_of_date") or body_data.get("as_of_date")
+    if raw_date:
+        try:
+            parsed_date = dt.strptime(str(raw_date), "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format for as_of_date. Use YYYY-MM-DD.",
+            )
+
+    result = process_weekly_digest(
+        db=db,
+        as_of_date=parsed_date,
+        dry_run=is_dry_run,
+    )
+    return result
+
+

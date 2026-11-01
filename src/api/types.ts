@@ -273,6 +273,8 @@ export interface User {
   subscription_status: string
   subscription_plan?: string | null
   trial_ends_at?: string | null
+  weekly_digest_enabled?: boolean
+  weekly_performance_email?: boolean
 }
 
 export interface UserCreate {

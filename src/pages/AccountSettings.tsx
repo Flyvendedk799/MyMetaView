@@ -5,7 +5,7 @@ import Button from '../components/ui/Button'
 import Alert from '../components/ui/Alert'
 import Input from '../components/ui/Input'
 import { ConfirmDialog } from '../components/ui/Modal'
-import { exportUserData, deleteUserAccount, changePassword, listApiKeys, createApiKey, revokeApiKey, getMyPlan, type ApiKeyRecord } from '../api/client'
+import { exportUserData, deleteUserAccount, changePassword, listApiKeys, createApiKey, revokeApiKey, getMyPlan, getAccountPreferences, updateAccountPreferences, type ApiKeyRecord } from '../api/client'
 import { FEATURES } from '../lib/plans'
 import { useAuth } from '../hooks/useAuth'
 import { ExclamationTriangleIcon, ArrowDownTrayIcon, KeyIcon } from '@heroicons/react/24/outline'
@@ -17,8 +17,16 @@ export default function AccountSettings() {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, logout } = useAuth()
+  const { user, logout, refreshUser } = useAuth()
   const navigate = useNavigate()
+
+  // Weekly performance email preference (C2)
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState<boolean>(
+    user?.weekly_digest_enabled ?? user?.weekly_performance_email ?? true
+  )
+  const [preferenceLoading, setPreferenceLoading] = useState(false)
+  const [preferenceSuccess, setPreferenceSuccess] = useState(false)
+  const [preferenceError, setPreferenceError] = useState<string | null>(null)
 
   // Change password
   const [currentPassword, setCurrentPassword] = useState('')
@@ -44,10 +52,44 @@ export default function AccountSettings() {
       .catch(() => {
         if (active) setApiAccess(false)
       })
+
+    getAccountPreferences()
+      .then((prefs) => {
+        if (!active) return
+        setWeeklyDigestEnabled(prefs.weekly_performance_email ?? prefs.weekly_digest_enabled ?? true)
+      })
+      .catch(() => {
+        // Fall back to default
+      })
+
     return () => {
       active = false
     }
   }, [])
+
+  const handleToggleWeeklyDigest = async () => {
+    const nextVal = !weeklyDigestEnabled
+    setWeeklyDigestEnabled(nextVal)
+    setPreferenceLoading(true)
+    setPreferenceError(null)
+    setPreferenceSuccess(false)
+    try {
+      await updateAccountPreferences({
+        weekly_digest_enabled: nextVal,
+        weekly_performance_email: nextVal,
+      })
+      if (refreshUser) {
+        await refreshUser()
+      }
+      setPreferenceSuccess(true)
+      setTimeout(() => setPreferenceSuccess(false), 3000)
+    } catch (err) {
+      setWeeklyDigestEnabled(!nextVal)
+      setPreferenceError(err instanceof Error ? err.message : 'Could not update preferences.')
+    } finally {
+      setPreferenceLoading(false)
+    }
+  }
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -138,6 +180,46 @@ export default function AccountSettings() {
           <a href="mailto:hello@mymetaview.com" className="text-primary-600 hover:text-primary-700">hello@mymetaview.com</a>{' '}
           if you need it moved.
         </p>
+      </Card>
+
+      {/* Email Preferences (C2) */}
+      <Card className="mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1 pr-4">
+            <h2 className="text-xl font-semibold text-secondary-900 mb-1">Email notifications</h2>
+            <p className="text-secondary-600 text-sm mb-3">
+              Manage what emails you receive from MetaView.
+            </p>
+            <div>
+              <span className="text-sm font-medium text-secondary-900 block">Weekly performance email</span>
+              <p className="text-[13px] text-secondary-500 mt-0.5">
+                Receive a weekly summary of impressions, clicks, CTR, and top-performing link previews across your verified domains.
+              </p>
+            </div>
+          </div>
+          <div className="ml-4 flex-shrink-0">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                aria-label="Weekly performance email"
+                checked={weeklyDigestEnabled}
+                onChange={handleToggleWeeklyDigest}
+                disabled={preferenceLoading}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-secondary-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-secondary-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              <span className="ml-3 text-sm font-medium text-secondary-700">
+                {weeklyDigestEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+            </label>
+          </div>
+        </div>
+        {preferenceSuccess && (
+          <p className="mt-3 text-xs text-primary-600 font-medium">Preferences updated.</p>
+        )}
+        {preferenceError && (
+          <p className="mt-3 text-xs text-error-600 font-medium">{preferenceError}</p>
+        )}
       </Card>
 
       {/* AI Credentials */}

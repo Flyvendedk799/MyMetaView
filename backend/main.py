@@ -29,7 +29,7 @@ log_level = os.getenv("LOG_LEVEL", "INFO")
 setup_logging(level=log_level)
 
 # Import all models to ensure they're registered with Base
-from backend.models import user, domain, brand, preview, error, activity_log, analytics_event, analytics_aggregate, organization, organization_member, preview_variant, blog_post, newsletter_subscriber, published_site, ai_credential, organization_invite, api_key  # noqa: F401
+from backend.models import user, domain, brand, preview, error, activity_log, analytics_event, analytics_aggregate, organization, organization_member, preview_variant, blog_post, newsletter_subscriber, published_site, ai_credential, organization_invite, api_key, weekly_digest_send  # noqa: F401
 
 
 # Create database tables on startup

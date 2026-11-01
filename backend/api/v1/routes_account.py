@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import json
 from backend.db.session import get_db
 from backend.core.deps import get_current_user
@@ -25,6 +25,65 @@ from pydantic import BaseModel
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+class AccountPreferencesRequest(BaseModel):
+    weekly_digest_enabled: Optional[bool] = None
+    weekly_performance_email: Optional[bool] = None
+
+
+class AccountPreferencesResponse(BaseModel):
+    weekly_digest_enabled: bool
+    weekly_performance_email: bool
+
+
+@router.get("/preferences", response_model=AccountPreferencesResponse)
+def get_account_preferences(
+    current_user: UserModel = Depends(get_current_user),
+):
+    """Get account email and notification preferences."""
+    val = bool(getattr(current_user, "weekly_digest_enabled", True))
+    return AccountPreferencesResponse(
+        weekly_digest_enabled=val,
+        weekly_performance_email=val,
+    )
+
+
+@router.patch("/preferences", response_model=AccountPreferencesResponse)
+@router.put("/preferences", response_model=AccountPreferencesResponse)
+def update_account_preferences(
+    body: AccountPreferencesRequest,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+    request: Request = None,
+):
+    """Update account email and notification preferences (C2)."""
+    from backend.services.activity_logger import log_activity
+
+    if body.weekly_performance_email is not None:
+        current_user.weekly_digest_enabled = bool(body.weekly_performance_email)
+    elif body.weekly_digest_enabled is not None:
+        current_user.weekly_digest_enabled = bool(body.weekly_digest_enabled)
+
+    db.commit()
+    db.refresh(current_user)
+
+    val = bool(current_user.weekly_digest_enabled)
+    try:
+        log_activity(
+            db,
+            user_id=current_user.id,
+            action="user.preferences_updated",
+            metadata={"weekly_digest_enabled": val},
+            request=request,
+        )
+    except Exception:
+        pass
+
+    return AccountPreferencesResponse(
+        weekly_digest_enabled=val,
+        weekly_performance_email=val,
+    )
 
 
 @router.post("/change-password")

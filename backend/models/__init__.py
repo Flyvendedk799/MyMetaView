@@ -19,6 +19,7 @@ from backend.models.blog_post import BlogPost, BlogCategory  # noqa: F401
 from backend.models.newsletter_subscriber import NewsletterSubscriber  # noqa: F401
 from backend.models.organization_invite import OrganizationInvite  # noqa: F401
 from backend.models.api_key import ApiKey  # noqa: F401
+from backend.models.weekly_digest_send import WeeklyDigestSend  # noqa: F401
 from backend.models.published_site import (  # noqa: F401
     PublishedSite, SitePost, SiteCategory, SitePage, SiteMenu, SiteMenuItem,
     SiteMedia, SiteBranding, SiteSettings
@@ -29,6 +30,7 @@ __all__ = [
     "AnalyticsEvent", "AnalyticsDailyAggregate", "Organization", "OrganizationMember",
     "OrganizationRole", "PreviewVariant", "PreviewJobFailure", "BlogPost", "BlogCategory",
     "NewsletterSubscriber", "PublishedSite", "SitePost", "SiteCategory", "SitePage",
-    "SiteMenu", "SiteMenuItem", "SiteMedia", "SiteBranding", "SiteSettings"
+    "SiteMenu", "SiteMenuItem", "SiteMedia", "SiteBranding", "SiteSettings",
+    "WeeklyDigestSend"
 ]
 

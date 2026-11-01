@@ -911,6 +911,24 @@ export async function deleteUserAccount(): Promise<{ success: boolean; message: 
   })
 }
 
+export interface AccountPreferences {
+  weekly_digest_enabled: boolean
+  weekly_performance_email: boolean
+}
+
+export async function getAccountPreferences(): Promise<AccountPreferences> {
+  return fetchApi<AccountPreferences>('/api/v1/account/preferences')
+}
+
+export async function updateAccountPreferences(
+  preferences: Partial<AccountPreferences>
+): Promise<AccountPreferences> {
+  return fetchApi<AccountPreferences>('/api/v1/account/preferences', {
+    method: 'PATCH',
+    body: JSON.stringify(preferences),
+  })
+}
+
 // Activity endpoints
 
 export async function fetchUserActivity(skip = 0, limit = 50): Promise<ActivityLog[]> {

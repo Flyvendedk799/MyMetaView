@@ -22,6 +22,15 @@ class User(Base):
     subscription_status = Column(String, default="inactive", nullable=False)
     subscription_plan = Column(String, nullable=True)
     trial_ends_at = Column(DateTime, nullable=True)
+    weekly_digest_enabled = Column(Boolean, default=True, nullable=False, server_default="1")
+
+    @property
+    def weekly_performance_email(self) -> bool:
+        return self.weekly_digest_enabled
+
+    @weekly_performance_email.setter
+    def weekly_performance_email(self, val: bool) -> None:
+        self.weekly_digest_enabled = val
 
     # Relationships
     domains = relationship("Domain", back_populates="user", cascade="all, delete-orphan")
@@ -33,4 +42,5 @@ class User(Base):
     analytics_aggregates = relationship("AnalyticsDailyAggregate", back_populates="user")
     owned_organizations = relationship("Organization", foreign_keys="Organization.owner_user_id", back_populates="owner")
     organization_memberships = relationship("OrganizationMember", back_populates="user")
+    weekly_digest_sends = relationship("WeeklyDigestSend", back_populates="user", cascade="all, delete-orphan")
 
