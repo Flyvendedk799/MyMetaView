@@ -9,11 +9,11 @@ This document explains how to trigger and schedule the digest job via external c
 
 - **Method**: `POST`
 - **Path**: `/api/v1/jobs/weekly-digest`
-- **Authentication**: Shared secret configured via environment variable `CRON_SECRET` or `WEEKLY_DIGEST_SECRET`.
+- **Authentication**: Shared secret configured via environment variable `CRON_SECRET` or `WEEKLY_DIGEST_SECRET` (returns 401 if unconfigured).
   Supplied via one of:
   - Header `X-Cron-Secret: <secret>`
+  - Header `X-Weekly-Digest-Secret: <secret>`
   - Header `Authorization: Bearer <secret>`
-  - Query parameter `?secret=<secret>` or `?cron_secret=<secret>`
 
 ### Parameters
 

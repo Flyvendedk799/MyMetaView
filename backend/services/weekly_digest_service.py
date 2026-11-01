@@ -272,12 +272,21 @@ def process_weekly_digest(
 
         # C7: Email delivery with logging and non-aborting batch loop
         try:
-            send_weekly_digest_email(
+            sent_ok = send_weekly_digest_email(
                 to_email=user.email,
                 domain_summaries=domain_summaries,
                 unsubscribe_url=unsubscribe_url,
                 analytics_url=analytics_url,
             )
+            if not sent_ok:
+                logger.error("Failed sending weekly digest to %s: send_weekly_digest_email returned falsy", user.email)
+                failed.append({
+                    "user_id": user.id,
+                    "email": user.email,
+                    "error": "send_weekly_digest_email returned falsy",
+                })
+                continue
+
             # Record send to enforce duplicate-send guard (C6)
             send_record = WeeklyDigestSend(
                 user_id=user.id,

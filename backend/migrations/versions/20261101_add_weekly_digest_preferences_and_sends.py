@@ -21,7 +21,7 @@ def upgrade() -> None:
                 "weekly_digest_enabled",
                 sa.Boolean(),
                 nullable=False,
-                server_default=sa.text("1"),
+                server_default=sa.true(),
             )
         )
 

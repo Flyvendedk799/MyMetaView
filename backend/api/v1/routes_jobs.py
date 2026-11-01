@@ -445,7 +445,6 @@ class WeeklyDigestJobRequest(BaseModel):
     """Optional payload for weekly digest trigger."""
     dry_run: Optional[bool] = None
     as_of_date: Optional[str] = None
-    secret: Optional[str] = None
 
 
 @router.post("/weekly-digest")
@@ -453,7 +452,6 @@ async def trigger_weekly_digest(
     request: Request,
     dry_run: Optional[bool] = None,
     as_of_date: Optional[str] = None,
-    secret: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """Trigger the weekly performance digest run (C5).
@@ -464,7 +462,7 @@ async def trigger_weekly_digest(
     """
     import os
     import hmac
-    from datetime import datetime as dt, date as dt_date
+    from datetime import datetime as dt
     from backend.services.weekly_digest_service import process_weekly_digest
     from backend.core.config import settings
 
@@ -480,10 +478,10 @@ async def trigger_weekly_digest(
         os.getenv("CRON_SECRET")
         or os.getenv("WEEKLY_DIGEST_SECRET")
         or getattr(settings, "CRON_SECRET", "")
-        or settings.SECRET_KEY
+        or getattr(settings, "WEEKLY_DIGEST_SECRET", "")
     )
 
-    # Determine supplied secret
+    # Determine supplied secret: header or Bearer token only
     provided_secret = None
     auth_header = request.headers.get("Authorization", "")
     if auth_header.lower().startswith("bearer "):
@@ -492,14 +490,6 @@ async def trigger_weekly_digest(
         provided_secret = request.headers.get("X-Cron-Secret")
     elif request.headers.get("X-Weekly-Digest-Secret"):
         provided_secret = request.headers.get("X-Weekly-Digest-Secret")
-    elif secret:
-        provided_secret = secret
-    elif request.query_params.get("secret"):
-        provided_secret = request.query_params.get("secret")
-    elif request.query_params.get("cron_secret"):
-        provided_secret = request.query_params.get("cron_secret")
-    elif body_data.get("secret"):
-        provided_secret = body_data.get("secret")
 
     if not expected_secret or not provided_secret or not hmac.compare_digest(provided_secret, expected_secret):
         raise HTTPException(

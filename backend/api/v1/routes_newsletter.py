@@ -266,12 +266,6 @@ def unsubscribe(token: str = Query(...), db: Session = Depends(get_db)):
         if user:
             user.weekly_digest_enabled = False
             db.commit()
-        sub = db.query(NewsletterSubscriberModel).filter(
-            func.lower(NewsletterSubscriberModel.email) == email.lower()
-        ).first()
-        if sub:
-            sub.is_active = False
-            db.commit()
         return {
             "success": True,
             "message": "You have been unsubscribed from weekly performance emails.",

@@ -5,6 +5,7 @@ effort: if email is disabled or unconfigured, or if anything goes wrong at
 send time, these functions log and return quietly. They NEVER raise to the
 caller, so request handlers can fire an email without risking their own flow.
 """
+import html
 import logging
 import re
 import smtplib
@@ -298,6 +299,7 @@ def build_weekly_digest_email(
 
     for d in domain_summaries:
         domain_name = d["domain_name"]
+        escaped_domain_name = html.escape(domain_name)
         imp = d["impressions"]
         imp_delta = d.get("impressions_delta", 0)
         imp_pct = d.get("impressions_change_pct", 0.0)
@@ -318,16 +320,26 @@ def build_weekly_digest_email(
             preview_items_html = []
             preview_items_text = []
             for i, p in enumerate(top_previews[:3], 1):
-                p_title = p.get("title") or p.get("url") or "Preview"
+                p_title_raw = p.get("title") or p.get("url") or "Preview"
+                p_url_raw = p.get("url") or ""
                 p_clicks = p.get("clicks", 0)
                 p_imp = p.get("impressions", 0)
+
+                escaped_title = html.escape(str(p_title_raw))
+                escaped_url = html.escape(str(p_url_raw))
+
+                if escaped_url:
+                    title_html = f'<a href="{escaped_url}" style="color:{_INK};text-decoration:underline;"><strong>{escaped_title}</strong></a>'
+                else:
+                    title_html = f'<strong>{escaped_title}</strong>'
+
                 preview_items_html.append(
-                    f'<li style="margin-bottom:6px;"><strong>{p_title}</strong>: '
+                    f'<li style="margin-bottom:6px;">{title_html}: '
                     f'{p_clicks:,} click{"s" if p_clicks != 1 else ""} '
                     f'({p_imp:,} impression{"s" if p_imp != 1 else ""})</li>'
                 )
                 preview_items_text.append(
-                    f"  {i}. {p_title}: {p_clicks} clicks ({p_imp} impressions)"
+                    f"  {i}. {p_title_raw}: {p_clicks} clicks ({p_imp} impressions)"
                 )
             previews_html = (
                 '<div style="margin-top:14px;">'
@@ -340,7 +352,7 @@ def build_weekly_digest_email(
 
         domain_blocks_html.append(f"""
         <div style="background:#FFFFFF;border:1px solid {_BORDER};border-radius:8px;padding:16px 20px;margin-bottom:16px;">
-            <h3 style="margin:0 0 12px 0;font-size:17px;font-weight:600;color:{_EVERGREEN};">{domain_name}</h3>
+            <h3 style="margin:0 0 12px 0;font-size:17px;font-weight:600;color:{_EVERGREEN};">{escaped_domain_name}</h3>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:22px;color:{_INK};">
                 <tr>
                     <td style="padding:4px 0;"><strong>Impressions:</strong> {imp:,}</td>

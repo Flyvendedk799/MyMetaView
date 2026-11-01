@@ -379,11 +379,45 @@ class TestWeeklyDigestProcess:
         assert any(s["email"] == "succeed2@example.com" for s in res["sent"])
         db.close()
 
+    def test_send_returns_false_is_treated_as_failure_and_does_not_record_send(self, client):
+        _signup(client, "send_fails@example.com")
+        db = _session()
+        user = db.query(User).filter(User.email == "send_fails@example.com").one()
+        dom = Domain(name="faildelivery.test", user_id=user.id, status="verified")
+        db.add(dom)
+        db.commit()
+
+        agg = AnalyticsDailyAggregate(
+            domain_id=dom.id,
+            user_id=user.id,
+            date=date(2026, 10, 30),
+            impressions=200,
+            clicks=10,
+        )
+        db.add(agg)
+        db.commit()
+
+        with patch("backend.services.weekly_digest_service.send_weekly_digest_email", return_value=False) as mock_send:
+            res = process_weekly_digest(db, as_of_date=date(2026, 11, 2), dry_run=False)
+
+        assert mock_send.call_count == 1
+        assert any(f["email"] == "send_fails@example.com" for f in res["failed"])
+        assert not any(s["email"] == "send_fails@example.com" for s in res["sent"])
+
+        iso_year, iso_week, _ = date(2026, 11, 2).isocalendar()
+        send_record = db.query(WeeklyDigestSend).filter(
+            WeeklyDigestSend.user_id == user.id,
+            WeeklyDigestSend.year == iso_year,
+            WeeklyDigestSend.iso_week == iso_week,
+        ).first()
+        assert send_record is None
+        db.close()
+
 
 class TestEmailTemplateAndContent:
     def test_email_builder_has_metaview_branding_and_links(self):
         domain_summary = [{
-            "domain_name": "example.com",
+            "domain_name": "example.com & co",
             "impressions": 1250,
             "impressions_prev": 1000,
             "impressions_delta": 250,
@@ -396,8 +430,8 @@ class TestEmailTemplateAndContent:
             "ctr_prev": 8.0,
             "ctr_delta": 0.0,
             "top_previews": [
-                {"title": "Pricing page", "clicks": 60, "impressions": 500},
-                {"title": "Blog post", "clicks": 40, "impressions": 400},
+                {"title": "Pricing <Pro> & More", "url": "https://example.com/pricing?a=1&b=2", "clicks": 60, "impressions": 500},
+                {"title": "Blog post", "url": "https://example.com/blog", "clicks": 40, "impressions": 400},
             ],
         }]
 
@@ -414,15 +448,21 @@ class TestEmailTemplateAndContent:
         assert "Weekly Performance Digest" in subject
         # Sender name and branding
         assert "MetaView" in html
-        assert "example.com" in html
         assert "1,250" in html
         assert "+250 (+25.0%) vs prev week" in html
-        assert "Pricing page" in html
         assert unsub_url in html
         assert analytics_url in html
 
-        # Plain-text checks
-        assert "example.com" in text
+        # HTML escaping assertions for domain_name, preview title, and url
+        assert "example.com &amp; co" in html
+        assert "Pricing &lt;Pro&gt; &amp; More" in html
+        assert "https://example.com/pricing?a=1&amp;b=2" in html
+
+        # Plain-text checks (verify HTML escaping is HTML-only)
+        assert "example.com & co" in text
+        assert "Pricing <Pro> & More" in text
+        assert "&amp;" not in text
+        assert "&lt;" not in text
         assert "1,250" in text
         assert unsub_url in text
         assert analytics_url in text
@@ -441,44 +481,38 @@ class TestEmailTemplateAndContent:
 
 
 class TestTriggerEndpoint:
-    def test_unauthorized_without_secret(self, client):
+    def test_unauthorized_without_secret_set_in_env(self, client, monkeypatch):
+        monkeypatch.delenv("CRON_SECRET", raising=False)
+        monkeypatch.delenv("WEEKLY_DIGEST_SECRET", raising=False)
+        r = client.post("/api/v1/jobs/weekly-digest", headers={"X-Cron-Secret": "any-secret"})
+        assert r.status_code == 401
+
+    def test_unauthorized_without_secret_header(self, client, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "test-cron-secret-123")
         r = client.post("/api/v1/jobs/weekly-digest")
         assert r.status_code == 401
 
-    def test_unauthorized_with_wrong_secret(self, client):
+    def test_unauthorized_with_wrong_secret(self, client, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "test-cron-secret-123")
         r = client.post("/api/v1/jobs/weekly-digest", headers={"X-Cron-Secret": "wrong-secret"})
         assert r.status_code == 401
 
-    def test_authorized_with_cron_secret_header(self, client):
-        from backend.core.config import settings
-        secret = settings.SECRET_KEY
+    def test_authorized_with_cron_secret_header(self, client, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "test-cron-secret-123")
         r = client.post(
             "/api/v1/jobs/weekly-digest?dry_run=true",
-            headers={"X-Cron-Secret": secret},
+            headers={"X-Cron-Secret": "test-cron-secret-123"},
         )
         assert r.status_code == 200, r.text
         data = r.json()
         assert data["dry_run"] is True
         assert "period" in data
 
-    def test_authorized_with_bearer_token(self, client):
-        from backend.core.config import settings
-        secret = settings.SECRET_KEY
+    def test_authorized_with_bearer_token(self, client, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "test-cron-secret-123")
         r = client.post(
             "/api/v1/jobs/weekly-digest?dry_run=true",
-            headers={"Authorization": f"Bearer {secret}"},
+            headers={"Authorization": "Bearer test-cron-secret-123"},
         )
         assert r.status_code == 200, r.text
         assert r.json()["dry_run"] is True
-
-    def test_authorized_with_query_param(self, client):
-        from backend.core.config import settings
-        secret = settings.SECRET_KEY
-        r = client.post(
-            f"/api/v1/jobs/weekly-digest?secret={secret}&dry_run=true&as_of_date=2026-11-02",
-        )
-        assert r.status_code == 200, r.text
-        data = r.json()
-        assert data["as_of_date"] == "2026-11-02"
-        assert data["iso_year"] == 2026
-        assert data["iso_week"] == 45
