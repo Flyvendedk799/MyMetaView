@@ -5,6 +5,7 @@ effort: if email is disabled or unconfigured, or if anything goes wrong at
 send time, these functions log and return quietly. They NEVER raise to the
 caller, so request handlers can fire an email without risking their own flow.
 """
+import html
 import logging
 import re
 import smtplib
@@ -46,7 +47,12 @@ def _html_to_text(html: str) -> str:
     return text.strip()
 
 
-def _wrap_email(heading: str, body_html: str, button: dict | None = None) -> str:
+def _wrap_email(
+    heading: str,
+    body_html: str,
+    button: dict | None = None,
+    footer_extra_html: str | None = None,
+) -> str:
     """Build the shared, mobile-friendly, inline-CSS email shell.
 
     ``button`` (optional) is a dict with ``label`` and ``url`` keys.
@@ -65,6 +71,12 @@ def _wrap_email(heading: str, body_html: str, button: dict | None = None) -> str
             f'{label}</a>'
             '</td></tr>'
         )
+
+    footer_extra = (
+        f'<br><span style="margin-top:6px;display:inline-block;">{footer_extra_html}</span>'
+        if footer_extra_html
+        else ''
+    )
 
     return (
         '<!DOCTYPE html>'
@@ -96,7 +108,8 @@ def _wrap_email(heading: str, body_html: str, button: dict | None = None) -> str
         # Footer
         '<tr><td style="padding:18px 32px 24px 32px;border-top:1px solid '
         + _BORDER + ';font-size:12px;color:' + _MUTED + ';'
-        'font-family:' + _FONT_STACK + ';">MetaView &middot; mymetaview.com</td></tr>'
+        'font-family:' + _FONT_STACK + ';">MetaView &middot; mymetaview.com'
+        + footer_extra + '</td></tr>'
         '</table></td></tr></table></body></html>'
     )
 
@@ -106,6 +119,7 @@ def send_email(
     subject: str,
     html_body: str,
     text_body: str | None = None,
+    from_name: str | None = None,
 ) -> bool:
     """Send a single transactional email. Returns True on success.
 
@@ -122,8 +136,9 @@ def send_email(
     if text_body is None:
         text_body = _html_to_text(html_body)
 
+    sender_name = from_name or settings.SMTP_FROM_NAME or "MetaView"
     msg = MIMEMultipart("alternative")
-    msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM}>"
+    msg["From"] = f"{sender_name} <{settings.SMTP_FROM}>"
     msg["To"] = to
     msg["Subject"] = subject
     msg.attach(MIMEText(text_body, "plain", "utf-8"))
@@ -264,3 +279,161 @@ def send_org_invite_email(
         f"You've been invited to {org_name} on MetaView",
         html,
     )
+
+
+def build_weekly_digest_email(
+    user_email: str,
+    domain_summaries: list[dict],
+    unsubscribe_url: str,
+    analytics_url: str,
+) -> tuple[str, str, str]:
+    """Build subject, HTML body, and plain-text body for the weekly performance digest.
+
+    Per C1 & C7: shows impressions, clicks, CTR, and week-over-week changes per domain,
+    plus top 3 previews by clicks, with a link to /app/analytics.
+    """
+    subject = "Your Weekly Performance Digest - MetaView"
+
+    domain_blocks_html = []
+    domain_blocks_text = []
+
+    for d in domain_summaries:
+        domain_name = d["domain_name"]
+        escaped_domain_name = html.escape(domain_name)
+        imp = d["impressions"]
+        imp_delta = d.get("impressions_delta", 0)
+        imp_pct = d.get("impressions_change_pct", 0.0)
+        clk = d["clicks"]
+        clk_delta = d.get("clicks_delta", 0)
+        clk_pct = d.get("clicks_change_pct", 0.0)
+        ctr = d["ctr"]
+        ctr_delta = d.get("ctr_delta", 0.0)
+
+        imp_delta_str = f"{'+' if imp_delta > 0 else ''}{imp_delta:,} ({'+' if imp_pct > 0 else ''}{imp_pct:.1f}%)"
+        clk_delta_str = f"{'+' if clk_delta > 0 else ''}{clk_delta:,} ({'+' if clk_pct > 0 else ''}{clk_pct:.1f}%)"
+        ctr_delta_str = f"{'+' if ctr_delta > 0 else ''}{ctr_delta:.2f}%"
+
+        previews_html = ""
+        previews_text = ""
+        top_previews = d.get("top_previews") or []
+        if top_previews:
+            preview_items_html = []
+            preview_items_text = []
+            for i, p in enumerate(top_previews[:3], 1):
+                p_title_raw = p.get("title") or p.get("url") or "Preview"
+                p_url_raw = p.get("url") or ""
+                p_clicks = p.get("clicks", 0)
+                p_imp = p.get("impressions", 0)
+
+                escaped_title = html.escape(str(p_title_raw))
+                escaped_url = html.escape(str(p_url_raw))
+
+                if escaped_url:
+                    title_html = f'<a href="{escaped_url}" style="color:{_INK};text-decoration:underline;"><strong>{escaped_title}</strong></a>'
+                else:
+                    title_html = f'<strong>{escaped_title}</strong>'
+
+                preview_items_html.append(
+                    f'<li style="margin-bottom:6px;">{title_html}: '
+                    f'{p_clicks:,} click{"s" if p_clicks != 1 else ""} '
+                    f'({p_imp:,} impression{"s" if p_imp != 1 else ""})</li>'
+                )
+                preview_items_text.append(
+                    f"  {i}. {p_title_raw}: {p_clicks} clicks ({p_imp} impressions)"
+                )
+            previews_html = (
+                '<div style="margin-top:14px;">'
+                f'<p style="font-weight:600;margin:0 0 6px 0;font-size:14px;color:{_INK};">Top previews by clicks:</p>'
+                f'<ol style="margin:0;padding-left:20px;font-size:13px;color:{_INK};">'
+                + "".join(preview_items_html) +
+                '</ol></div>'
+            )
+            previews_text = "\nTop previews by clicks:\n" + "\n".join(preview_items_text) + "\n"
+
+        domain_blocks_html.append(f"""
+        <div style="background:#FFFFFF;border:1px solid {_BORDER};border-radius:8px;padding:16px 20px;margin-bottom:16px;">
+            <h3 style="margin:0 0 12px 0;font-size:17px;font-weight:600;color:{_EVERGREEN};">{escaped_domain_name}</h3>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:22px;color:{_INK};">
+                <tr>
+                    <td style="padding:4px 0;"><strong>Impressions:</strong> {imp:,}</td>
+                    <td style="padding:4px 0;color:{_MUTED};text-align:right;">{imp_delta_str} vs prev week</td>
+                </tr>
+                <tr>
+                    <td style="padding:4px 0;"><strong>Clicks:</strong> {clk:,}</td>
+                    <td style="padding:4px 0;color:{_MUTED};text-align:right;">{clk_delta_str} vs prev week</td>
+                </tr>
+                <tr>
+                    <td style="padding:4px 0;"><strong>CTR:</strong> {ctr:.2f}%</td>
+                    <td style="padding:4px 0;color:{_MUTED};text-align:right;">{ctr_delta_str} vs prev week</td>
+                </tr>
+            </table>
+            {previews_html}
+        </div>
+        """)
+
+        domain_blocks_text.append(f"""Domain: {domain_name}
+- Impressions: {imp:,} ({imp_delta_str} vs prev week)
+- Clicks: {clk:,} ({clk_delta_str} vs prev week)
+- CTR: {ctr:.2f}% ({ctr_delta_str} vs prev week)
+{previews_text}""".strip())
+
+    body_html = f"""
+    <p style="margin:0 0 16px 0;">Here is how your link previews performed over the last 7 days compared to the preceding week:</p>
+    {"".join(domain_blocks_html)}
+    """
+
+    footer_extra = (
+        f'<a href="{unsubscribe_url}" style="color:{_MUTED};text-decoration:underline;">'
+        'Unsubscribe from weekly digests</a>'
+    )
+
+    html_email = _wrap_email(
+        heading="Your Weekly Performance Digest",
+        body_html=body_html,
+        button={"label": "View analytics", "url": analytics_url},
+        footer_extra_html=footer_extra,
+    )
+
+    divider = "\n" + "-" * 50 + "\n"
+    formatted_domains_text = divider.join(domain_blocks_text)
+
+    text_email = f"""MetaView - Weekly Performance Digest
+
+Here is how your link previews performed over the last 7 days compared to the preceding week:
+
+{formatted_domains_text}
+
+View your full analytics dashboard:
+{analytics_url}
+
+To unsubscribe from weekly performance emails:
+{unsubscribe_url}
+""".strip()
+
+    return subject, html_email, text_email
+
+
+def send_weekly_digest_email(
+    to_email: str,
+    domain_summaries: list[dict],
+    unsubscribe_url: str,
+    analytics_url: str,
+) -> bool:
+    """Send a weekly performance digest email to an account.
+
+    Sender name is explicitly 'MetaView' as required by C7.
+    """
+    subject, html_body, text_body = build_weekly_digest_email(
+        user_email=to_email,
+        domain_summaries=domain_summaries,
+        unsubscribe_url=unsubscribe_url,
+        analytics_url=analytics_url,
+    )
+    return send_email(
+        to=to_email,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
+        from_name="MetaView",
+    )
+

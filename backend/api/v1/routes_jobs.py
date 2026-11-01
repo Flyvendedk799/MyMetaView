@@ -2,6 +2,8 @@
 from uuid import uuid4
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from rq import Queue
 from rq.job import Job
@@ -439,4 +441,125 @@ def get_job_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job not found: {str(e)}"
         )
+
+
+class WeeklyDigestJobRequest(BaseModel):
+    """Optional payload for weekly digest trigger."""
+    dry_run: Optional[bool] = None
+    as_of_date: Optional[str] = None
+
+
+@router.post("/weekly-digest")
+async def trigger_weekly_digest(
+    request: Request,
+    dry_run: Optional[bool] = None,
+    as_of_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Trigger the weekly performance digest run (C5).
+
+    Protected by shared secret from env (CRON_SECRET or WEEKLY_DIGEST_SECRET).
+    Supports ?dry_run=true or {"dry_run": true} which calculates and returns
+    what would be sent without sending emails or recording sends.
+
+    A live run is queued on the existing RQ worker. The digest's database and
+    SMTP work is synchronous, and doing it inside this request blocks the web
+    worker until gunicorn's timeout cuts the batch short.
+    """
+    import os
+    import hmac
+    from datetime import datetime as dt
+    from backend.services.weekly_digest_service import process_weekly_digest
+    from backend.core.config import settings
+
+    # Parse optional json body if present
+    body_data = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            body_data = await request.json()
+        except Exception:
+            body_data = {}
+
+    expected_secret = (
+        os.getenv("CRON_SECRET")
+        or os.getenv("WEEKLY_DIGEST_SECRET")
+        or getattr(settings, "CRON_SECRET", "")
+        or getattr(settings, "WEEKLY_DIGEST_SECRET", "")
+    )
+
+    # Determine supplied secret: header or Bearer token only
+    provided_secret = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        provided_secret = auth_header[7:].strip()
+    elif request.headers.get("X-Cron-Secret"):
+        provided_secret = request.headers.get("X-Cron-Secret")
+    elif request.headers.get("X-Weekly-Digest-Secret"):
+        provided_secret = request.headers.get("X-Weekly-Digest-Secret")
+
+    if not expected_secret or not provided_secret or not hmac.compare_digest(provided_secret, expected_secret):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing cron secret.",
+        )
+
+    # Determine dry_run flag
+    is_dry_run = False
+    if dry_run is not None:
+        is_dry_run = dry_run
+    elif "dry_run" in request.query_params:
+        is_dry_run = request.query_params.get("dry_run", "").lower() in ("true", "1", "yes")
+    elif "dry_run" in body_data:
+        is_dry_run = bool(body_data["dry_run"])
+
+    # Determine as_of_date
+    parsed_date = None
+    raw_date = as_of_date or request.query_params.get("as_of_date") or body_data.get("as_of_date")
+    if raw_date:
+        try:
+            parsed_date = dt.strptime(str(raw_date), "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid date format for as_of_date. Use YYYY-MM-DD.",
+            )
+
+    if is_dry_run:
+        # Read-only preview. Off the event loop, but still in this request so
+        # the caller gets the payload back.
+        return await run_in_threadpool(
+            process_weekly_digest,
+            db,
+            parsed_date,
+            True,
+        )
+
+    from backend.jobs.weekly_digest_job import run_weekly_digest
+
+    try:
+        redis_conn = get_rq_redis_connection()
+        queue = Queue("bulk_generation", connection=redis_conn)
+        job = queue.enqueue(
+            run_weekly_digest,
+            parsed_date.isoformat() if parsed_date else None,
+            job_timeout="60m",
+        )
+    except Exception as exc:
+        logger.exception("Failed to enqueue weekly digest: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Weekly digest could not be queued. Try again once the job queue is available.",
+        )
+
+    logger.info("Queued weekly digest job %s", job.id)
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "queued": True,
+            "job_id": job.id,
+            "dry_run": False,
+            "as_of_date": parsed_date.isoformat() if parsed_date else None,
+        },
+    )
+
 

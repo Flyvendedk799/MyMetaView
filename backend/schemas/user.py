@@ -31,6 +31,8 @@ class User(UserBase):
     subscription_status: str = "inactive"
     subscription_plan: Optional[str] = None
     trial_ends_at: Optional[datetime] = None
+    weekly_digest_enabled: bool = True
+    weekly_performance_email: Optional[bool] = None
 
     class Config:
         from_attributes = True  # Pydantic v2 syntax (was orm_mode in v1)

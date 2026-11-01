@@ -911,6 +911,27 @@ export async function deleteUserAccount(): Promise<{ success: boolean; message: 
   })
 }
 
+export interface AccountPreferences {
+  weekly_digest_enabled: boolean
+  weekly_performance_email: boolean
+}
+
+export async function getAccountPreferences(): Promise<AccountPreferences> {
+  return fetchApi<AccountPreferences>('/api/v1/account/preferences')
+}
+
+export async function updateAccountPreferences(
+  preferences: Partial<AccountPreferences>
+): Promise<AccountPreferences> {
+  // The credentialed CORS policy allows PUT and does not allow PATCH. A
+  // separate VITE_API_BASE_URL origin would block PATCH and the toggle
+  // would revert without saving. The route accepts both methods.
+  return fetchApi<AccountPreferences>('/api/v1/account/preferences', {
+    method: 'PUT',
+    body: JSON.stringify(preferences),
+  })
+}
+
 // Activity endpoints
 
 export async function fetchUserActivity(skip = 0, limit = 50): Promise<ActivityLog[]> {
