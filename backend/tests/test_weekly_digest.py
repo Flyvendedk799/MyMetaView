@@ -11,9 +11,14 @@ Covers acceptance criteria C1-C8:
 """
 import base64
 from datetime import date, datetime, timedelta
+from threading import Thread
 from unittest.mock import patch
 
+from sqlalchemy.orm import sessionmaker
+
 from backend.models.domain import Domain
+from backend.models.organization import Organization
+from backend.models.organization_member import OrganizationMember, OrganizationRole
 from backend.models.user import User
 from backend.models.preview import Preview
 from backend.models.analytics_aggregate import AnalyticsDailyAggregate
@@ -413,6 +418,175 @@ class TestWeeklyDigestProcess:
         assert send_record is None
         db.close()
 
+    def test_failed_delivery_can_be_retried(self, client):
+        _signup(client, "retry_send@example.com")
+        db = _session()
+        user = db.query(User).filter(User.email == "retry_send@example.com").one()
+        dom = Domain(name="retry.test", user_id=user.id, status="verified")
+        db.add(dom)
+        db.commit()
+        db.add(AnalyticsDailyAggregate(
+            domain_id=dom.id,
+            user_id=user.id,
+            date=date(2026, 10, 30),
+            impressions=80,
+            clicks=4,
+        ))
+        db.commit()
+
+        with patch("backend.services.weekly_digest_service.send_weekly_digest_email", return_value=False):
+            first = process_weekly_digest(db, as_of_date=date(2026, 11, 2), dry_run=False)
+        assert any(f["email"] == "retry_send@example.com" for f in first["failed"])
+
+        with patch("backend.services.weekly_digest_service.send_weekly_digest_email", return_value=True) as mock_send:
+            second = process_weekly_digest(db, as_of_date=date(2026, 11, 2), dry_run=False)
+        assert mock_send.call_count == 1
+        assert any(s["email"] == "retry_send@example.com" for s in second["sent"])
+        db.close()
+
+    def test_claim_exists_before_delivery(self, client):
+        _signup(client, "claim_first@example.com")
+        db = _session()
+        user = db.query(User).filter(User.email == "claim_first@example.com").one()
+        dom = Domain(name="claim.test", user_id=user.id, status="verified")
+        db.add(dom)
+        db.commit()
+        db.add(AnalyticsDailyAggregate(
+            domain_id=dom.id,
+            user_id=user.id,
+            date=date(2026, 10, 30),
+            impressions=40,
+            clicks=2,
+        ))
+        db.commit()
+        seen = {}
+
+        def send(to_email, **kwargs):
+            iso_year, iso_week, _ = date(2026, 11, 2).isocalendar()
+            row = db.query(WeeklyDigestSend).filter(
+                WeeklyDigestSend.user_id == user.id,
+                WeeklyDigestSend.year == iso_year,
+                WeeklyDigestSend.iso_week == iso_week,
+            ).one()
+            seen["email"] = row.recipient_email
+            assert to_email == "claim_first@example.com"
+            return True
+
+        with patch("backend.services.weekly_digest_service.send_weekly_digest_email", side_effect=send):
+            res = process_weekly_digest(db, as_of_date=date(2026, 11, 2), dry_run=False)
+
+        assert seen["email"] == "claim_first@example.com"
+        assert any(s["email"] == "claim_first@example.com" for s in res["sent"])
+        db.close()
+
+    def test_overlapping_runs_deliver_once(self, client):
+        _signup(client, "race_user@example.com")
+        db = _session()
+        user = db.query(User).filter(User.email == "race_user@example.com").one()
+        dom = Domain(name="race.test", user_id=user.id, status="verified")
+        db.add(dom)
+        db.commit()
+        db.add(AnalyticsDailyAggregate(
+            domain_id=dom.id,
+            user_id=user.id,
+            date=date(2026, 10, 30),
+            impressions=90,
+            clicks=9,
+        ))
+        db.commit()
+        engine = db.get_bind()
+        db.close()
+
+        session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+        calls = []
+        results = []
+        errors = []
+
+        def send(to_email, **kwargs):
+            if to_email == "race_user@example.com":
+                calls.append(to_email)
+                import time
+                time.sleep(0.3)
+            return True
+
+        def run():
+            session = session_factory()
+            try:
+                results.append(process_weekly_digest(session, as_of_date=date(2026, 11, 2), dry_run=False))
+            except Exception as exc:  # noqa: BLE001 — the assertion below reports it
+                errors.append(exc)
+            finally:
+                session.close()
+
+        with patch("backend.services.weekly_digest_service.send_weekly_digest_email", side_effect=send):
+            threads = [Thread(target=run), Thread(target=run)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=15)
+
+        assert errors == []
+        assert calls.count("race_user@example.com") == 1
+        sent = [
+            item
+            for res in results
+            for item in res["sent"]
+            if item["email"] == "race_user@example.com"
+        ]
+        assert len(sent) == 1
+
+    def test_org_domain_follows_current_access_not_creator(self, client):
+        _signup(client, "editor_left@example.com")
+        _signup(client, "org_owner@example.com")
+        db = _session()
+        editor = db.query(User).filter(User.email == "editor_left@example.com").one()
+        owner = db.query(User).filter(User.email == "org_owner@example.com").one()
+        org = db.query(Organization).filter(Organization.owner_user_id == owner.id).one()
+        db.add(OrganizationMember(
+            organization_id=org.id,
+            user_id=editor.id,
+            role=OrganizationRole.EDITOR,
+        ))
+        org_domain = Domain(
+            name="shared.test",
+            user_id=editor.id,
+            organization_id=org.id,
+            status="verified",
+        )
+        personal = Domain(name="editor-personal.test", user_id=editor.id, status="verified")
+        db.add_all([org_domain, personal])
+        db.commit()
+        db.add_all([
+            AnalyticsDailyAggregate(
+                domain_id=org_domain.id, user_id=editor.id, date=date(2026, 10, 30), impressions=100, clicks=5,
+            ),
+            AnalyticsDailyAggregate(
+                domain_id=personal.id, user_id=editor.id, date=date(2026, 10, 30), impressions=50, clicks=2,
+            ),
+        ])
+        db.commit()
+
+        while_member = process_weekly_digest(db, as_of_date=date(2026, 11, 2), dry_run=True)
+        editor_mail = next(item for item in while_member["would_send"] if item["email"] == "editor_left@example.com")
+        owner_mail = next(item for item in while_member["would_send"] if item["email"] == "org_owner@example.com")
+        assert {d["domain_name"] for d in editor_mail["domains"]} == {"shared.test", "editor-personal.test"}
+        assert {d["domain_name"] for d in owner_mail["domains"]} == {"shared.test"}
+
+        membership = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == org.id,
+            OrganizationMember.user_id == editor.id,
+            OrganizationMember.role == OrganizationRole.EDITOR,
+        ).one()
+        db.delete(membership)
+        db.commit()
+
+        after_removal = process_weekly_digest(db, as_of_date=date(2026, 11, 2), dry_run=True)
+        editor_mail = next(item for item in after_removal["would_send"] if item["email"] == "editor_left@example.com")
+        owner_mail = next(item for item in after_removal["would_send"] if item["email"] == "org_owner@example.com")
+        assert {d["domain_name"] for d in editor_mail["domains"]} == {"editor-personal.test"}
+        assert {d["domain_name"] for d in owner_mail["domains"]} == {"shared.test"}
+        db.close()
+
 
 class TestEmailTemplateAndContent:
     def test_email_builder_has_metaview_branding_and_links(self):
@@ -516,3 +690,22 @@ class TestTriggerEndpoint:
         )
         assert r.status_code == 200, r.text
         assert r.json()["dry_run"] is True
+
+    def test_live_run_is_queued(self, client, monkeypatch):
+        monkeypatch.setenv("CRON_SECRET", "test-cron-secret-123")
+        with patch("backend.api.v1.routes_jobs.get_rq_redis_connection", return_value=object()), \
+             patch("backend.api.v1.routes_jobs.Queue") as mock_queue:
+            mock_queue.return_value.enqueue.return_value.id = "digest-job-1"
+            r = client.post(
+                "/api/v1/jobs/weekly-digest",
+                headers={"X-Cron-Secret": "test-cron-secret-123"},
+            )
+        assert r.status_code == 202, r.text
+        body = r.json()
+        assert body["queued"] is True
+        assert body["job_id"] == "digest-job-1"
+        assert body["dry_run"] is False
+        assert mock_queue.call_args.args[0] == "bulk_generation"
+        enqueued = mock_queue.return_value.enqueue.call_args
+        assert enqueued.args[0].__name__ == "run_weekly_digest"
+        assert enqueued.kwargs["job_timeout"] == "60m"

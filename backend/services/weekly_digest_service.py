@@ -6,12 +6,15 @@ Follows issue acceptance criteria C1-C8.
 from datetime import date, datetime, timedelta
 import logging
 from typing import Any, Dict, List, Optional
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.core.config import settings
 from backend.models.user import User
 from backend.models.domain import Domain as DomainModel
+from backend.models.organization import Organization
+from backend.models.organization_member import OrganizationMember
 from backend.models.preview import Preview as PreviewModel
 from backend.models.analytics_aggregate import AnalyticsDailyAggregate
 from backend.models.weekly_digest_send import WeeklyDigestSend
@@ -19,6 +22,109 @@ from backend.services.digest_token_service import generate_digest_unsubscribe_to
 from backend.services.email_service import send_weekly_digest_email
 
 logger = logging.getLogger(__name__)
+
+
+def _organization_ids_with_access(db: Session, user: User) -> List[int]:
+    """Organizations this user can currently access.
+
+    Ownership and membership both count. ``Domain.user_id`` is only the creator
+    and stays set after a member is removed, so it is not access.
+    """
+    owned = db.query(Organization.id).filter(
+        Organization.owner_user_id == user.id,
+        Organization.deleted_at.is_(None),
+    )
+    member = (
+        db.query(Organization.id)
+        .join(OrganizationMember, OrganizationMember.organization_id == Organization.id)
+        .filter(
+            OrganizationMember.user_id == user.id,
+            Organization.deleted_at.is_(None),
+        )
+    )
+    return [row[0] for row in owned.union(member).all()]
+
+
+def _verified_domains_for_digest(db: Session, user: User) -> List[DomainModel]:
+    """Verified domains this user may include in a digest.
+
+    Organization domains require current organization access. Only domains with
+    no organization fall back to the creating user.
+    """
+    org_ids = _organization_ids_with_access(db, user)
+    personal = and_(
+        DomainModel.organization_id.is_(None),
+        DomainModel.user_id == user.id,
+    )
+    if org_ids:
+        access = or_(personal, DomainModel.organization_id.in_(org_ids))
+    else:
+        access = personal
+    return (
+        db.query(DomainModel)
+        .filter(DomainModel.status == "verified", access)
+        .order_by(DomainModel.name.asc())
+        .all()
+    )
+
+
+def _claim_weekly_digest_send(
+    db: Session,
+    user: User,
+    iso_year: int,
+    iso_week: int,
+) -> bool:
+    """Reserve this user and ISO week before delivery.
+
+    The unique row is the lock between workers. The caller must delete it again
+    when delivery fails so a later run can retry. Returns False when another
+    worker already owns the claim.
+    """
+    record = WeeklyDigestSend(
+        user_id=user.id,
+        year=iso_year,
+        iso_week=iso_week,
+        recipient_email=user.email,
+        sent_at=datetime.utcnow(),
+    )
+    try:
+        db.add(record)
+        db.commit()
+        return True
+    except IntegrityError:
+        db.rollback()
+        return False
+
+
+def _release_weekly_digest_claim(
+    db: Session,
+    user_id: int,
+    iso_year: int,
+    iso_week: int,
+) -> None:
+    """Drop a claim so a later run can retry after delivery failed."""
+    try:
+        db.rollback()
+        row = (
+            db.query(WeeklyDigestSend)
+            .filter(
+                WeeklyDigestSend.user_id == user_id,
+                WeeklyDigestSend.year == iso_year,
+                WeeklyDigestSend.iso_week == iso_week,
+            )
+            .first()
+        )
+        if row is not None:
+            db.delete(row)
+            db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Failed to release weekly digest claim for user %s week %s-%s",
+            user_id,
+            iso_year,
+            iso_week,
+        )
 
 
 def calculate_domain_digest_metrics(
@@ -199,22 +305,8 @@ def process_weekly_digest(
             })
             continue
 
-        # Find verified domains for this user
-        owned_org_ids = [org.id for org in user.owned_organizations if org.deleted_at is None]
-        domain_query = db.query(DomainModel).filter(
-            DomainModel.status == "verified",
-        )
-        if owned_org_ids:
-            domain_query = domain_query.filter(
-                or_(
-                    DomainModel.user_id == user.id,
-                    DomainModel.organization_id.in_(owned_org_ids),
-                )
-            )
-        else:
-            domain_query = domain_query.filter(DomainModel.user_id == user.id)
-
-        verified_domains = domain_query.order_by(DomainModel.name.asc()).all()
+        # Organization domains follow current membership, not the creator id.
+        verified_domains = _verified_domains_for_digest(db, user)
 
         # C1: Account must have at least one verified domain
         if not verified_domains:
@@ -270,45 +362,60 @@ def process_weekly_digest(
             would_send.append(digest_payload)
             continue
 
-        # C7: Email delivery with logging and non-aborting batch loop
+        # Claim the user and week before delivery. Two workers can both pass
+        # the read above; only the insert that wins the unique constraint sends.
+        # A failed delivery deletes the claim so the next run can retry.
+        user_id = user.id
+        user_email = user.email
+        try:
+            claimed = _claim_weekly_digest_send(db, user, iso_year, iso_week)
+        except Exception as exc:
+            db.rollback()
+            logger.error("Failed claiming weekly digest for %s: %s", user_email, exc, exc_info=True)
+            failed.append({
+                "user_id": user_id,
+                "email": user_email,
+                "error": str(exc),
+            })
+            continue
+
+        if not claimed:
+            skipped.append({
+                "user_id": user_id,
+                "email": user_email,
+                "reason": "already_sent_this_week",
+            })
+            continue
+
         try:
             sent_ok = send_weekly_digest_email(
-                to_email=user.email,
+                to_email=user_email,
                 domain_summaries=domain_summaries,
                 unsubscribe_url=unsubscribe_url,
                 analytics_url=analytics_url,
             )
             if not sent_ok:
-                logger.error("Failed sending weekly digest to %s: send_weekly_digest_email returned falsy", user.email)
+                logger.error("Failed sending weekly digest to %s: send_weekly_digest_email returned falsy", user_email)
+                _release_weekly_digest_claim(db, user_id, iso_year, iso_week)
                 failed.append({
-                    "user_id": user.id,
-                    "email": user.email,
+                    "user_id": user_id,
+                    "email": user_email,
                     "error": "send_weekly_digest_email returned falsy",
                 })
                 continue
 
-            # Record send to enforce duplicate-send guard (C6)
-            send_record = WeeklyDigestSend(
-                user_id=user.id,
-                year=iso_year,
-                iso_week=iso_week,
-                recipient_email=user.email,
-                sent_at=datetime.utcnow(),
-            )
-            db.add(send_record)
-            db.commit()
             sent.append({
-                "user_id": user.id,
-                "email": user.email,
+                "user_id": user_id,
+                "email": user_email,
                 "domains_count": len(domain_summaries),
             })
-            logger.info("Sent weekly digest to %s (ISO week %s-%s)", user.email, iso_year, iso_week)
+            logger.info("Sent weekly digest to %s (ISO week %s-%s)", user_email, iso_year, iso_week)
         except Exception as exc:
-            db.rollback()
-            logger.error("Failed sending weekly digest to %s: %s", user.email, exc, exc_info=True)
+            logger.error("Failed sending weekly digest to %s: %s", user_email, exc, exc_info=True)
+            _release_weekly_digest_claim(db, user_id, iso_year, iso_week)
             failed.append({
-                "user_id": user.id,
-                "email": user.email,
+                "user_id": user_id,
+                "email": user_email,
                 "error": str(exc),
             })
 

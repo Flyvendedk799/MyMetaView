@@ -923,8 +923,11 @@ export async function getAccountPreferences(): Promise<AccountPreferences> {
 export async function updateAccountPreferences(
   preferences: Partial<AccountPreferences>
 ): Promise<AccountPreferences> {
+  // The credentialed CORS policy allows PUT and does not allow PATCH. A
+  // separate VITE_API_BASE_URL origin would block PATCH and the toggle
+  // would revert without saving. The route accepts both methods.
   return fetchApi<AccountPreferences>('/api/v1/account/preferences', {
-    method: 'PATCH',
+    method: 'PUT',
     body: JSON.stringify(preferences),
   })
 }

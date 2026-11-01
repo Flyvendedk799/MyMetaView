@@ -47,7 +47,7 @@ Configure a recurring HTTP monitor/webhook:
   X-Cron-Secret: <YOUR_CRON_SECRET>
   Content-Type: application/json
   ```
-- **Expected Status**: `200 OK`
+- **Expected Status**: `202 Accepted` for a live run (the digest is queued on the `bulk_generation` worker). `200 OK` for `dry_run=true`, which returns the payload in the response.
 
 ### 3. Railway Cron Service / Worker
 
@@ -95,9 +95,28 @@ Response JSON:
 
 ---
 
+## Live runs
+
+A live trigger returns immediately:
+
+```json
+{
+  "queued": true,
+  "job_id": "rq-job-id",
+  "dry_run": false,
+  "as_of_date": null
+}
+```
+
+The web worker does not send mail itself. `python -m backend.queue.worker` must be running (it already is on the deployed start command) so the `bulk_generation` queue can deliver the batch. The job timeout is 60 minutes, independent of the web worker timeout. If the queue is unavailable the trigger returns `503` and nothing is sent.
+
+---
+
 ## Safety & Deduplication
 
-- **Duplicate-send guard**: Running the trigger multiple times during the same ISO week sends nothing on subsequent runs.
+- **Duplicate-send guard**: The send row is inserted before delivery, and the unique `(user, ISO week)` constraint is what stops a second worker. Running the trigger again in the same ISO week sends nothing more.
+- **Failed delivery**: If sending fails, that claim is removed so a later run can retry. A delivery that succeeded is not sent again.
 - **Opt-out**: Accounts with the "Weekly performance email" toggle disabled or unsubscribed via the email link are automatically skipped.
 - **Zero-activity filter**: Accounts with zero impressions across both 7-day windows receive no email.
 - **Error isolation**: A failed delivery for one account is logged and does not abort processing for other accounts.
+- **Organization access**: An organization domain is included only for users who currently own or belong to that organization. The user who created the domain stops receiving it after they leave. Domains with no organization still go to the user who created them.

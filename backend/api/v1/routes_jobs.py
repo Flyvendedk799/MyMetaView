@@ -2,6 +2,8 @@
 from uuid import uuid4
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from rq import Queue
 from rq.job import Job
@@ -459,6 +461,10 @@ async def trigger_weekly_digest(
     Protected by shared secret from env (CRON_SECRET or WEEKLY_DIGEST_SECRET).
     Supports ?dry_run=true or {"dry_run": true} which calculates and returns
     what would be sent without sending emails or recording sends.
+
+    A live run is queued on the existing RQ worker. The digest's database and
+    SMTP work is synchronous, and doing it inside this request blocks the web
+    worker until gunicorn's timeout cuts the batch short.
     """
     import os
     import hmac
@@ -518,11 +524,42 @@ async def trigger_weekly_digest(
                 detail="Invalid date format for as_of_date. Use YYYY-MM-DD.",
             )
 
-    result = process_weekly_digest(
-        db=db,
-        as_of_date=parsed_date,
-        dry_run=is_dry_run,
+    if is_dry_run:
+        # Read-only preview. Off the event loop, but still in this request so
+        # the caller gets the payload back.
+        return await run_in_threadpool(
+            process_weekly_digest,
+            db,
+            parsed_date,
+            True,
+        )
+
+    from backend.jobs.weekly_digest_job import run_weekly_digest
+
+    try:
+        redis_conn = get_rq_redis_connection()
+        queue = Queue("bulk_generation", connection=redis_conn)
+        job = queue.enqueue(
+            run_weekly_digest,
+            parsed_date.isoformat() if parsed_date else None,
+            job_timeout="60m",
+        )
+    except Exception as exc:
+        logger.exception("Failed to enqueue weekly digest: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Weekly digest could not be queued. Try again once the job queue is available.",
+        )
+
+    logger.info("Queued weekly digest job %s", job.id)
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "queued": True,
+            "job_id": job.id,
+            "dry_run": False,
+            "as_of_date": parsed_date.isoformat() if parsed_date else None,
+        },
     )
-    return result
 
 
