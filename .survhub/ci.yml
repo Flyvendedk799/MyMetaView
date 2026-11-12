@@ -1,0 +1,30 @@
+# Runs on ServerHoster (in Docker on the VPS), not GitHub Actions.
+# Replaces .github/workflows/npm-package.yml. Triggers: pushes to main and
+# pull requests into main.
+#
+# The npm package's tests are hermetic (a stub API on localhost, no network,
+# no key) and take seconds, so they run on every change instead of only when
+# packages/mymetaview changed.
+image: node:22-bookworm
+timeoutMinutes: 10
+memoryMb: 1024
+cpus: 1
+steps:
+  # 22 is what most people run.
+  - name: npm package tests (Node 22)
+    run: cd packages/mymetaview && npm test
+  # 18 is the floor the package claims (engines >=18).
+  - name: npm package tests (Node 18)
+    run: |
+      NODE18=/cache/node-v18.20.8-linux-x64
+      if [ ! -x "$NODE18/bin/node" ]; then
+        curl -fsSL https://nodejs.org/dist/v18.20.8/node-v18.20.8-linux-x64.tar.xz | tar -xJ -C /cache
+      fi
+      cd packages/mymetaview && PATH="$NODE18/bin:$PATH" node --version && PATH="$NODE18/bin:$PATH" npm test
+  # Catches a file missing from `files`, which only shows up once someone has
+  # already installed the broken version.
+  - name: Pack
+    run: |
+      cd packages/mymetaview
+      npm pack --pack-destination /tmp
+      tar -tzf /tmp/mymetaview-*.tgz | sort
