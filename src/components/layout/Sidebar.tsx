@@ -42,6 +42,7 @@ const mainNavigation: NavItem[] = [
   // "My Site" = the brand identity previews are generated from (not a site builder).
   { name: 'My Site', href: '/app/brand', icon: PaintBrushIcon },
   { name: 'Domains', href: '/app/domains', icon: GlobeAltIcon },
+  { name: 'Site coverage', href: '/app/coverage', icon: ClockIcon },
   { name: 'Install', href: '/app/install', icon: CodeBracketIcon },
   { name: 'Preview Gallery', href: '/app/previews', icon: PhotoIcon },
 ]

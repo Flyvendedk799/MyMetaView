@@ -237,6 +237,12 @@ def _get_preview_logic(
                 PreviewModel.url == path_only
             ).first()
 
+        if not preview:
+            from backend.models.site_coverage import SitePageCoverage
+            from backend.services.site_coverage import page_identity
+            alias = db.query(SitePageCoverage).filter_by(domain_id=domain.id, url=page_identity(full_url)).first()
+            if alias and alias.canonical_url:
+                preview = db.query(PreviewModel).filter_by(organization_id=organization_id, url=alias.canonical_url).first()
         # A crawler fetching this URL means a share is being rendered.
         if crawler_name:
             _record_impression(db, domain, preview, crawler_name, platform, user_agent)

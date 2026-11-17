@@ -1700,3 +1700,11 @@ export const publishCard = (id: number, revision: number, auto_publish: boolean)
   fetchApi(`/api/v1/previews/${id}/publish`, { method: 'POST', body: JSON.stringify({ revision, auto_publish }) })
 export const restoreCard = (id: number, oldRevision: number, revision: number): Promise<CardStudioState> =>
   fetchApi(`/api/v1/previews/${id}/restore/${oldRevision}`, { method: 'POST', body: JSON.stringify({ revision }) })
+
+export interface CoverageState {
+  enabled: boolean; interval_hours: number; last_scan_at: string | null; error: string | null
+  pages: { id: number; url: string; canonical_url: string | null; state: string; error: string | null; checked_at: string | null; generated_at: string | null }[]
+}
+export const getCoverage = (id: number): Promise<CoverageState> => fetchApi(`/api/v1/coverage/${id}`)
+export const saveCoverage = (id: number, enabled: boolean, interval_hours: number) => fetchApi(`/api/v1/coverage/${id}`, { method: 'PUT', body: JSON.stringify({ enabled, interval_hours }) })
+export const scanCoverage = (id: number) => fetchApi(`/api/v1/coverage/${id}/scan`, { method: 'POST' })

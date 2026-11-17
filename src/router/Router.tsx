@@ -4,6 +4,7 @@ import Login from '../pages/Login'
 import Signup from '../pages/Signup'
 import Dashboard from '../pages/Dashboard'
 import Domains from '../pages/Domains'
+import Coverage from '../pages/Coverage'
 import Install from '../pages/Install'
 import Brand from '../pages/Brand'
 import Previews from '../pages/Previews'
@@ -63,6 +64,7 @@ export default function Router() {
       <Route path="/blog/:slug" element={<BlogPost />} />
 
       {/* Protected routes */}
+      <Route path="/app/coverage" element={<ProtectedRoute><Coverage /></ProtectedRoute>} />
       <Route
         path="/app"
         element={

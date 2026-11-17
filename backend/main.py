@@ -365,3 +365,6 @@ def root(request: Request):
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Site not found")
 
+
+from backend.api.v1 import routes_coverage
+app.include_router(routes_coverage.router, prefix=settings.API_V1_PREFIX)
