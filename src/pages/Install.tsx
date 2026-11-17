@@ -23,6 +23,8 @@ import {
   downloadInstallArtifact,
   fetchInstallConfig,
   verifyInstall,
+  verifyShareDelivery,
+  type ShareDelivery,
   type InstallArtifact,
   type InstallConfig,
   type InstallDomainStatus,
@@ -318,6 +320,8 @@ export default function Install() {
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<VerifyInstallResponse | null>(null)
   const [verifyError, setVerifyError] = useState('')
+  const [shareDelivery, setShareDelivery] = useState<ShareDelivery | null>(null)
+  const [checkUrl, setCheckUrl] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -379,8 +383,10 @@ export default function Install() {
     setVerifyError('')
     setVerifyResult(null)
     try {
-      const result = await verifyInstall({ domain_id: selectedDomainId })
+      const result = await verifyInstall({ domain_id: selectedDomainId, url: checkUrl || undefined })
       setVerifyResult(result)
+      setShareDelivery(null)
+      if (selectedDomainId) setShareDelivery(await verifyShareDelivery(selectedDomainId, checkUrl || undefined))
       // A successful check may have been driven by a heartbeat that landed
       // after the page loaded, so refresh the badges too.
       load()
@@ -512,6 +518,19 @@ export default function Install() {
               </div>
             )}
 
+            <label className="block text-sm my-3">Page URL to check
+              <input aria-label="Page URL to check" className="block w-full border rounded p-2 mt-1" value={checkUrl}
+                onChange={e => setCheckUrl(e.target.value)} placeholder="Leave empty to check your homepage" />
+            </label>
+            {shareDelivery && <Alert variant={shareDelivery.ready ? 'success' : 'warning'}>
+              <p className="font-medium">{shareDelivery.ready ? 'Share preview ready' : 'Share preview needs attention'}</p>
+              <p>{shareDelivery.message}</p>
+              {shareDelivery.checks.map(check => <div key={check.platform} className="mt-2">
+                <strong>{check.platform}: {check.ready ? 'Ready' : 'Needs attention'}</strong>
+                {check.issues.map(issue => <p key={issue}>{issue}</p>)}
+              </div>)}
+              {!shareDelivery.ready && <p className="mt-2">Use the npm integration, WordPress plugin, or Cloudflare Worker to serve tags before JavaScript runs.</p>}
+            </Alert>}
             {verifyError && (
               <div className="mt-4">
                 <Alert variant="error">{verifyError}</Alert>
@@ -520,7 +539,7 @@ export default function Install() {
 
             {verifyResult && (
               <div className="mt-4">
-                <Alert variant={verifyResult.ok ? 'success' : 'warning'}>
+                <Alert variant="info">
                   <div>
                     <p className="font-medium">{verifyResult.message}</p>
                     {verifyResult.hint && (

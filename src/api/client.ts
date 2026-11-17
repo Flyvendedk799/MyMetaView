@@ -1674,3 +1674,12 @@ export async function deleteAiKey(provider: string, scope: 'org' | 'user', orgId
   if (orgId) params.set('org_id', String(orgId))
   return fetchApi(`/api/v1/ai-auth/keys/${provider}?${params}`, { method: 'DELETE' })
 }
+
+export interface ShareDelivery {
+  ready: boolean
+  message: string
+  checks: { platform: string; ready: boolean; issues: string[] }[]
+}
+export async function verifyShareDelivery(domain_id: number, url?: string): Promise<ShareDelivery> {
+  return fetchApi('/api/v1/install/share-check', { method: 'POST', body: JSON.stringify({ domain_id, url }) })
+}
