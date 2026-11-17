@@ -6,6 +6,8 @@ import Alert from '../components/ui/Alert'
 import EmptyState from '../components/ui/EmptyState'
 import {
   fetchAnalyticsOverview,
+  getTrafficAttribution,
+  type TrafficAttribution,
   fetchDomainAnalytics,
   fetchPreviewAnalytics,
   getMyPlan,
@@ -109,7 +111,7 @@ function EngagementChart({
         viewBox={`0 0 ${W} ${H}`}
         className="w-full h-auto select-none"
         role="img"
-        aria-label="Daily impressions and clicks"
+        aria-label="Daily preview requests and recorded visits"
         onMouseMove={handleMove}
         onMouseLeave={() => setHoverIndex(null)}
       >
@@ -158,6 +160,7 @@ function EngagementChart({
 
 export default function Analytics() {
   const navigate = useNavigate()
+  const [attribution,setAttribution] = useState<TrafficAttribution | null>(null)
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
   const [domains, setDomains] = useState<DomainAnalyticsItem[]>([])
   const [previews, setPreviews] = useState<PreviewAnalyticsItem[]>([])
@@ -173,12 +176,14 @@ export default function Analytics() {
       const plan = await getMyPlan().catch(() => null)
       const canAdvanced = !!plan?.features?.includes(FEATURES.ADV_ANALYTICS)
       setAdvanced(canAdvanced)
-      const [overviewData, domainsData, previewsData] = await Promise.all([
+      const [overviewData, domainsData, previewsData, attributed] = await Promise.all([
         fetchAnalyticsOverview(window),
         canAdvanced ? fetchDomainAnalytics() : Promise.resolve([]),
         canAdvanced ? fetchPreviewAnalytics(10) : Promise.resolve([]),
+        getTrafficAttribution(window),
       ])
       setOverview(overviewData)
+      setAttribution(attributed)
       setDomains(domainsData)
       setPreviews(previewsData)
     } catch (err) {
@@ -205,7 +210,7 @@ export default function Analytics() {
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-display text-secondary-900 mb-1.5">Analytics</h1>
           <p className="text-[15px] text-secondary-600">
-            Impressions are crawler fetches of your previews; clicks are visitors arriving from social links.
+            Crawler requests and referred visits are measured separately. Audience reach and click-through rate are not available.
           </p>
         </div>
         {/* Period switcher */}
@@ -244,7 +249,7 @@ export default function Analytics() {
           <EmptyState
             icon={<ChartBarIcon className="w-8 h-8" />}
             title="No engagement recorded yet"
-            description="Data appears here once your previews are being served: an impression is counted when a social platform fetches a preview, and a click when a visitor arrives at your site from a social link. Both require a verified domain with the install completed."
+            description="Data appears here once your previews are being served: a request is counted when a social platform fetches a preview, and a click when a visitor arrives at your site from a social link. Both require a verified domain with the install completed."
             action={{
               label: 'Open the install guide',
               onClick: () => navigate('/app/install'),
@@ -254,34 +259,37 @@ export default function Analytics() {
             <InformationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <p>
               Quick test: share a preview-covered page in a private Slack channel or run it
-              through a platform's link debugger — the crawler fetch shows up here as an impression.
+              through a platform's link debugger — the crawler fetch shows up here as a crawler fetch.
             </p>
           </div>
         </Card>
       ) : overview ? (
         <>
+          {attribution && <Card className="mb-6"><p>{attribution.note}</p><p className="mt-2 text-sm">{attribution.unclassified_events} older events have no source classification. The historical chart and page breakdowns below include these records.</p>
+            {attribution.campaigns.length > 0 && <table className="w-full mt-3 text-left text-sm"><thead><tr><th>Campaign</th><th>Variant label</th><th>Recorded visits</th></tr></thead><tbody>{attribution.campaigns.map((row,i)=><tr key={i}><td>{row.campaign || 'Unspecified'}</td><td>{row.variant || 'Unspecified'}</td><td>{row.visits}</td></tr>)}</tbody></table>}
+          </Card>}
           {/* Summary cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <Card padding="sm" className="!p-5">
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Impressions</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Crawler fetches</span>
               <p className="font-display text-[32px] leading-tight font-semibold tracking-display text-secondary-900 tabular-nums mt-1">
-                {overview.total_impressions.toLocaleString()}
+                {(attribution?.crawler_fetches ?? 0).toLocaleString()}
               </p>
               <p className="text-[13px] text-secondary-600 mt-1">Preview fetches by platforms · last {days} days</p>
             </Card>
             <Card padding="sm" className="!p-5">
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Clicks</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Referred visits</span>
               <p className="font-display text-[32px] leading-tight font-semibold tracking-display text-secondary-900 tabular-nums mt-1">
-                {overview.total_clicks.toLocaleString()}
+                {(attribution?.referred_visits ?? 0).toLocaleString()}
               </p>
               <p className="text-[13px] text-secondary-600 mt-1">Visitors from social links · last {days} days</p>
             </Card>
             <Card padding="sm" className="!p-5">
-              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Click-through rate</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-secondary-500">Audience reach</span>
               <p className="font-display text-[32px] leading-tight font-semibold tracking-display text-secondary-900 tabular-nums mt-1">
-                {overview.ctr.toFixed(1)}%
+                Not measured
               </p>
-              <p className="text-[13px] text-secondary-600 mt-1">Clicks ÷ impressions</p>
+              <p className="text-[13px] text-secondary-600 mt-1">Platforms do not report card views to us.</p>
             </Card>
           </div>
 
@@ -310,12 +318,12 @@ export default function Analytics() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-secondary-900 truncate">{item.domain_name}</p>
                         <p className="text-xs text-secondary-500">
-                          {item.impressions_30d.toLocaleString()} impression{item.impressions_30d === 1 ? '' : 's'} · {item.clicks_30d.toLocaleString()} click{item.clicks_30d === 1 ? '' : 's'}
+                          {item.impressions_30d.toLocaleString()} preview request{item.impressions_30d === 1 ? '' : 's'} · {item.clicks_30d.toLocaleString()} click{item.clicks_30d === 1 ? '' : 's'}
                         </p>
                       </div>
                       <div className="text-right ml-3">
-                        <p className="text-sm font-semibold text-secondary-900 tabular-nums">{item.ctr_30d.toFixed(1)}%</p>
-                        <p className="text-xs text-secondary-500">CTR</p>
+                        <p className="text-sm font-semibold text-secondary-900 tabular-nums">—</p>
+                        <p className="text-xs text-secondary-500">Audience CTR unavailable</p>
                       </div>
                     </div>
                   ))
@@ -337,9 +345,9 @@ export default function Analytics() {
                   <tr className="border-b border-secondary-200">
                     <th className="text-left py-3 px-4 text-[13px] font-semibold text-secondary-700">Preview</th>
                     <th className="text-left py-3 px-4 text-[13px] font-semibold text-secondary-700">Domain</th>
-                    <th className="text-right py-3 px-4 text-[13px] font-semibold text-secondary-700">Impressions</th>
-                    <th className="text-right py-3 px-4 text-[13px] font-semibold text-secondary-700">Clicks</th>
-                    <th className="text-right py-3 px-4 text-[13px] font-semibold text-secondary-700">CTR</th>
+                    <th className="text-right py-3 px-4 text-[13px] font-semibold text-secondary-700">Preview requests</th>
+                    <th className="text-right py-3 px-4 text-[13px] font-semibold text-secondary-700">Recorded visits</th>
+                    <th className="text-right py-3 px-4 text-[13px] font-semibold text-secondary-700">Audience CTR unavailable</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -364,7 +372,7 @@ export default function Analytics() {
                           {item.clicks_30d.toLocaleString()}
                         </td>
                         <td className="py-3 px-4 text-right text-sm font-semibold text-secondary-900 tabular-nums">
-                          {item.ctr_30d.toFixed(1)}%
+                          —
                         </td>
                       </tr>
                     ))

@@ -94,18 +94,15 @@ export default function Dashboard() {
 
   const statsConfig = [
     {
-      name: 'Impressions',
+      name: 'Preview requests',
       value: (summary?.total_impressions ?? 0).toLocaleString(),
-      description: 'Crawler fetches of your previews · 30 days',
+      description: 'Recorded preview requests · 30 days',
       icon: EyeIcon,
     },
     {
-      name: 'Clicks',
+      name: 'Recorded visits',
       value: (summary?.total_clicks ?? 0).toLocaleString(),
-      description:
-        summary && summary.total_impressions > 0
-          ? `${summary.ctr}% click-through rate`
-          : 'Visitors arriving from social links',
+      description: 'Recorded arrivals · audience CTR is not measured',
       icon: ArrowTrendingUpIcon,
     },
     {
@@ -252,8 +249,8 @@ export default function Dashboard() {
 
       {!isLoading && !analyticsLoading && !analyticsError && summary && summary.total_impressions === 0 && previews.length > 0 && (
         <div className="mb-6">
-          <Alert variant="info" title="No impressions recorded yet">
-            Impressions are counted when a social platform fetches one of your previews.
+          <Alert variant="info" title="No preview requests recorded yet">
+            Requests are counted when a platform fetches a preview; they do not measure how many people saw it.
             {hasSnippetInstalled
               ? ' Share a link from a connected domain to see your first data.'
               : ' Finish the install step so shared links start serving your cards.'}

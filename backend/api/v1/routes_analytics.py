@@ -111,7 +111,7 @@ def get_analytics_summary(
         for domain_id, clicks, imps in rows:
             c, im = int(clicks or 0), int(imps or 0)
             domain_ctr = round((c / im) * 100, 1) if im > 0 else 0.0
-            top_domains.append(TopDomain(domain=name_by_id.get(domain_id, "—"), clicks=c, ctr=domain_ctr))
+            top_domains.append(TopDomain(domain=name_by_id.get(domain_id, "—"), clicks=c, ctr=None))
         top_domains.sort(key=lambda t: t.clicks, reverse=True)
         top_domains = top_domains[:4]
     else:
@@ -121,13 +121,13 @@ def get_analytics_summary(
         ).filter(PreviewModel.organization_id == current_org.id).group_by(
             PreviewModel.domain
         ).order_by(func.sum(PreviewModel.monthly_clicks).desc()).limit(4).all():
-            top_domains.append(TopDomain(domain=domain_name, clicks=int(clicks or 0), ctr=0.0))
+            top_domains.append(TopDomain(domain=domain_name, clicks=int(clicks or 0), ctr=None))
 
     return AnalyticsSummary(
         period=period,
         total_clicks=total_clicks,
         total_impressions=total_impressions,
-        ctr=ctr,
+        ctr=None,
         total_previews=total_previews,
         total_domains=total_domains,
         verified_domains=verified_domains,

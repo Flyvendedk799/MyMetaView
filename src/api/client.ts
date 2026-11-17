@@ -1711,3 +1711,9 @@ export const scanCoverage = (id: number) => fetchApi(`/api/v1/coverage/${id}/sca
 
 export const controlBulkRun = (id: string, action: 'pause' | 'resume' | 'cancel' | 'retry_failed'): Promise<BulkJobStatus> =>
   fetchApi(`/api/v1/jobs/bulk/${id}/control`, { method: 'POST', body: JSON.stringify({ action }) })
+
+export interface TrafficAttribution {
+  crawler_fetches: number; referred_visits: number; unclassified_events: number; note: string
+  campaigns: { campaign: string | null; variant: string | null; visits: number }[]
+}
+export const getTrafficAttribution = (days: number): Promise<TrafficAttribution> => fetchApi(`/api/v1/analytics/attribution?days=${days}`)

@@ -8,8 +8,8 @@ content and brand, and composes a real Open Graph card for it (headline,
 description, colors, logo, layout). Install once — a snippet, a Cloudflare
 Worker, or the WordPress plugin — and shared links on Facebook, X, LinkedIn,
 Slack, Discord, and WhatsApp render your cards. Crawler fetches and social
-visits are tracked, so the dashboard shows impressions, clicks, and CTR per
-domain and per page.
+visits are tracked separately. Crawler requests do not measure audience views,
+so the dashboard does not claim audience impressions or click-through rate.
 
 ## How it works
 
@@ -22,8 +22,9 @@ domain and per page.
    install verification + click analytics; the npm package, the Cloudflare
    Worker and the WordPress plugin inject tags **server-side**, which is what
    non-JS crawlers (most of them) actually see.
-4. **Measure** — every crawler fetch of a preview is an impression; every
-   visitor arriving from a social referrer is a click.
+4. **Measure** — crawler fetches and recorded social referrals are separate event
+   counts. Explicit campaign and variant labels can attribute visits; missing
+   referrers remain unattributed. These counts are not unique people or A/B lift.
 
 Every URL also gets up to three copy angles (benefit / proof / curiosity) you
 can serve per link, and cards can be restyled (layout, panel, accent) or

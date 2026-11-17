@@ -146,6 +146,7 @@ def _record_impression(
             domain_id=domain.id,
             preview_id=preview.id if preview else None,
             event_type="impression",
+            event_source="crawler_fetch",
             referrer=platform or crawler_name,
             user_agent=(user_agent or "")[:500],
         )

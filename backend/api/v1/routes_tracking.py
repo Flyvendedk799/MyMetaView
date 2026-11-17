@@ -121,10 +121,10 @@ def track_social_visit(
     """
     Record that a visitor reached a customer page from a social platform.
 
-    Fired by the embed snippet (sendBeacon) when document.referrer is a known
-    social network. This is the "click" side of preview CTR: the crawler fetch
-    of /public/preview is the impression, a human arriving from the platform
-    is the click. Resolves the preview by URL, so the snippet needs no IDs.
+    Fired by the embed snippet when document.referrer is a known social network.
+    Records a referred visit, not a unique person or a social-card impression.
+    Missing referrers cannot be attributed. Explicit campaign/variant parameters
+    are recorded as supplied attribution, not evidence of a randomized experiment.
     """
     client_ip = get_client_ip(request)
     rate_limit_key = get_rate_limit_key_for_ip(client_ip, "track_social_visit")
@@ -147,18 +147,24 @@ def track_social_visit(
         if not domain_obj:
             return JSONResponse({"status": "ignored"})
 
-        normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
+        from backend.services.site_coverage import page_identity
+        normalized = page_identity(url)
         preview = db.query(PreviewModel).filter(
             PreviewModel.organization_id == domain_obj.organization_id,
             PreviewModel.url.in_([normalized, url]),
         ).first()
 
+        from backend.services.traffic_attribution import social_visit_attribution
+        attribution = social_visit_attribution(url, ref or (request.headers.get('Referer') if request else None), get_user_agent(request))
+        if attribution is None:
+            return JSONResponse({'status': 'ignored'})
         event = AnalyticsEvent(
             user_id=domain_obj.user_id,
             domain_id=domain_obj.id,
             preview_id=preview.id if preview else None,
             organization_id=domain_obj.organization_id,
             event_type="click",
+            **attribution,
             referrer=(ref or (request.headers.get("Referer") if request else None) or "")[:500] or None,
             user_agent=get_user_agent(request),
             ip_address=client_ip,

@@ -15,6 +15,9 @@ class AnalyticsEvent(Base):
     preview_id = Column(Integer, ForeignKey("previews.id"), nullable=True, index=True)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)
     event_type = Column(String, nullable=False, index=True)  # "impression" or "click"
+    event_source = Column(String, nullable=True)
+    campaign = Column(String, nullable=True)
+    variant = Column(String, nullable=True)
     referrer = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     ip_address = Column(String, nullable=True)
