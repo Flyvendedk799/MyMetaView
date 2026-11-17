@@ -98,6 +98,7 @@ def generate_preview_job(
     force_regenerate: bool = False,
     ignore_site_branding: bool = False,
     quality_mode: str | None = None,
+    allow_automatic_retry: bool = True,
 ) -> Dict:
     """
     Main background job to generate preview for a URL.
@@ -407,7 +408,7 @@ def generate_preview_job(
             e, url=url, domain=domain, user_id=user_id,
             organization_id=organization_id,
             ignore_site_branding=ignore_site_branding,
-        )
+        ) if allow_automatic_retry else None
 
         # Save to Dead Letter Queue (DLQ)
         try:
@@ -434,7 +435,7 @@ def generate_preview_job(
                     "url": url,
                     "domain": domain,
                     "error": str(e),
-                    "retry": decision.to_dict(),
+                    "retry": decision.to_dict() if decision else {"reason": "managed by durable run"},
                 },
                 request=None
             )

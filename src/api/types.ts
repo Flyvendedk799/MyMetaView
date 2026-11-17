@@ -172,7 +172,7 @@ export interface BulkJobCreateResponse {
 
 export interface BulkResultItem {
   url: string
-  status: 'finished' | 'failed'
+  status: 'finished' | 'failed' | 'pending' | 'queued' | 'running' | 'cancelled'
   preview_id: number | null
   title: string | null
   image_url: string | null
@@ -181,7 +181,7 @@ export interface BulkResultItem {
 
 export interface BulkJobStatus {
   batch_id: string
-  status: 'queued' | 'running' | 'completed' | 'failed'
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'partial' | 'paused' | 'cancelled'
   total: number
   completed: number
   failed: number
@@ -189,8 +189,9 @@ export interface BulkJobStatus {
 }
 
 export interface BulkJobSummary {
+  durable?: boolean
   batch_id: string
-  status: 'queued' | 'running' | 'completed' | 'failed'
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'partial' | 'paused' | 'cancelled'
   domain: string | null
   total: number
   completed: number

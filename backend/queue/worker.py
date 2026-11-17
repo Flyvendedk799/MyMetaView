@@ -138,6 +138,8 @@ def main():
         try:
             from backend.jobs.site_refresh import enqueue_due_scans
             enqueue_due_scans()
+            from backend.services.bulk_runs import recover_runs
+            recover_runs()
         except Exception as exc:
             logger.warning("site refresh scheduling failed: %s", exc)
 

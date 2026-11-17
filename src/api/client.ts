@@ -1708,3 +1708,6 @@ export interface CoverageState {
 export const getCoverage = (id: number): Promise<CoverageState> => fetchApi(`/api/v1/coverage/${id}`)
 export const saveCoverage = (id: number, enabled: boolean, interval_hours: number) => fetchApi(`/api/v1/coverage/${id}`, { method: 'PUT', body: JSON.stringify({ enabled, interval_hours }) })
 export const scanCoverage = (id: number) => fetchApi(`/api/v1/coverage/${id}/scan`, { method: 'POST' })
+
+export const controlBulkRun = (id: string, action: 'pause' | 'resume' | 'cancel' | 'retry_failed'): Promise<BulkJobStatus> =>
+  fetchApi(`/api/v1/jobs/bulk/${id}/control`, { method: 'POST', body: JSON.stringify({ action }) })
