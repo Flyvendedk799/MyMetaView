@@ -62,7 +62,7 @@ def render_platform_images_job(
         if preview.composited_image_url:
             images.setdefault("wide", preview.composited_image_url)
 
-        preview.platform_images = images
+        preview.platform_images = {**(preview.platform_images or {}), **images}
         db.commit()
 
         logger.info("Rendered %d platform sizes for preview %s: %s",

@@ -72,6 +72,7 @@ def upsert_preview(
     ).first()
     
     if existing_preview:
+        existing_preview.platform_images = {}
         # Update existing preview
         existing_preview.title = title
         existing_preview.description = description

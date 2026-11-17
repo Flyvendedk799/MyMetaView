@@ -46,6 +46,9 @@ class Preview(Base):
     # Produced by a pure render off `render_spec`, so filling this in costs no
     # AI allowance and no page capture; absent until the fan-out has run.
     platform_images = Column(JSON, nullable=True)
+    revision = Column(Integer, nullable=False, default=1, server_default="1")
+    __mapper_args__ = {"version_id_col": revision}
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     monthly_clicks = Column(Integer, default=0, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)

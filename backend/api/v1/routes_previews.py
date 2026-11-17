@@ -27,6 +27,8 @@ from backend.services.card_rerender import (
 from backend.services.activity_logger import log_activity
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.cache import invalidate_preview, invalidate_public_preview_for_url
+from backend.services.card_revision import render_revision, apply_revision, commit_card
+
 router = APIRouter(prefix="/previews", tags=["previews"])
 
 
@@ -112,6 +114,10 @@ def create_or_update_preview(
     ).first()
     
     if existing_preview:
+        rendered = None
+        if existing_preview.can_rerender and not preview_in.image_url:
+            rendered = render_revision(existing_preview, existing_preview.render_spec,
+                                       preview_in.title, preview_in.description)
         # Update existing preview
         if preview_in.title is not None:
             existing_preview.title = preview_in.title
@@ -127,7 +133,9 @@ def create_or_update_preview(
         if not existing_preview.image_url:
             _stamp_if_imageless(existing_preview, db, current_org, domain)
 
-        db.commit()
+        if rendered:
+            apply_revision(existing_preview, rendered)
+        commit_card(db)
         db.refresh(existing_preview)
         
         # Invalidate cache
@@ -199,30 +207,19 @@ def update_preview(
             detail=f"Preview with ID {preview_id} not found"
         )
     
-    # Update fields that are not None
     update_data = preview_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        # Handle image_url: if None, set to empty string (model requires non-null)
-        if field == 'image_url' and value is None:
-            setattr(preview, field, "")
-        else:
-            setattr(preview, field, value)
-
-    # Copy edits should show up on the card itself when we can re-render.
+    if "title" in update_data and not update_data["title"]:
+        raise HTTPException(422, "A title is required.")
+    rendered = None
     if preview.can_rerender and any(k in update_data for k in ("title", "description")):
-        spec = dict(preview.render_spec or {})
-        spec["subtitle"] = preview.description or ""
-        image_url, rendered_layout = rerender_card(
-            spec, url=preview.url, title=preview.title, subtitle=preview.description,
-        )
-        if image_url:
-            preview.image_url = image_url
-            preview.composited_image_url = image_url
-            preview.render_spec = spec
-            if rendered_layout:
-                preview.layout = rendered_layout
-
-    db.commit()
+        rendered = render_revision(preview, preview.render_spec,
+                                   update_data.get("title", preview.title),
+                                   update_data.get("description", preview.description))
+    for field, value in update_data.items():
+        setattr(preview, field, value if field != "image_url" else value or "")
+    if rendered:
+        apply_revision(preview, rendered)
+    commit_card(db)
     db.refresh(preview)
     
     # Invalidate cache
@@ -349,22 +346,10 @@ def restyle_preview(
         preview.render_spec,
         layout=request.layout, panel=request.panel, accent=request.accent,
     )
-    image_url, rendered_layout = rerender_card(
-        spec, url=preview.url, title=preview.title,
-    )
-    if not image_url:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not render the card. Your existing preview is unchanged.",
-        )
-
-    preview.image_url = image_url
-    preview.composited_image_url = image_url
-    preview.layout = rendered_layout
-    # Persist the direction so the next restyle builds on this one rather than
-    # silently reverting to what the art director originally chose.
-    preview.render_spec = {**spec, "rendered_layout": rendered_layout}
-    db.commit()
+    rendered = render_revision(preview, spec, preview.title, preview.description)
+    apply_revision(preview, rendered)
+    rendered_layout = preview.layout
+    commit_card(db)
     db.refresh(preview)
 
     invalidate_preview(preview_id)
@@ -432,6 +417,9 @@ def build_platform_cards(
             detail="Could not render any sizes. Your existing preview is unchanged.",
         )
 
+    preview.platform_images = {**(preview.platform_images or {}), **cards}
+    commit_card(db)
+    invalidate_public_preview_for_url(preview.url)
     log_activity(
         db,
         user_id=current_user.id,
