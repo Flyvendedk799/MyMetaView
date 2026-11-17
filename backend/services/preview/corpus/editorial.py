@@ -5,6 +5,7 @@ DIMENSIONS = ('accuracy', 'relevance', 'brand_fidelity', 'small_size_readability
 
 
 def summarize_reviews(rows):
+    rows = list(rows)
     groups = defaultdict(list)
     seen = set()
     for row in rows:

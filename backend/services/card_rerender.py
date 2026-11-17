@@ -46,6 +46,10 @@ def _as_data_uri(url: Optional[str]) -> Optional[str]:
     if not url:
         return None
     try:
+        from backend.services.r2_client import read_stored_asset
+        stored = read_stored_asset(url)
+        if stored:
+            return "data:image/png;base64," + base64.b64encode(stored).decode()
         from backend.services.preview.net.session import fetch
         resp = fetch(url, timeout=_FETCH_TIMEOUT)
         if not resp.ok:

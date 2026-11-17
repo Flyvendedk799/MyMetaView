@@ -121,12 +121,12 @@ def _normalize_url_for_matching(url: str) -> str:
     Normalize URL for deterministic matching.
 
     This ensures the same URL always matches the same preview,
-    regardless of query params, fragments, or trailing slashes.
+    ignoring tracking parameters, fragments and trailing slashes while
+    preserving content-selecting queries and path case.
     """
-    parsed = urlparse(url)
-    # Normalize: scheme + netloc + path (ignore query and fragment for matching)
-    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip('/')
-    return normalized
+    from backend.services.site_coverage import page_identity
+    return page_identity(url)
+
 
 
 def _record_impression(
@@ -231,7 +231,7 @@ def _get_preview_logic(
                 PreviewModel.url == full_url
             ).first()
 
-        if not preview and parsed.path:
+        if not preview and parsed.path and not parsed.query:
             path_only = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip('/')
             preview = db.query(PreviewModel).filter(
                 PreviewModel.organization_id == organization_id,

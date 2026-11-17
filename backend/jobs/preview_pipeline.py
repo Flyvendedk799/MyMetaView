@@ -81,16 +81,24 @@ def _replace_variants(
             # main card's copy, which is what the old duplicate code stored.
             description=(subtitle or title)[:500],
             keywords=keywords,
-            # A failed re-render falls back to the main card rather than a
-            # broken image; the copy is still a real alternative to test.
-            image_url=image_url or main_image_url,
+            image_url=image_url,
         ))
 
     for row in rows:
         db.add(row)
 
 
-def generate_preview_job(
+def generate_preview_job(user_id: int, organization_id: int, url: str, domain: str,
+                         force_regenerate: bool = False, ignore_site_branding: bool = False,
+                         quality_mode: str | None = None, allow_automatic_retry: bool = True) -> Dict:
+    from backend.services.generation_lock import generation_lock
+    from backend.services.site_coverage import page_identity
+    with generation_lock(organization_id, page_identity(url)):
+        return _generate_preview_job(user_id, organization_id, url, domain, force_regenerate,
+                                     ignore_site_branding, quality_mode, allow_automatic_retry)
+
+
+def _generate_preview_job(
     user_id: int,
     organization_id: int,
     url: str,
@@ -288,9 +296,10 @@ def generate_preview_job(
                 raise RuntimeError("Card changed during generation; newer edits were retained")
             from backend.services.card_history import begin_edit
             # Automatic refresh follows the user's policy; retain the current snapshot either way.
-            if not existing.auto_publish:
-                begin_edit(db, existing)
-        if existing and (existing.render_spec or {}).get("locks"):
+            auto_publish = existing.auto_publish
+            begin_edit(db, existing)
+            existing.auto_publish = auto_publish
+        if existing and isinstance(existing.render_spec, dict) and existing.render_spec.get("locks"):
             engine_result.title, rewritten_description, engine_result.render_spec = preserve_locked_fields(
                 existing, engine_result.title, rewritten_description, engine_result.render_spec)
             rebuilt = render_revision(existing, engine_result.render_spec, engine_result.title, rewritten_description)

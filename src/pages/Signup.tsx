@@ -52,7 +52,7 @@ export default function Signup() {
   const features = [
     '14-day trial with Growth-plan limits',
     'Branded preview cards for your pages',
-    'Impression, click & CTR analytics',
+    'Crawler activity and referral analytics',
     'No credit card required',
   ]
 

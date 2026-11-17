@@ -196,15 +196,15 @@ def _save_card(image_url: Optional[str], output_dir: Path, source_url: str) -> O
     if not image_url:
         return None
     try:
-        from backend.services.preview.net import fetch
+        from backend.services.preview.corpus.scoring import load_card_image
 
-        result = fetch(image_url, timeout=20.0)
-        if not result.ok:
+        content = load_card_image(image_url)
+        if not content:
             return None
         cards = output_dir / "cards"
         cards.mkdir(parents=True, exist_ok=True)
         path = cards / (_safe_name(source_url) + ".png")
-        path.write_bytes(result.content)
+        path.write_bytes(content)
         return path
     except Exception as exc:  # noqa: BLE001
         logger.info("Could not save card for %s: %s", source_url, exc)
@@ -283,6 +283,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             for fut in as_completed(futures):
                 records.append(fut.result())
 
+    for record in records:
+        record["commit"] = _git_commit()
+    (run_dir / "RECORDS.json").write_text(json.dumps(records, indent=2))
     summary = aggregate(records)
     (run_dir / "SUMMARY.json").write_text(json.dumps(summary, indent=2))
     logger.info("Run complete: %s", summary)
@@ -356,13 +359,8 @@ def _read_local_card(run_dir: Path, records: List[Dict[str, Any]], image_url: st
             if path.exists():
                 return path.read_bytes()
             break
-    try:
-        from backend.services.preview.net import fetch
-
-        result = fetch(image_url, timeout=15.0)
-        return result.content if result.ok else None
-    except Exception:  # noqa: BLE001
-        return None
+    from backend.services.preview.corpus.scoring import load_card_image
+    return load_card_image(image_url)
 
 
 if __name__ == "__main__":  # pragma: no cover

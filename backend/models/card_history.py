@@ -7,7 +7,7 @@ from backend.db import Base
 class CardHistory(Base):
     __tablename__ = 'card_history'
     id = Column(Integer, primary_key=True)
-    preview_id = Column(Integer, ForeignKey('previews.id'), nullable=False, index=True)
+    preview_id = Column(Integer, ForeignKey('previews.id', ondelete='CASCADE'), nullable=False, index=True)
     revision = Column(Integer, nullable=False)
     snapshot = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

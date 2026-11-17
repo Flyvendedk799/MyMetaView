@@ -6,7 +6,10 @@ SOCIAL_HOSTS=('facebook.com','instagram.com','linkedin.com','twitter.com','x.com
 
 def social_visit_attribution(url,referrer,user_agent):
     if detect_crawler(user_agent)[0]:return None
-    host=(urlsplit(referrer or '').hostname or '').lower()
+    referrer = referrer or ''
+    if referrer and '://' not in referrer:
+        referrer = 'https://' + referrer
+    host=(urlsplit(referrer).hostname or '').lower()
     if not any(host==domain or host.endswith('.'+domain) for domain in SOCIAL_HOSTS):return None
     query=parse_qs(urlsplit(url).query)
     variant=(query.get('mmv_variant') or [None])[0]

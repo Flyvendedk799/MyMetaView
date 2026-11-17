@@ -18,7 +18,7 @@ export default function CardEditor({ id, url, domain }: { id: number; url: strin
     if (!draft) return
     setBusy(true); setMessage('')
     try {
-      const saved = await saveCardStudio(id, draft); setDraft(saved); setUndo([])
+      const saved = await saveCardStudio(id, draft); setDraft(saved); setAutoPublish(saved.auto_publish); setUndo([])
       if (regenerate) { await createPreviewJob({ url, domain, force: true }); setMessage('Regenerating unlocked fields. Follow progress in your gallery.') }
       else setMessage('Draft saved. Review all formats, then publish when ready.')
       setHistory(await getCardHistory(id))
@@ -30,7 +30,7 @@ export default function CardEditor({ id, url, domain }: { id: number; url: strin
     setBusy(true); setMessage('')
     try {
       const result = oldRevision ? await restoreCard(id, oldRevision, draft.revision) : await publishCard(id, draft.revision, autoPublish)
-      setDraft(result); setUndo([]); setHistory(await getCardHistory(id))
+      setDraft(result); setAutoPublish(result.auto_publish); setUndo([]); setHistory(await getCardHistory(id))
       setMessage(oldRevision ? 'Version restored as a draft. Review and publish it.' : 'Card published. Social platforms may retain an older cached card until they fetch again.')
     } catch(e) { setMessage(e instanceof Error ? e.message : 'Could not update card') }
     finally { setBusy(false) }

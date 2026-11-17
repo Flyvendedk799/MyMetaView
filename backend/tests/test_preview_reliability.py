@@ -55,7 +55,8 @@ class TestSSRFGuard:
         with pytest.raises(SSRFError):
             guard_url("http://example.com:6379/")
 
-    def test_allows_a_normal_public_url(self):
+    def test_allows_a_normal_public_url(self, monkeypatch):
+        monkeypatch.setattr("socket.getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 443))])
         from backend.services.preview.net import guard_url
 
         assert guard_url("https://example.com/page")
@@ -68,7 +69,8 @@ class TestSSRFGuard:
         with pytest.raises(SSRFError):
             guard_url("http://[::ffff:127.0.0.1]/")
 
-    def test_candidate_lists_drop_bad_entries_rather_than_failing(self):
+    def test_candidate_lists_drop_bad_entries_rather_than_failing(self, monkeypatch):
+        monkeypatch.setattr("socket.getaddrinfo", lambda *a, **k: [(2, 1, 6, "", ("93.184.216.34", 443))])
         """One hostile icon href must not fail the whole logo hunt."""
         from backend.services.preview.net.ssrf import guard_all
 

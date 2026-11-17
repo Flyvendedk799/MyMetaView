@@ -317,7 +317,7 @@ export default function Dashboard() {
               className="w-full text-left px-4 py-3 rounded-lg border border-line hover:border-primary-500 transition-colors"
             >
               <p className="font-medium text-secondary-900">View analytics</p>
-              <p className="text-sm text-secondary-500">Impressions, clicks, and CTR</p>
+              <p className="text-sm text-secondary-500">Preview requests and recorded visits</p>
             </button>
           </div>
         </Card>

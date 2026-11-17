@@ -42,7 +42,7 @@ def dispatch(run_id):
             db.commit()
             try:queue.enqueue(process_item,item.id,job_timeout=600)
             except Exception:
-                db.query(BulkRunItem).filter_by(id=item.id,status='queued').update({'status':'pending'},synchronize_session=False);db.commit()
+                db.query(BulkRunItem).filter_by(id=item.id,status='queued').update({'status':'pending','error':'Queue unavailable; the supervisor will retry dispatch.'},synchronize_session=False);db.commit()
                 raise
     finally:db.close()
 
@@ -50,8 +50,22 @@ def dispatch(run_id):
 def finish_run(db,run):
     statuses=[s[0] for s in db.query(BulkRunItem.status).filter_by(run_id=run.id).all()]
     if run.status=='running' and statuses and all(s in ('finished','failed','cancelled') for s in statuses):
-        run.status='completed' if all(s=='finished' for s in statuses) else ('partial' if 'finished' in statuses else 'failed')
-        db.commit()
+        outcome='completed' if all(s=='finished' for s in statuses) else ('partial' if 'finished' in statuses else 'failed')
+        changed=db.query(BulkRun).filter_by(id=run.id,status='running').update({'status':outcome},synchronize_session=False)
+        db.commit();db.refresh(run)
+        if changed:
+            # Retain the existing completion notification, once per completed attempt.
+            try:
+                from backend.models.user import User
+                from backend.services.email_service import send_bulk_run_finished_email
+                from backend.core.config import settings
+                owner=db.get(User,run.user_id)
+                if owner and owner.email:
+                    send_bulk_run_finished_email(owner.email,run.domain,statuses.count('finished'),statuses.count('failed'),
+                                                 f"{settings.FRONTEND_URL.rstrip('/')}/app/previews")
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning('Bulk completion notification failed',exc_info=True)
 
 
 def process_item(item_id):

@@ -107,7 +107,7 @@ class Settings:
     ASSET_BASE_URL: str = os.getenv("ASSET_BASE_URL", "") or os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
 
     # Directory for locally stored media (screenshot/preview fallback storage).
-    # Served by the /static mount, so it must live under backend/static.
+    # Served at /static/media, including when this points to an external volume.
     MEDIA_ROOT: str = os.getenv("MEDIA_ROOT", "backend/static/media")
 
     # CORS allowed origins (comma-separated list)

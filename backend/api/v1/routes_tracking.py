@@ -173,7 +173,7 @@ def track_social_visit(
         # Keep the denormalized counters (gallery cards, domain rows) in step
         # with the event stream.
         if preview:
-            preview.monthly_clicks = (preview.monthly_clicks or 0) + 1
+            db.query(PreviewModel).filter_by(id=preview.id).update({PreviewModel.monthly_clicks: PreviewModel.monthly_clicks + 1}, synchronize_session=False)
         domain_obj.monthly_clicks = (domain_obj.monthly_clicks or 0) + 1
         db.commit()
         return JSONResponse({"status": "ok"})

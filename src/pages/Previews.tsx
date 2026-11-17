@@ -415,6 +415,13 @@ export default function Previews() {
     setIsModalOpen(true)
   }, [domains])
 
+  // The dialog can open before the initial domain request completes.
+  useEffect(() => {
+    if (isModalOpen && editingPreview === null && domains.length > 0) {
+      setFormData(current => current.domain ? current : { ...current, domain: domains[0].name })
+    }
+  }, [isModalOpen, editingPreview, domains])
+
   // /app/previews?new=1 opens the create dialog (used by the header quick action).
   useEffect(() => {
     if (searchParams.get('new') === null) return
@@ -690,7 +697,7 @@ export default function Previews() {
       const updated = await restylePreview(preview.id, direction)
       replacePreview(updated)
       setDetailPreview((current) => (current && current.id === updated.id ? updated : current))
-      toast.success('Card restyled', 'No AI credit was used.')
+      toast.success('Draft restyled', 'Open Edit card to review and publish it.')
     } catch (err) {
       toast.error(
         'Could not restyle',
@@ -1216,7 +1223,7 @@ export default function Previews() {
           const updated = await updatePreviewApi(detailPreview.id, { title, description })
           replacePreview(updated)
           setDetailPreview(updated)
-          toast.success('Card updated')
+          toast.success('Draft updated', 'Open Edit card to review and publish it.')
         }}
       />
 

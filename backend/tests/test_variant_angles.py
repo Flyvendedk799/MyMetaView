@@ -139,13 +139,12 @@ class TestPipelineVariants:
         titles = [r["title"] for r in rows]
         assert len(set(titles)) == len(titles)
 
-    def test_a_failed_render_falls_back_to_the_main_card(self):
-        """Better the right copy on the main image than a broken image."""
-        rows = self._write_variants(
-            [{"angle": "proof", "title": "Trusted by 50,000 engineering teams"}],
-            rerendered=None,
-        )
-        assert rows[1]["image_url"] == "https://r2/main.png"
+    def test_failed_variant_render_aborts_the_revision(self):
+        with pytest.raises(RuntimeError, match="previous revision retained"):
+            self._write_variants(
+                [{"angle": "proof", "title": "Trusted by 50,000 engineering teams"}],
+                rerendered=None,
+            )
 
     def test_old_variants_are_cleared_before_writing(self):
         """A regeneration produces new angles; stale rows would describe cards

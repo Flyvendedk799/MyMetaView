@@ -50,3 +50,21 @@ def test_failed_render_does_not_save_copy(client):
     assert served(client)=='Live'
     state=client.get(f'/api/v1/previews/{pid}/studio',headers=headers).json()
     assert state['title']=='Live'
+
+
+def test_optimistic_write_rejects_background_overwrite(client):
+    from sqlalchemy.orm import sessionmaker
+    from backend.services.card_revision import commit_card
+    from fastapi import HTTPException
+    import pytest
+    pid,headers=seed(client)
+    db=_session()
+    another=sessionmaker(bind=db.bind)()
+    stale=db.get(Preview,pid)
+    newest=another.get(Preview,pid)
+    newest.title='Newer edit';commit_card(another)
+    stale.title='Old background render'
+    with pytest.raises(HTTPException) as failure:commit_card(db)
+    assert failure.value.status_code==409
+    db.expire_all();assert db.get(Preview,pid).title=='Newer edit'
+    another.close();db.close()

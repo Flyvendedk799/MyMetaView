@@ -4,7 +4,7 @@ import json
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from backend.services.preview.extraction.page_facts import extract_page_facts
 
-TRACKING = {'fbclid','gclid','msclkid','mc_cid','mc_eid'}
+TRACKING = {'fbclid','gclid','msclkid','mc_cid','mc_eid','mmv_variant'}
 
 def page_identity(url):
     p=urlsplit(url)
