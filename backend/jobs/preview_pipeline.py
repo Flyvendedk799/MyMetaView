@@ -271,6 +271,17 @@ def generate_preview_job(
             highlight_image_url = settings.PLACEHOLDER_IMAGE_URL
             logger.warning(f"Using placeholder image for URL: {sanitized_url}")
         
+        from backend.models.preview import Preview as PreviewModel
+        from backend.services.card_studio import preserve_locked_fields
+        from backend.services.card_revision import render_revision
+        existing = db.query(PreviewModel).filter(PreviewModel.url == sanitized_url, PreviewModel.organization_id == organization_id).first()
+        if existing and (existing.render_spec or {}).get("locks"):
+            engine_result.title, rewritten_description, engine_result.render_spec = preserve_locked_fields(
+                existing, engine_result.title, rewritten_description, engine_result.render_spec)
+            rebuilt = render_revision(existing, engine_result.render_spec, engine_result.title, rewritten_description)
+            engine_result.render_spec, images, _ = rebuilt
+            main_image_url = engine_result.composited_preview_image_url = images["wide"]
+            engine_result.rendered_layout = engine_result.render_spec.get("rendered_layout")
         # Step 9: Upsert preview in database with all metadata
         keywords_str = ",".join(engine_result.tags) if engine_result.tags else None
         

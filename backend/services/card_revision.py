@@ -5,12 +5,12 @@ from sqlalchemy.orm.exc import StaleDataError
 from backend.services.card_rerender import rerender_card
 
 
-def render_revision(preview, spec, title, description):
+def render_revision(preview, spec, title, description, sizes=None):
     spec = deepcopy(spec)
     spec.update(title=title, subtitle=description or "")
     images = {}
     layout = None
-    for size in dict.fromkeys(["wide", *(preview.platform_images or {})]):
+    for size in dict.fromkeys(["wide", *(sizes if sizes is not None else (preview.platform_images or {}))]):
         image, rendered_layout = rerender_card(spec, url=preview.url, title=title,
                                                subtitle=description, size=size)
         if not image:

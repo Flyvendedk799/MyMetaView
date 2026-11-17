@@ -442,3 +442,48 @@ def build_platform_cards(
         # letting the caller infer it from a short list.
         "missing": [s for s in (sizes or list(CARD_SIZES)) if s not in cards],
     }
+
+
+from backend.services.card_studio import StudioEdit, studio_spec
+
+
+def _studio_preview(db, org_id, preview_id):
+    preview = db.query(PreviewModel).filter(PreviewModel.id == preview_id, PreviewModel.organization_id == org_id).first()
+    if not preview:
+        raise HTTPException(404, 'Preview not found')
+    return preview
+
+
+def _studio_state(preview):
+    spec = preview.render_spec or {}
+    composition = spec.get('composition', {})
+    return dict(revision=preview.revision, title=preview.title, description=preview.description or '',
+        visual_url=spec.get('visual_url'), logo_url=spec.get('logo_url'),
+        layout=composition.get('layout', 'typographic'), panel=composition.get('panel_color_role', 'primary'),
+        accent=composition.get('accent_moment', 'bar'), focal_x=composition.get('focal_x', 50),
+        focal_y=composition.get('focal_y', 50), locks=spec.get('locks', []),
+        images=preview.platform_images or {'wide': preview.image_url}, can_rerender=preview.can_rerender)
+
+
+@router.get('/{preview_id}/studio')
+def get_studio(preview_id: int, db: Session = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    return _studio_state(_studio_preview(db, current_org.id, preview_id))
+
+
+@router.put('/{preview_id}/studio')
+def save_studio(preview_id: int, edit: StudioEdit, db: Session = Depends(get_db),
+                current_org: Organization = Depends(get_current_org),
+                role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    if edit.revision != preview.revision:
+        raise HTTPException(409, 'This card has changed. Reload before saving.')
+    if not preview.can_rerender:
+        raise HTTPException(409, 'Regenerate this older card once to enable the studio.')
+    spec = studio_spec(preview.render_spec, edit)
+    # The editor always previews all three output shapes together.
+    rendered = render_revision(preview, spec, edit.title, edit.description, sizes=list(CARD_SIZES))
+    apply_revision(preview, rendered)
+    commit_card(db)
+    invalidate_preview(preview.id)
+    invalidate_public_preview_for_url(preview.url)
+    return _studio_state(preview)

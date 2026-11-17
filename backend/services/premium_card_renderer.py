@@ -889,6 +889,10 @@ def render_premium_card_detailed(
         size=card_size,
     )
 
+    # Studio focal points are numeric percentages, applied in every aspect ratio.
+    x = max(0, min(100, float(composition.get("focal_x", 50))))
+    y = max(0, min(100, float(composition.get("focal_y", 50))))
+    doc = doc.replace("</head>", f"<style>.visual-solo,.visual-bg,.avatar{{object-position:{x}% {y}%}}</style></head>")
     png = _rasterize(doc, card_size)
     return _downscale(png, card_size), layout
 

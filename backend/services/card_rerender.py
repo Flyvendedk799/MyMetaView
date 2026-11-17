@@ -46,13 +46,14 @@ def _as_data_uri(url: Optional[str]) -> Optional[str]:
     if not url:
         return None
     try:
-        resp = requests.get(url, timeout=_FETCH_TIMEOUT)
-        if resp.status_code != 200 or not resp.content:
-            return None
-        return "data:image/png;base64," + base64.b64encode(resp.content).decode()
+        from backend.services.preview.net.session import fetch
+        resp = fetch(url, timeout=_FETCH_TIMEOUT)
+        if not resp.ok:
+            raise ValueError("Stored asset is unavailable")
+        return "data:" + (resp.content_type.split(';')[0] or "image/png") + ";base64," + base64.b64encode(resp.content).decode()
     except Exception as e:
         logger.warning("Could not fetch crop %s for re-render: %s", url, e)
-        return None
+        raise RuntimeError("Could not load the card asset") from e
 
 
 def spec_is_renderable(render_spec: Optional[Dict[str, Any]]) -> bool:

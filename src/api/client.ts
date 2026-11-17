@@ -1683,3 +1683,12 @@ export interface ShareDelivery {
 export async function verifyShareDelivery(domain_id: number, url?: string): Promise<ShareDelivery> {
   return fetchApi('/api/v1/install/share-check', { method: 'POST', body: JSON.stringify({ domain_id, url }) })
 }
+
+export interface CardStudioState {
+  revision: number; title: string; description: string; visual_url: string | null; logo_url: string | null
+  layout: string; panel: string; accent: string; focal_x: number; focal_y: number; locks: string[]
+  images: Record<string, string>; can_rerender: boolean
+}
+export const getCardStudio = (id: number): Promise<CardStudioState> => fetchApi(`/api/v1/previews/${id}/studio`)
+export const saveCardStudio = (id: number, state: CardStudioState): Promise<CardStudioState> =>
+  fetchApi(`/api/v1/previews/${id}/studio`, { method: 'PUT', body: JSON.stringify(state), timeout: 120000 })
