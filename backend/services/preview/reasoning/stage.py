@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 # Bumped whenever the prompt changes, so a prompt edit misses cache instead of
 # serving output authored by the previous prompt.
-PROMPT_VERSION = "single-pass-v3"
+PROMPT_VERSION = "single-pass-v4-grounded-facts"
 
 
 def run_reasoning(
@@ -55,7 +55,10 @@ def run_reasoning(
     state.update_progress(0.45, "Reading the page…")
     state.trace.open_stage(Stage.REASONING)
     try:
-        return _run(state, capture, classification)
+        from backend.services.preview.extraction.page_facts import extract_page_facts, grounded_copy
+        facts = extract_page_facts(capture.html, state.url)
+        state.shared["page_facts"] = facts
+        return grounded_copy(_run(state, capture, classification), facts)
     finally:
         state.trace.close_stage()
 
@@ -144,6 +147,7 @@ def _call_art_director(
 
         reasoned = generate_reasoned_preview(
             capture.screenshot_bytes, state.url, brand_context=brand_brief,
+            page_context=state.shared.get("page_facts"),
         )
     except Exception as exc:  # noqa: BLE001 — the caller degrades to metadata
         logger.info("Art director call failed for %s: %s", state.url, exc)
