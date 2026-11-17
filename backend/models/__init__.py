@@ -34,3 +34,5 @@ __all__ = [
     "WeeklyDigestSend"
 ]
 
+
+from backend.models.card_history import CardHistory  # noqa: F401

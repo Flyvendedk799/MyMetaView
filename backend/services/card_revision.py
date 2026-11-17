@@ -48,6 +48,11 @@ def apply_revision(preview, rendered):
 
 def commit_card(db):
     try:
+        from backend.models.preview import Preview
+        from backend.services.card_history import record_revision
+        for preview in list(db.dirty) + list(db.new):
+            if isinstance(preview, Preview):
+                record_revision(db, preview)
         db.commit()
     except StaleDataError as exc:
         db.rollback()

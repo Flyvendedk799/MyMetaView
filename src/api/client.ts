@@ -1688,7 +1688,15 @@ export interface CardStudioState {
   revision: number; title: string; description: string; visual_url: string | null; logo_url: string | null
   layout: string; panel: string; accent: string; focal_x: number; focal_y: number; locks: string[]
   images: Record<string, string>; can_rerender: boolean
+  auto_publish: boolean; has_draft: boolean; published: { title: string; image_url: string } | null
 }
 export const getCardStudio = (id: number): Promise<CardStudioState> => fetchApi(`/api/v1/previews/${id}/studio`)
 export const saveCardStudio = (id: number, state: CardStudioState): Promise<CardStudioState> =>
   fetchApi(`/api/v1/previews/${id}/studio`, { method: 'PUT', body: JSON.stringify(state), timeout: 120000 })
+
+export interface CardHistoryEntry { revision: number; title: string; image_url: string; created_at: string }
+export const getCardHistory = (id: number): Promise<CardHistoryEntry[]> => fetchApi(`/api/v1/previews/${id}/history`)
+export const publishCard = (id: number, revision: number, auto_publish: boolean): Promise<CardStudioState> =>
+  fetchApi(`/api/v1/previews/${id}/publish`, { method: 'POST', body: JSON.stringify({ revision, auto_publish }) })
+export const restoreCard = (id: number, oldRevision: number, revision: number): Promise<CardStudioState> =>
+  fetchApi(`/api/v1/previews/${id}/restore/${oldRevision}`, { method: 'POST', body: JSON.stringify({ revision }) })

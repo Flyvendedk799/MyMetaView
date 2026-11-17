@@ -244,6 +244,14 @@ def _get_preview_logic(
         if not preview:
             return _fallback(full_url, hostname, "no_preview")
 
+        published = preview.published_snapshot
+        if published:
+            selected = next((v for v in published.get("variants", []) if v["variant_key"] == variant), published)
+            return PublicPreview(url=full_url, title=selected.get("title") or published["title"],
+                description=selected.get("description") or "",
+                image_url=selected.get("composited_image_url") or selected.get("image_url"),
+                site_name=domain.name, type=published.get("type"), status="fully_generated",
+                version=variant if selected is not published else "main")
         preview_status = "fully_generated" if preview.ai_reasoning else "pending_ai"
 
         if variant:

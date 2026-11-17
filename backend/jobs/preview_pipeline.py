@@ -69,6 +69,8 @@ def _replace_variants(
         image_url, _ = rerender_card(
             render_spec or {}, url=url, title=title, subtitle=subtitle,
         )
+        if not image_url:
+            raise RuntimeError("Could not render the alternative card; previous revision retained")
         rows.append(PreviewVariantModel(
             preview_id=preview.id,
             variant_key=key,
@@ -178,6 +180,10 @@ def generate_preview_job(
                 sanitized_url, organization_id, lane.used, lane.limit,
             )
 
+        # Keep a revision token across slow generation so newer user edits win.
+        from backend.models.preview import Preview as PreviewModel
+        initial = db.query(PreviewModel).filter(PreviewModel.url == sanitized_url, PreviewModel.organization_id == organization_id).first()
+        initial_revision = initial.revision if initial else None
         # Step 5: Use unified preview engine for core generation.
         # The profile comes from the same table the demo reads, pinned to
         # `ultra`, so a customer's preview is generated exactly as well as the
@@ -275,6 +281,14 @@ def generate_preview_job(
         from backend.services.card_studio import preserve_locked_fields
         from backend.services.card_revision import render_revision
         existing = db.query(PreviewModel).filter(PreviewModel.url == sanitized_url, PreviewModel.organization_id == organization_id).first()
+        if existing:
+            db.refresh(existing)
+            if initial_revision != existing.revision:
+                raise RuntimeError("Card changed during generation; newer edits were retained")
+            from backend.services.card_history import begin_edit
+            # Automatic refresh follows the user's policy; retain the current snapshot either way.
+            if not existing.auto_publish:
+                begin_edit(db, existing)
         if existing and (existing.render_spec or {}).get("locks"):
             engine_result.title, rewritten_description, engine_result.render_spec = preserve_locked_fields(
                 existing, engine_result.title, rewritten_description, engine_result.render_spec)
@@ -323,6 +337,9 @@ def generate_preview_job(
             url=sanitized_url,
         )
 
+        db.expire(preview, ["variants"])
+        from backend.services.card_history import record_revision
+        record_revision(db, preview)
         db.commit()
         db.refresh(preview)
         
@@ -379,6 +396,7 @@ def generate_preview_job(
         }
         
     except Exception as e:
+        db.rollback()
         logger.error("Preview generation job failed", exc_info=True)
 
         # Some failures are the world's, not the input's: a capture timeout, a

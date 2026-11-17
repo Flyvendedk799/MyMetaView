@@ -928,4 +928,5 @@ def verify_share_delivery(
     preview = db.query(Preview).filter(Preview.organization_id == current_org.id, Preview.url == url).first()
     if not preview:
         return {'ready': False, 'checks': [], 'message': 'Generate a card for this URL before checking delivery.'}
-    return check_delivery(url, preview.title, preview.composited_image_url or preview.image_url)
+    published = preview.published_snapshot or {}
+    return check_delivery(url, published.get('title', preview.title), published.get('composited_image_url') or published.get('image_url') or preview.composited_image_url or preview.image_url)

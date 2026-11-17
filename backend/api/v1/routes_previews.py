@@ -27,6 +27,7 @@ from backend.services.card_rerender import (
 from backend.services.activity_logger import log_activity
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.cache import invalidate_preview, invalidate_public_preview_for_url
+from backend.services.card_history import begin_edit, snapshot
 from backend.services.card_revision import render_revision, apply_revision, commit_card
 
 router = APIRouter(prefix="/previews", tags=["previews"])
@@ -118,6 +119,7 @@ def create_or_update_preview(
         if existing_preview.can_rerender and not preview_in.image_url:
             rendered = render_revision(existing_preview, existing_preview.render_spec,
                                        preview_in.title, preview_in.description)
+        begin_edit(db, existing_preview)
         # Update existing preview
         if preview_in.title is not None:
             existing_preview.title = preview_in.title
@@ -170,7 +172,7 @@ def create_or_update_preview(
     )
     db.add(new_preview)
     _stamp_if_imageless(new_preview, db, current_org, domain)
-    db.commit()
+    commit_card(db)
     db.refresh(new_preview)
     
     # Log preview creation
@@ -215,6 +217,7 @@ def update_preview(
         rendered = render_revision(preview, preview.render_spec,
                                    update_data.get("title", preview.title),
                                    update_data.get("description", preview.description))
+    begin_edit(db, preview)
     for field, value in update_data.items():
         setattr(preview, field, value if field != "image_url" else value or "")
     if rendered:
@@ -262,7 +265,7 @@ def delete_preview(
     preview_url = preview.url
     preview_title = preview.title
     db.delete(preview)
-    db.commit()
+    commit_card(db)
     
     # Invalidate cache
     invalidate_preview(preview_id)
@@ -347,6 +350,7 @@ def restyle_preview(
         layout=request.layout, panel=request.panel, accent=request.accent,
     )
     rendered = render_revision(preview, spec, preview.title, preview.description)
+    begin_edit(db, preview)
     apply_revision(preview, rendered)
     rendered_layout = preview.layout
     commit_card(db)
@@ -462,7 +466,9 @@ def _studio_state(preview):
         layout=composition.get('layout', 'typographic'), panel=composition.get('panel_color_role', 'primary'),
         accent=composition.get('accent_moment', 'bar'), focal_x=composition.get('focal_x', 50),
         focal_y=composition.get('focal_y', 50), locks=spec.get('locks', []),
-        images=preview.platform_images or {'wide': preview.image_url}, can_rerender=preview.can_rerender)
+        images=preview.platform_images or {'wide': preview.image_url}, can_rerender=preview.can_rerender,
+        auto_publish=preview.auto_publish, published=preview.published_snapshot,
+        has_draft=bool(preview.published_snapshot and preview.published_snapshot != snapshot(preview)))
 
 
 @router.get('/{preview_id}/studio')
@@ -482,8 +488,56 @@ def save_studio(preview_id: int, edit: StudioEdit, db: Session = Depends(get_db)
     spec = studio_spec(preview.render_spec, edit)
     # The editor always previews all three output shapes together.
     rendered = render_revision(preview, spec, edit.title, edit.description, sizes=list(CARD_SIZES))
+    begin_edit(db, preview)
     apply_revision(preview, rendered)
     commit_card(db)
     invalidate_preview(preview.id)
     invalidate_public_preview_for_url(preview.url)
+    return _studio_state(preview)
+
+
+class PublishRevision(BaseModel):
+    revision: int
+    auto_publish: bool = False
+
+
+@router.get('/{preview_id}/history')
+def card_history(preview_id: int, db: Session = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    from backend.models.card_history import CardHistory
+    rows = db.query(CardHistory).filter_by(preview_id=preview.id).order_by(CardHistory.revision.desc()).limit(50).all()
+    return [{'revision': row.revision, 'created_at': row.created_at, 'title': row.snapshot['title'],
+             'image_url': row.snapshot['image_url']} for row in rows]
+
+
+@router.post('/{preview_id}/publish')
+def publish_card(preview_id: int, payload: PublishRevision, db: Session = Depends(get_db),
+                 current_org: Organization = Depends(get_current_org),
+                 role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    if payload.revision != preview.revision:
+        raise HTTPException(409, 'The draft changed. Review it again before publishing.')
+    from backend.services.card_history import snapshot
+    preview.published_snapshot = snapshot(preview)
+    preview.auto_publish = payload.auto_publish
+    commit_card(db)
+    invalidate_public_preview_for_url(preview.url)
+    return _studio_state(preview)
+
+
+@router.post('/{preview_id}/restore/{revision}')
+def restore_card(preview_id: int, revision: int, payload: PublishRevision, db: Session = Depends(get_db),
+                 current_org: Organization = Depends(get_current_org),
+                 role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    if payload.revision != preview.revision:
+        raise HTTPException(409, 'The draft changed. Reload before restoring.')
+    from backend.models.card_history import CardHistory
+    from backend.services.card_history import restore_snapshot
+    old = db.query(CardHistory).filter_by(preview_id=preview.id, revision=revision).first()
+    if not old:
+        raise HTTPException(404, 'Revision not found')
+    begin_edit(db, preview)
+    restore_snapshot(preview, old.snapshot)
+    commit_card(db)
     return _studio_state(preview)

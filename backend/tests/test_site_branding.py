@@ -236,6 +236,7 @@ class TestTheJobCarriesTheChoice:
                 patch.object(preview_pipeline, "rewrite_to_brand_voice") as mock_voice, \
                 patch.object(preview_pipeline, "log_activity"):
             MockSession.return_value = MagicMock()
+            MockSession.return_value.query.return_value.filter.return_value.first.return_value.render_spec = {}
             # The saved row, as the resolver returns it. Voice is explicit so
             # the rewrite path runs unless a test says otherwise.
             saved = SimpleNamespace(**{**BRAND, "voice": "confident", **row})
