@@ -57,8 +57,9 @@ def normalize_url_for_cache(url: str) -> str:
     - Trailing slashes
     - www vs non-www
     - http vs https
-    - URL encoding differences
-    - Fragment (#) or query parameters (if needed)
+    - Fragments and recognized tracking query parameters
+
+    Preserve path case and content-selecting query parameters.
     
     Args:
         url: URL to normalize
@@ -69,34 +70,10 @@ def normalize_url_for_cache(url: str) -> str:
     if not url or not isinstance(url, str):
         return ""
     
-    # Strip whitespace and lowercase
-    url = url.strip().lower()
-    
-    # Parse URL
-    parsed = urlparse(url)
-    
-    # Normalize scheme (always use https for cache key)
-    scheme = "https"
-    
-    # Normalize netloc (remove www. prefix for consistency)
-    netloc = parsed.netloc.lower()
-    if netloc.startswith("www."):
-        netloc = netloc[4:]
-    
-    # Normalize path (remove trailing slash, except root)
-    path = parsed.path.rstrip("/")
-    if not path:
-        path = "/"
-    
-    # Remove query and fragment for cache key (they don't affect preview content)
-    # Note: If query params matter for preview, remove this normalization
-    query = ""
-    fragment = ""
-    
-    # Reconstruct normalized URL
-    normalized = urlunparse((scheme, netloc, path, "", query, fragment))
-    
-    return normalized
+    from backend.services.site_coverage import page_identity
+    parsed = urlparse(page_identity(url.strip()))
+    return urlunparse(parsed._replace(scheme="https", netloc=parsed.netloc.removeprefix("www.")))
+
 
 
 def sanitize_url(url: str, domain: str = None) -> str:

@@ -339,7 +339,7 @@ def build_weekly_digest_email(
                     f'({p_imp:,} impression{"s" if p_imp != 1 else ""})</li>'
                 )
                 preview_items_text.append(
-                    f"  {i}. {p_title_raw}: {p_clicks} clicks ({p_imp} impressions)"
+                    f"  {i}. {p_title_raw}: {p_clicks} clicks ({p_imp} preview requests)"
                 )
             previews_html = (
                 '<div style="margin-top:14px;">'
@@ -355,26 +355,23 @@ def build_weekly_digest_email(
             <h3 style="margin:0 0 12px 0;font-size:17px;font-weight:600;color:{_EVERGREEN};">{escaped_domain_name}</h3>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:22px;color:{_INK};">
                 <tr>
-                    <td style="padding:4px 0;"><strong>Impressions:</strong> {imp:,}</td>
+                    <td style="padding:4px 0;"><strong>Preview requests:</strong> {imp:,}</td>
                     <td style="padding:4px 0;color:{_MUTED};text-align:right;">{imp_delta_str} vs prev week</td>
                 </tr>
                 <tr>
                     <td style="padding:4px 0;"><strong>Clicks:</strong> {clk:,}</td>
                     <td style="padding:4px 0;color:{_MUTED};text-align:right;">{clk_delta_str} vs prev week</td>
                 </tr>
-                <tr>
-                    <td style="padding:4px 0;"><strong>CTR:</strong> {ctr:.2f}%</td>
-                    <td style="padding:4px 0;color:{_MUTED};text-align:right;">{ctr_delta_str} vs prev week</td>
-                </tr>
+                <tr><td colspan="2">Audience views and CTR are not measured. Preview requests are not audience impressions.</td></tr>
             </table>
             {previews_html}
         </div>
         """)
 
         domain_blocks_text.append(f"""Domain: {domain_name}
-- Impressions: {imp:,} ({imp_delta_str} vs prev week)
+- Preview requests: {imp:,} ({imp_delta_str} vs prev week)
 - Clicks: {clk:,} ({clk_delta_str} vs prev week)
-- CTR: {ctr:.2f}% ({ctr_delta_str} vs prev week)
+- Audience views and CTR are not measured.
 {previews_text}""".strip())
 
     body_html = f"""

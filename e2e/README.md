@@ -37,3 +37,13 @@ npm run test:e2e:ui
 
 - Full flow tests: up to 90s (demo generation can take 30–90s depending on URLs and backend load)
 - Default Playwright timeout: 120s
+
+The authenticated product journey has a separate server/configuration:
+
+```bash
+# Requires a dedicated Redis database and installed Chromium.
+npm run test:journey
+```
+
+See `docs/PRODUCT_RELEASE.md` for fixture boundaries, environment overrides,
+new migration ordering and the human/live-platform validation still required.

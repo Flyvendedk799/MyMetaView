@@ -118,12 +118,33 @@ def update_preview_variant(
             detail="Access denied"
         )
     
+    from backend.services.card_history import begin_edit
+    from backend.services.card_revision import render_revision, apply_revision, commit_card
+    from backend.services.card_rerender import rerender_card
+    from backend.services.cache import invalidate_public_preview_for_url
+    next_title = variant_update.title if variant_update.title is not None else variant.title
+    next_description = variant_update.description if variant_update.description is not None else variant.description
+    if not preview.can_rerender:
+        raise HTTPException(409, "Regenerate this older card before editing its variant.")
+    if variant.variant_key == 'a':
+        rendered = render_revision(preview, preview.render_spec, next_title, next_description)
+        begin_edit(db, preview)
+        apply_revision(preview, rendered)
+    else:
+        image, _ = rerender_card(preview.render_spec, url=preview.url, title=next_title, subtitle=next_description)
+        if not image:
+            raise HTTPException(502, "Could not render variant. Nothing was saved.")
+        begin_edit(db, preview)
+        variant.image_url = image
+        variant.subtitle = next_description
+    preview.revision += 1
     # Update variant
     update_data = variant_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(variant, key, value)
     
-    db.commit()
+    commit_card(db)
+    invalidate_public_preview_for_url(preview.url)
     db.refresh(variant)
     
     log_activity(
@@ -173,8 +194,12 @@ def delete_preview_variant(
     
     variant_key = variant.variant_key
     preview_id = variant.preview_id
-    db.delete(variant)
-    db.commit()
+    from backend.services.card_history import begin_edit
+    from backend.services.card_revision import commit_card
+    begin_edit(db, preview)
+    preview.variants.remove(variant)
+    preview.revision += 1
+    commit_card(db)
     
     log_activity(
         db,

@@ -172,7 +172,7 @@ export interface BulkJobCreateResponse {
 
 export interface BulkResultItem {
   url: string
-  status: 'finished' | 'failed'
+  status: 'finished' | 'failed' | 'pending' | 'queued' | 'running' | 'cancelled'
   preview_id: number | null
   title: string | null
   image_url: string | null
@@ -181,7 +181,7 @@ export interface BulkResultItem {
 
 export interface BulkJobStatus {
   batch_id: string
-  status: 'queued' | 'running' | 'completed' | 'failed'
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'partial' | 'paused' | 'cancelled'
   total: number
   completed: number
   failed: number
@@ -189,8 +189,9 @@ export interface BulkJobStatus {
 }
 
 export interface BulkJobSummary {
+  durable?: boolean
   batch_id: string
-  status: 'queued' | 'running' | 'completed' | 'failed'
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'partial' | 'paused' | 'cancelled'
   domain: string | null
   total: number
   completed: number
@@ -247,14 +248,14 @@ export interface PreviewUpdate {
 export interface TopDomain {
   domain: string
   clicks: number
-  ctr: number
+  ctr: number | null
 }
 
 export interface AnalyticsSummary {
   period: string
   total_clicks: number
   total_impressions: number
-  ctr: number
+  ctr: number | null
   total_previews: number
   total_domains: number
   verified_domains: number
@@ -410,7 +411,7 @@ export interface TimeseriesPoint {
 export interface AnalyticsOverview {
   total_impressions: number
   total_clicks: number
-  ctr: number
+  ctr: number | null
   impressions_timeseries: TimeseriesPoint[]
   clicks_timeseries: TimeseriesPoint[]
 }
@@ -422,7 +423,7 @@ export interface DomainAnalyticsItem {
   impressions_30d: number
   clicks_7d: number
   clicks_30d: number
-  ctr_30d: number
+  ctr_30d: number | null
 }
 
 export interface PreviewAnalyticsItem {
@@ -432,7 +433,7 @@ export interface PreviewAnalyticsItem {
   domain: string
   impressions_30d: number
   clicks_30d: number
-  ctr_30d: number
+  ctr_30d: number | null
 }
 
 export interface AdminAnalyticsOverview {

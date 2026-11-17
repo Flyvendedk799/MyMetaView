@@ -34,3 +34,9 @@ __all__ = [
     "WeeklyDigestSend"
 ]
 
+
+from backend.models.card_history import CardHistory  # noqa: F401
+
+from backend.models.site_coverage import SiteRefreshPolicy, SitePageCoverage  # noqa: F401
+
+from backend.models.bulk_run import BulkRun, BulkRunItem  # noqa: F401

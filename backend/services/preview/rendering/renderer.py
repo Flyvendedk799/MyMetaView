@@ -100,6 +100,8 @@ def render_spec_from(
     KB of base64 into both was never affordable.
     """
     return {
+        "page_facts": state.shared.get("page_facts", {}),
+        "title": spec.title,
         "composition": dict(spec.composition),
         "colors": dict(spec.colors),
         "brand_name": spec.brand_name,

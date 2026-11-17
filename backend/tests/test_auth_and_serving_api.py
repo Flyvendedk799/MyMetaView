@@ -7,6 +7,7 @@ the social-visit beacon, and the honesty guarantees of /public/preview
 """
 import os
 import tempfile
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -37,7 +38,9 @@ def client():
 
     app.dependency_overrides[get_db] = override_get_db
     try:
-        yield TestClient(app)
+        # Each isolated database represents a separate visitor. Keep Redis rate
+        # limits active without sharing login counters across unrelated tests.
+        yield TestClient(app, client=(f"test-{uuid4().hex}", 50000))
     finally:
         app.dependency_overrides.pop(get_db, None)
         engine.dispose()

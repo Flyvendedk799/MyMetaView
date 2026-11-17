@@ -69,6 +69,8 @@ def _replace_variants(
         image_url, _ = rerender_card(
             render_spec or {}, url=url, title=title, subtitle=subtitle,
         )
+        if not image_url:
+            raise RuntimeError("Could not render the alternative card; previous revision retained")
         rows.append(PreviewVariantModel(
             preview_id=preview.id,
             variant_key=key,
@@ -79,16 +81,24 @@ def _replace_variants(
             # main card's copy, which is what the old duplicate code stored.
             description=(subtitle or title)[:500],
             keywords=keywords,
-            # A failed re-render falls back to the main card rather than a
-            # broken image; the copy is still a real alternative to test.
-            image_url=image_url or main_image_url,
+            image_url=image_url,
         ))
 
     for row in rows:
         db.add(row)
 
 
-def generate_preview_job(
+def generate_preview_job(user_id: int, organization_id: int, url: str, domain: str,
+                         force_regenerate: bool = False, ignore_site_branding: bool = False,
+                         quality_mode: str | None = None, allow_automatic_retry: bool = True) -> Dict:
+    from backend.services.generation_lock import generation_lock
+    from backend.services.site_coverage import page_identity
+    with generation_lock(organization_id, page_identity(url)):
+        return _generate_preview_job(user_id, organization_id, url, domain, force_regenerate,
+                                     ignore_site_branding, quality_mode, allow_automatic_retry)
+
+
+def _generate_preview_job(
     user_id: int,
     organization_id: int,
     url: str,
@@ -96,6 +106,7 @@ def generate_preview_job(
     force_regenerate: bool = False,
     ignore_site_branding: bool = False,
     quality_mode: str | None = None,
+    allow_automatic_retry: bool = True,
 ) -> Dict:
     """
     Main background job to generate preview for a URL.
@@ -178,6 +189,10 @@ def generate_preview_job(
                 sanitized_url, organization_id, lane.used, lane.limit,
             )
 
+        # Keep a revision token across slow generation so newer user edits win.
+        from backend.models.preview import Preview as PreviewModel
+        initial = db.query(PreviewModel).filter(PreviewModel.url == sanitized_url, PreviewModel.organization_id == organization_id).first()
+        initial_revision = initial.revision if initial else None
         # Step 5: Use unified preview engine for core generation.
         # The profile comes from the same table the demo reads, pinned to
         # `ultra`, so a customer's preview is generated exactly as well as the
@@ -271,6 +286,26 @@ def generate_preview_job(
             highlight_image_url = settings.PLACEHOLDER_IMAGE_URL
             logger.warning(f"Using placeholder image for URL: {sanitized_url}")
         
+        from backend.models.preview import Preview as PreviewModel
+        from backend.services.card_studio import preserve_locked_fields
+        from backend.services.card_revision import render_revision
+        existing = db.query(PreviewModel).filter(PreviewModel.url == sanitized_url, PreviewModel.organization_id == organization_id).first()
+        if existing:
+            db.refresh(existing)
+            if initial_revision != existing.revision:
+                raise RuntimeError("Card changed during generation; newer edits were retained")
+            from backend.services.card_history import begin_edit
+            # Automatic refresh follows the user's policy; retain the current snapshot either way.
+            auto_publish = existing.auto_publish
+            begin_edit(db, existing)
+            existing.auto_publish = auto_publish
+        if existing and isinstance(existing.render_spec, dict) and existing.render_spec.get("locks"):
+            engine_result.title, rewritten_description, engine_result.render_spec = preserve_locked_fields(
+                existing, engine_result.title, rewritten_description, engine_result.render_spec)
+            rebuilt = render_revision(existing, engine_result.render_spec, engine_result.title, rewritten_description)
+            engine_result.render_spec, images, _ = rebuilt
+            main_image_url = engine_result.composited_preview_image_url = images["wide"]
+            engine_result.rendered_layout = engine_result.render_spec.get("rendered_layout")
         # Step 9: Upsert preview in database with all metadata
         keywords_str = ",".join(engine_result.tags) if engine_result.tags else None
         
@@ -312,6 +347,9 @@ def generate_preview_job(
             url=sanitized_url,
         )
 
+        db.expire(preview, ["variants"])
+        from backend.services.card_history import record_revision
+        record_revision(db, preview)
         db.commit()
         db.refresh(preview)
         
@@ -368,6 +406,7 @@ def generate_preview_job(
         }
         
     except Exception as e:
+        db.rollback()
         logger.error("Preview generation job failed", exc_info=True)
 
         # Some failures are the world's, not the input's: a capture timeout, a
@@ -378,7 +417,7 @@ def generate_preview_job(
             e, url=url, domain=domain, user_id=user_id,
             organization_id=organization_id,
             ignore_site_branding=ignore_site_branding,
-        )
+        ) if allow_automatic_retry else None
 
         # Save to Dead Letter Queue (DLQ)
         try:
@@ -405,7 +444,7 @@ def generate_preview_job(
                     "url": url,
                     "domain": domain,
                     "error": str(e),
-                    "retry": decision.to_dict(),
+                    "retry": decision.to_dict() if decision else {"reason": "managed by durable run"},
                 },
                 request=None
             )

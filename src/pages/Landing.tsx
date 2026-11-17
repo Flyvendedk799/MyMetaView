@@ -58,7 +58,7 @@ const features = [
   },
   {
     title: 'Impression & Click Analytics',
-    description: 'Track impressions, clicks, CTR, and performance metrics per domain and preview.',
+    description: 'Track preview requests and recorded visits per domain and preview.',
     icon: ChartBarIcon,
     badge: null,
   },

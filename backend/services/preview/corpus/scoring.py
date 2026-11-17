@@ -81,7 +81,7 @@ def score_run(
     network; production passes the guarded fetcher.
     """
     if fetch_image is None:
-        fetch_image = _default_fetch
+        fetch_image = load_card_image
 
     scores = RunScores(commit=commit, ran_at=ran_at)
     overalls: List[float] = []
@@ -141,8 +141,18 @@ def score_run(
     return scores
 
 
-def _default_fetch(image_url: str) -> Optional[bytes]:
+def load_card_image(image_url: str) -> Optional[bytes]:
+    """Read our local storage directly; fetch remote assets through the guard.
+
+    Corpus runs do not need a web server or R2 credentials to score their own
+    rendered images. Unrelated URLs still use the normal guarded fetcher.
+    """
     try:
+        from backend.services.r2_client import read_stored_asset
+
+        stored = read_stored_asset(image_url)
+        if stored is not None:
+            return stored
         from backend.services.preview.net import fetch
 
         result = fetch(image_url, timeout=15.0)

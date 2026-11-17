@@ -37,7 +37,7 @@ class AnalyticsOverview(BaseModel):
     """Analytics overview response."""
     total_impressions: int
     total_clicks: int
-    ctr: float
+    ctr: Optional[float] = None
     impressions_timeseries: List[TimeseriesPoint]
     clicks_timeseries: List[TimeseriesPoint]
 
@@ -50,7 +50,7 @@ class DomainAnalyticsItem(BaseModel):
     impressions_30d: int
     clicks_7d: int
     clicks_30d: int
-    ctr_30d: float
+    ctr_30d: Optional[float] = None
 
 
 class PreviewAnalyticsItem(BaseModel):
@@ -61,7 +61,7 @@ class PreviewAnalyticsItem(BaseModel):
     domain: str
     impressions_30d: int
     clicks_30d: int
-    ctr_30d: float
+    ctr_30d: Optional[float] = None
 
 
 @router.get("/overview", response_model=AnalyticsOverview)
@@ -114,7 +114,7 @@ def get_analytics_overview(
     return AnalyticsOverview(
         total_impressions=total_impressions,
         total_clicks=total_clicks,
-        ctr=round(ctr, 2),
+        ctr=None,
         impressions_timeseries=impressions_timeseries,
         clicks_timeseries=clicks_timeseries
     )
@@ -215,7 +215,7 @@ def get_domain_analytics(
             impressions_30d=impressions_30d,
             clicks_7d=metrics['clicks_7d'],
             clicks_30d=clicks_30d,
-            ctr_30d=round(ctr_30d, 2)
+            ctr_30d=None
         ))
     
     return result
@@ -289,10 +289,25 @@ def get_preview_analytics(
             domain=preview.domain,
             impressions_30d=impressions_30d,
             clicks_30d=clicks_30d,
-            ctr_30d=round(ctr_30d, 2)
+            ctr_30d=None
         ))
     
     # Sort by impressions descending and limit
     result.sort(key=lambda x: x.impressions_30d, reverse=True)
     return result[:limit]
 
+
+
+@router.get('/attribution')
+def traffic_attribution(days:int=Query(30,ge=1,le=90),db:Session=Depends(get_db),
+                        current_org:Organization=Depends(get_current_org)):
+    rows=db.query(AnalyticsEvent.event_source,AnalyticsEvent.campaign,AnalyticsEvent.variant,func.count(AnalyticsEvent.id)).filter(
+        AnalyticsEvent.organization_id==current_org.id,AnalyticsEvent.created_at>=datetime.utcnow()-timedelta(days=days)
+    ).group_by(AnalyticsEvent.event_source,AnalyticsEvent.campaign,AnalyticsEvent.variant).all()
+    return {'crawler_fetches':sum(count for source,campaign,variant,count in rows if source=='crawler_fetch'),
+            'referred_visits':sum(count for source,campaign,variant,count in rows if source=='social_referral'),
+            'unclassified_events':sum(count for source,campaign,variant,count in rows if source is None),
+            'campaigns':[{'campaign':campaign,'variant':variant,'visits':count} for source,campaign,variant,count in rows
+                         if source=='social_referral' and (campaign or variant)],
+            'audience_impressions':None,'ctr':None,
+            'note':'Crawler fetches are requests, not audience views. Visits are recorded arrivals, not unique people. Missing referrers are not attributed. Campaign and variant labels are supplied in links; they do not establish A/B lift.'}

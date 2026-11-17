@@ -193,7 +193,7 @@ export default function AccountSettings() {
             <div>
               <span className="text-sm font-medium text-secondary-900 block">Weekly performance email</span>
               <p className="text-[13px] text-secondary-500 mt-0.5">
-                Receive a weekly summary of impressions, clicks, CTR, and top-performing link previews across your verified domains.
+                Receive a weekly summary of preview requests, recorded visits, and top-performing link previews across your verified domains.
               </p>
             </div>
           </div>

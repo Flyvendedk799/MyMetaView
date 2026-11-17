@@ -72,6 +72,7 @@ def upsert_preview(
     ).first()
     
     if existing_preview:
+        existing_preview.platform_images = {}
         # Update existing preview
         existing_preview.title = title
         existing_preview.description = description
@@ -97,7 +98,7 @@ def upsert_preview(
         if not existing_preview.type:
             existing_preview.type = preview_type
         
-        db.commit()
+        db.flush()
         db.refresh(existing_preview)
         return existing_preview
     else:
@@ -124,7 +125,7 @@ def upsert_preview(
             monthly_clicks=0,
         )
         db.add(new_preview)
-        db.commit()
+        db.flush()
         db.refresh(new_preview)
         return new_preview
 

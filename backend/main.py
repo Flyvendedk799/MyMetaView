@@ -178,6 +178,10 @@ async def error_middleware(request: Request, call_next):
 # so it gets the caching and CORS headers a cross-origin asset needs.
 app.include_router(routes_snippet.router)
 
+# Serve configured local storage, including media directories outside backend/static.
+os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+app.mount("/static/media", StaticFiles(directory=settings.MEDIA_ROOT), name="media")
+
 # Mount static files for everything else
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 
@@ -365,3 +369,6 @@ def root(request: Request):
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Site not found")
 
+
+from backend.api.v1 import routes_coverage
+app.include_router(routes_coverage.router, prefix=settings.API_V1_PREFIX)

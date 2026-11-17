@@ -1,0 +1,46 @@
+name: Product journey
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'src/**'
+      - 'e2e/**'
+      - 'package*.json'
+      - 'playwright*.ts'
+      - '.github/workflows/product-journey.yml'
+  workflow_dispatch:
+jobs:
+  journey:
+    # Playwright 1.58 supports Ubuntu 24.04; ubuntu-latest now selects 26.04.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      JOURNEY_PYTHON: python
+      JOURNEY_REDIS_URL: redis://localhost:6379/15
+      EMAIL_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: pip install -r backend/requirements.txt pytest
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: python -m playwright install chromium
+      - run: python -m pytest backend/tests -q --disable-warnings
+      - run: npm run build
+      - run: npm run test:journey
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: journey-failure
+          path: test-results/

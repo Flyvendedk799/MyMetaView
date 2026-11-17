@@ -27,6 +27,9 @@ from backend.services.card_rerender import (
 from backend.services.activity_logger import log_activity
 from backend.utils.url_sanitizer import sanitize_url
 from backend.services.cache import invalidate_preview, invalidate_public_preview_for_url
+from backend.services.card_history import begin_edit, snapshot
+from backend.services.card_revision import render_revision, apply_revision, commit_card
+
 router = APIRouter(prefix="/previews", tags=["previews"])
 
 
@@ -112,6 +115,11 @@ def create_or_update_preview(
     ).first()
     
     if existing_preview:
+        rendered = None
+        if existing_preview.can_rerender and not preview_in.image_url:
+            rendered = render_revision(existing_preview, existing_preview.render_spec,
+                                       preview_in.title, preview_in.description)
+        begin_edit(db, existing_preview)
         # Update existing preview
         if preview_in.title is not None:
             existing_preview.title = preview_in.title
@@ -127,7 +135,9 @@ def create_or_update_preview(
         if not existing_preview.image_url:
             _stamp_if_imageless(existing_preview, db, current_org, domain)
 
-        db.commit()
+        if rendered:
+            apply_revision(existing_preview, rendered)
+        commit_card(db)
         db.refresh(existing_preview)
         
         # Invalidate cache
@@ -162,7 +172,7 @@ def create_or_update_preview(
     )
     db.add(new_preview)
     _stamp_if_imageless(new_preview, db, current_org, domain)
-    db.commit()
+    commit_card(db)
     db.refresh(new_preview)
     
     # Log preview creation
@@ -199,30 +209,20 @@ def update_preview(
             detail=f"Preview with ID {preview_id} not found"
         )
     
-    # Update fields that are not None
     update_data = preview_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        # Handle image_url: if None, set to empty string (model requires non-null)
-        if field == 'image_url' and value is None:
-            setattr(preview, field, "")
-        else:
-            setattr(preview, field, value)
-
-    # Copy edits should show up on the card itself when we can re-render.
+    if "title" in update_data and not update_data["title"]:
+        raise HTTPException(422, "A title is required.")
+    rendered = None
     if preview.can_rerender and any(k in update_data for k in ("title", "description")):
-        spec = dict(preview.render_spec or {})
-        spec["subtitle"] = preview.description or ""
-        image_url, rendered_layout = rerender_card(
-            spec, url=preview.url, title=preview.title, subtitle=preview.description,
-        )
-        if image_url:
-            preview.image_url = image_url
-            preview.composited_image_url = image_url
-            preview.render_spec = spec
-            if rendered_layout:
-                preview.layout = rendered_layout
-
-    db.commit()
+        rendered = render_revision(preview, preview.render_spec,
+                                   update_data.get("title", preview.title),
+                                   update_data.get("description", preview.description))
+    begin_edit(db, preview)
+    for field, value in update_data.items():
+        setattr(preview, field, value if field != "image_url" else value or "")
+    if rendered:
+        apply_revision(preview, rendered)
+    commit_card(db)
     db.refresh(preview)
     
     # Invalidate cache
@@ -265,7 +265,7 @@ def delete_preview(
     preview_url = preview.url
     preview_title = preview.title
     db.delete(preview)
-    db.commit()
+    commit_card(db)
     
     # Invalidate cache
     invalidate_preview(preview_id)
@@ -349,22 +349,11 @@ def restyle_preview(
         preview.render_spec,
         layout=request.layout, panel=request.panel, accent=request.accent,
     )
-    image_url, rendered_layout = rerender_card(
-        spec, url=preview.url, title=preview.title,
-    )
-    if not image_url:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not render the card. Your existing preview is unchanged.",
-        )
-
-    preview.image_url = image_url
-    preview.composited_image_url = image_url
-    preview.layout = rendered_layout
-    # Persist the direction so the next restyle builds on this one rather than
-    # silently reverting to what the art director originally chose.
-    preview.render_spec = {**spec, "rendered_layout": rendered_layout}
-    db.commit()
+    rendered = render_revision(preview, spec, preview.title, preview.description)
+    begin_edit(db, preview)
+    apply_revision(preview, rendered)
+    rendered_layout = preview.layout
+    commit_card(db)
     db.refresh(preview)
 
     invalidate_preview(preview_id)
@@ -432,6 +421,9 @@ def build_platform_cards(
             detail="Could not render any sizes. Your existing preview is unchanged.",
         )
 
+    preview.platform_images = {**(preview.platform_images or {}), **cards}
+    commit_card(db)
+    invalidate_public_preview_for_url(preview.url)
     log_activity(
         db,
         user_id=current_user.id,
@@ -454,3 +446,98 @@ def build_platform_cards(
         # letting the caller infer it from a short list.
         "missing": [s for s in (sizes or list(CARD_SIZES)) if s not in cards],
     }
+
+
+from backend.services.card_studio import StudioEdit, studio_spec
+
+
+def _studio_preview(db, org_id, preview_id):
+    preview = db.query(PreviewModel).filter(PreviewModel.id == preview_id, PreviewModel.organization_id == org_id).first()
+    if not preview:
+        raise HTTPException(404, 'Preview not found')
+    return preview
+
+
+def _studio_state(preview):
+    spec = preview.render_spec or {}
+    composition = spec.get('composition', {})
+    return dict(revision=preview.revision, title=preview.title, description=preview.description or '',
+        visual_url=spec.get('visual_url'), logo_url=spec.get('logo_url'),
+        layout=composition.get('layout', 'typographic'), panel=composition.get('panel_color_role', 'primary'),
+        accent=composition.get('accent_moment', 'bar'), focal_x=composition.get('focal_x', 50),
+        focal_y=composition.get('focal_y', 50), locks=spec.get('locks', []),
+        images=preview.platform_images or {'wide': preview.image_url}, can_rerender=preview.can_rerender,
+        auto_publish=preview.auto_publish, published=preview.published_snapshot,
+        has_draft=bool(preview.published_snapshot and preview.published_snapshot != snapshot(preview)))
+
+
+@router.get('/{preview_id}/studio')
+def get_studio(preview_id: int, db: Session = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    return _studio_state(_studio_preview(db, current_org.id, preview_id))
+
+
+@router.put('/{preview_id}/studio')
+def save_studio(preview_id: int, edit: StudioEdit, db: Session = Depends(get_db),
+                current_org: Organization = Depends(get_current_org),
+                role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    if edit.revision != preview.revision:
+        raise HTTPException(409, 'This card has changed. Reload before saving.')
+    if not preview.can_rerender:
+        raise HTTPException(409, 'Regenerate this older card once to enable the studio.')
+    spec = studio_spec(preview.render_spec, edit)
+    # The editor always previews all three output shapes together.
+    rendered = render_revision(preview, spec, edit.title, edit.description, sizes=list(CARD_SIZES))
+    begin_edit(db, preview)
+    apply_revision(preview, rendered)
+    commit_card(db)
+    invalidate_preview(preview.id)
+    invalidate_public_preview_for_url(preview.url)
+    return _studio_state(preview)
+
+
+class PublishRevision(BaseModel):
+    revision: int
+    auto_publish: bool = False
+
+
+@router.get('/{preview_id}/history')
+def card_history(preview_id: int, db: Session = Depends(get_db), current_org: Organization = Depends(get_current_org)):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    from backend.models.card_history import CardHistory
+    rows = db.query(CardHistory).filter_by(preview_id=preview.id).order_by(CardHistory.revision.desc()).limit(50).all()
+    return [{'revision': row.revision, 'created_at': row.created_at, 'title': row.snapshot['title'],
+             'image_url': row.snapshot['image_url']} for row in rows]
+
+
+@router.post('/{preview_id}/publish')
+def publish_card(preview_id: int, payload: PublishRevision, db: Session = Depends(get_db),
+                 current_org: Organization = Depends(get_current_org),
+                 role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    if payload.revision != preview.revision:
+        raise HTTPException(409, 'The draft changed. Review it again before publishing.')
+    from backend.services.card_history import snapshot
+    preview.published_snapshot = snapshot(preview)
+    preview.auto_publish = payload.auto_publish
+    commit_card(db)
+    invalidate_public_preview_for_url(preview.url)
+    return _studio_state(preview)
+
+
+@router.post('/{preview_id}/restore/{revision}')
+def restore_card(preview_id: int, revision: int, payload: PublishRevision, db: Session = Depends(get_db),
+                 current_org: Organization = Depends(get_current_org),
+                 role: OrganizationRole = Depends(role_required([OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.EDITOR]))):
+    preview = _studio_preview(db, current_org.id, preview_id)
+    if payload.revision != preview.revision:
+        raise HTTPException(409, 'The draft changed. Reload before restoring.')
+    from backend.models.card_history import CardHistory
+    from backend.services.card_history import restore_snapshot
+    old = db.query(CardHistory).filter_by(preview_id=preview.id, revision=revision).first()
+    if not old:
+        raise HTTPException(404, 'Revision not found')
+    begin_edit(db, preview)
+    restore_snapshot(preview, old.snapshot)
+    commit_card(db)
+    return _studio_state(preview)

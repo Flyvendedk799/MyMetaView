@@ -906,3 +906,27 @@ def download_cloudflare_worker(
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.post('/share-check')
+def verify_share_delivery(
+    payload: VerifyInstallRequest,
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
+    current_user: User = Depends(get_current_user),
+):
+    from backend.models.preview import Preview
+    from backend.services.share_delivery import check_delivery
+    from backend.utils.url_sanitizer import sanitize_url
+    if payload.domain_id is None:
+        raise HTTPException(422, 'Choose a connected domain.')
+    domain = _get_org_domain(db, current_org, payload.domain_id)
+    try:
+        url = sanitize_url(payload.url or f'https://{domain.name}/', domain.name)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    preview = db.query(Preview).filter(Preview.organization_id == current_org.id, Preview.url == url).first()
+    if not preview:
+        return {'ready': False, 'checks': [], 'message': 'Generate a card for this URL before checking delivery.'}
+    published = preview.published_snapshot or {}
+    return check_delivery(url, published.get('title', preview.title), published.get('composited_image_url') or published.get('image_url') or preview.composited_image_url or preview.image_url)

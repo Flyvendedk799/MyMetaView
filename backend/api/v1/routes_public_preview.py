@@ -121,12 +121,12 @@ def _normalize_url_for_matching(url: str) -> str:
     Normalize URL for deterministic matching.
 
     This ensures the same URL always matches the same preview,
-    regardless of query params, fragments, or trailing slashes.
+    ignoring tracking parameters, fragments and trailing slashes while
+    preserving content-selecting queries and path case.
     """
-    parsed = urlparse(url)
-    # Normalize: scheme + netloc + path (ignore query and fragment for matching)
-    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip('/')
-    return normalized
+    from backend.services.site_coverage import page_identity
+    return page_identity(url)
+
 
 
 def _record_impression(
@@ -146,6 +146,7 @@ def _record_impression(
             domain_id=domain.id,
             preview_id=preview.id if preview else None,
             event_type="impression",
+            event_source="crawler_fetch",
             referrer=platform or crawler_name,
             user_agent=(user_agent or "")[:500],
         )
@@ -230,13 +231,19 @@ def _get_preview_logic(
                 PreviewModel.url == full_url
             ).first()
 
-        if not preview and parsed.path:
+        if not preview and parsed.path and not parsed.query:
             path_only = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip('/')
             preview = db.query(PreviewModel).filter(
                 PreviewModel.organization_id == organization_id,
                 PreviewModel.url == path_only
             ).first()
 
+        if not preview:
+            from backend.models.site_coverage import SitePageCoverage
+            from backend.services.site_coverage import page_identity
+            alias = db.query(SitePageCoverage).filter_by(domain_id=domain.id, url=page_identity(full_url)).first()
+            if alias and alias.canonical_url:
+                preview = db.query(PreviewModel).filter_by(organization_id=organization_id, url=alias.canonical_url).first()
         # A crawler fetching this URL means a share is being rendered.
         if crawler_name:
             _record_impression(db, domain, preview, crawler_name, platform, user_agent)
@@ -244,6 +251,14 @@ def _get_preview_logic(
         if not preview:
             return _fallback(full_url, hostname, "no_preview")
 
+        published = preview.published_snapshot
+        if published:
+            selected = next((v for v in published.get("variants", []) if v["variant_key"] == variant), published)
+            return PublicPreview(url=full_url, title=selected.get("title") or published["title"],
+                description=selected.get("description") or "",
+                image_url=selected.get("composited_image_url") or selected.get("image_url"),
+                site_name=domain.name, type=published.get("type"), status="fully_generated",
+                version=variant if selected is not published else "main")
         preview_status = "fully_generated" if preview.ai_reasoning else "pending_ai"
 
         if variant:

@@ -6,6 +6,7 @@ render from a stored spec, and the legacy generate route stays retired.
 """
 import os
 import tempfile
+from uuid import uuid4
 from unittest.mock import patch
 
 import pytest
@@ -42,7 +43,9 @@ def client():
 
     app.dependency_overrides[get_db] = override_get_db
     try:
-        yield TestClient(app)
+        # Each isolated database represents a separate visitor. Keep Redis rate
+        # limits active without sharing login counters across unrelated tests.
+        yield TestClient(app, client=(f"test-{uuid4().hex}", 50000))
     finally:
         app.dependency_overrides.pop(get_db, None)
         engine.dispose()

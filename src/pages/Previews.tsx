@@ -19,6 +19,7 @@ import {
   getBulkJobStatus,
   getRecentBulkJobs,
   createPreviewJob,
+  controlBulkRun,
   restylePreview,
   updatePreview as updatePreviewApi,
   getMyPlan,
@@ -232,7 +233,7 @@ export default function Previews() {
       let justFinished = false
       for (const b of batches) {
         const prev = activityPrevStatus.current[b.batch_id]
-        if (prev && (prev === 'queued' || prev === 'running') && (b.status === 'completed' || b.status === 'failed')) {
+        if (prev && (prev === 'queued' || prev === 'running') && (['completed','partial','failed','cancelled'].includes(b.status))) {
           justFinished = true
         }
         activityPrevStatus.current[b.batch_id] = b.status
@@ -413,6 +414,13 @@ export default function Previews() {
     setFormError(null)
     setIsModalOpen(true)
   }, [domains])
+
+  // The dialog can open before the initial domain request completes.
+  useEffect(() => {
+    if (isModalOpen && editingPreview === null && domains.length > 0) {
+      setFormData(current => current.domain ? current : { ...current, domain: domains[0].name })
+    }
+  }, [isModalOpen, editingPreview, domains])
 
   // /app/previews?new=1 opens the create dialog (used by the header quick action).
   useEffect(() => {
@@ -689,7 +697,7 @@ export default function Previews() {
       const updated = await restylePreview(preview.id, direction)
       replacePreview(updated)
       setDetailPreview((current) => (current && current.id === updated.id ? updated : current))
-      toast.success('Card restyled', 'No AI credit was used.')
+      toast.success('Draft restyled', 'Open Edit card to review and publish it.')
     } catch (err) {
       toast.error(
         'Could not restyle',
@@ -771,6 +779,7 @@ export default function Previews() {
                     className="w-full flex items-center gap-3 text-left rounded-lg hover:bg-secondary-50 transition-colors"
                   >
                     <span className="flex-shrink-0">
+                      {['partial','paused','cancelled'].includes(b.status) && <span className="pill bg-secondary-100 text-secondary-700 capitalize">{b.status}</span>}
                       {b.status === 'completed' && (
                         <span className="pill bg-primary-500 text-paper inline-flex items-center gap-1">
                           <CheckIcon className="w-3 h-3" /> Done
@@ -813,6 +822,14 @@ export default function Previews() {
                     </span>
                   </button>
 
+                  {b.durable && <div className="flex gap-2 mt-2 text-xs">
+                    {(b.status === 'running' ? ['pause','cancel'] : b.status === 'paused' ? ['resume','cancel'] : b.failed > 0 && ['failed','partial','completed'].includes(b.status) ? ['retry_failed'] : []).map(action =>
+                      <button key={action} className="border rounded px-2 py-1" onClick={async () => {
+                        try { await controlBulkRun(b.batch_id, action as 'pause' | 'resume' | 'cancel' | 'retry_failed'); await loadActivity() }
+                        catch(e) { setBatchDetailError(e instanceof Error ? e.message : 'Could not update run') }
+                      }}>{action.replace('_',' ')}</button>)}
+                    {['running','paused'].includes(b.status) && <span>In-progress pages finish; controls affect remaining pages.</span>}
+                  </div>}
                   {expanded && (
                     <div className="mt-2 pl-1">
                       {batchDetailError && (
@@ -832,9 +849,9 @@ export default function Previews() {
                             <div key={i} className="flex items-center gap-2 px-3 py-1.5">
                               {r.status === 'finished' ? (
                                 <CheckIcon className="w-4 h-4 text-primary-600 flex-shrink-0" />
-                              ) : (
+                              ) : r.status === 'failed' ? (
                                 <XMarkIcon className="w-4 h-4 text-error-600 flex-shrink-0" />
-                              )}
+                              ) : <span className="text-xs">{r.status}</span>}
                               <span className="font-mono text-[11px] text-secondary-600 truncate flex-1" title={r.url}>
                                 {r.url}
                               </span>
@@ -1206,7 +1223,7 @@ export default function Previews() {
           const updated = await updatePreviewApi(detailPreview.id, { title, description })
           replacePreview(updated)
           setDetailPreview(updated)
-          toast.success('Card updated')
+          toast.success('Draft updated', 'Open Edit card to review and publish it.')
         }}
       />
 
@@ -1540,7 +1557,7 @@ export default function Previews() {
                   className="w-full px-4 py-2 border border-secondary-300 rounded-lg font-mono text-xs focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-all disabled:bg-secondary-50"
                 />
                 <p className="text-xs text-secondary-500 mt-1">
-                  {bulkUrls.length} URL{bulkUrls.length === 1 ? '' : 's'} · up to 50 per run
+                  {bulkUrls.length} URL{bulkUrls.length === 1 ? '' : 's'} · up to 2,000 per run
                 </p>
               </div>
 

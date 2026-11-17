@@ -7,6 +7,7 @@
  */
 import { useState } from 'react'
 import Modal from './ui/Modal'
+import CardEditor from './CardEditor'
 import Button from './ui/Button'
 import SpatialPreviewStudio from './SpatialPreviewStudio'
 import { buildPlatformCards } from '../api/client'
@@ -29,7 +30,7 @@ interface PreviewDetailModalProps {
   onSaveCopy?: (patch: { title: string; description: string }) => Promise<void>
 }
 
-type Panel = 'studio' | 'platforms' | 'files'
+type Panel = 'studio' | 'platforms' | 'files' | 'edit'
 
 const LAYOUTS: CardLayout[] = ['typographic', 'split', 'stat', 'profile', 'editorial', 'product']
 const PANELS: CardPanel[] = ['primary', 'secondary', 'dark', 'light']
@@ -176,6 +177,7 @@ export default function PreviewDetailModal({
   }
 
   const tabs: { id: Panel; label: string }[] = [
+    { id: 'edit', label: 'Edit card' },
     { id: 'platforms', label: 'Where it appears' },
     { id: 'files', label: 'Tags & files' },
     { id: 'studio', label: 'Studio' },
@@ -201,6 +203,7 @@ export default function PreviewDetailModal({
           ))}
         </div>
 
+        {panel === 'edit' && <CardEditor id={preview.id} url={preview.url} domain={preview.domain} />}
         {panel === 'platforms' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PlatformMock name="Facebook" title={title} description={description} image={image} domain={preview.domain} chrome="bg-[#f0f2f5]" />

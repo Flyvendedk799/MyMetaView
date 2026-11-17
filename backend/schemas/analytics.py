@@ -1,5 +1,5 @@
 """Pydantic schemas for Analytics."""
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -7,7 +7,7 @@ class TopDomain(BaseModel):
     """Top domain schema for analytics."""
     domain: str
     clicks: int
-    ctr: float = Field(..., description="Click-through rate as percentage")
+    ctr: Optional[float] = None
 
 
 class AnalyticsSummary(BaseModel):
@@ -15,7 +15,7 @@ class AnalyticsSummary(BaseModel):
     period: str = Field(..., description="Time period: '7d' or '30d'")
     total_clicks: int
     total_impressions: int = 0
-    ctr: float = Field(0.0, description="Overall click-through rate as percentage")
+    ctr: Optional[float] = None
     total_previews: int
     total_domains: int
     verified_domains: int = 0

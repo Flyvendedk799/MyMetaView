@@ -53,6 +53,7 @@ class PreviewUpdate(BaseModel):
 class Preview(PreviewBase):
     """Preview schema with all fields."""
     id: int
+    revision: int = 1
     created_at: datetime
     monthly_clicks: int = 0
     description: Optional[str] = None

@@ -78,7 +78,7 @@ def _parse_sitemap(xml_text: str) -> Tuple[List[str], List[str]]:
     return child_sitemaps, page_urls
 
 
-def discover_sitemap_urls(domain: str, max_urls: int = 200) -> List[str]:
+def discover_sitemap_entries(domain: str, max_urls: int = 200) -> List[dict]:
     """Return up to ``max_urls`` same-site page URLs discovered for ``domain``.
 
     Reads robots.txt for ``Sitemap:`` directives, then falls back to common
@@ -118,6 +118,15 @@ def discover_sitemap_urls(domain: str, max_urls: int = 200) -> List[str]:
             continue
 
         children, pages = _parse_sitemap(xml_text)
+        lastmods = {}
+        try:
+            root = ET.fromstring(xml_text.strip())
+            for item in root:
+                values = {child.tag.split('}')[-1]: child.text for child in item}
+                if values.get('loc'):
+                    lastmods[values['loc'].strip()] = values.get('lastmod')
+        except ET.ParseError:
+            pass
         for child in children:
             if child not in seen_sitemaps:
                 queue.append(child)
@@ -128,10 +137,14 @@ def discover_sitemap_urls(domain: str, max_urls: int = 200) -> List[str]:
             if page in seen_urls:
                 continue
             seen_urls.add(page)
-            urls.append(page)
+            urls.append({"url": page, "lastmod": lastmods.get(page)})
             if len(urls) >= max_urls:
                 break
 
     logger.info("sitemap discovery for %s found %d urls (%d sitemaps read)",
                 domain, len(urls), len(seen_sitemaps))
     return urls[:max_urls]
+
+
+def discover_sitemap_urls(domain: str, max_urls: int = 200) -> List[str]:
+    return [entry['url'] for entry in discover_sitemap_entries(domain, max_urls)]

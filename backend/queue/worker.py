@@ -127,11 +127,31 @@ def main():
             logger.warning("analytics aggregation failed: %s", exc)
 
     _maybe_aggregate()
+    last_refresh = 0.0
 
+    def _maybe_refresh():
+        nonlocal last_refresh
+        now = time.time()
+        if now - last_refresh < 60:
+            return
+        last_refresh = now
+        try:
+            from backend.jobs.site_refresh import enqueue_due_scans
+            enqueue_due_scans()
+        except Exception as exc:
+            logger.warning("site refresh scheduling failed: %s", exc)
+        try:
+            from backend.services.bulk_runs import recover_runs
+            recover_runs()
+        except Exception as exc:
+            logger.warning("bulk recovery failed: %s", exc)
+
+    _maybe_refresh()
     # Supervise: restart any worker that dies, unless we're shutting down.
     while not shutting_down["flag"]:
         time.sleep(5)
         _maybe_aggregate()
+        _maybe_refresh()
         for pid, (p, spec) in list(procs.items()):
             if not p.is_alive():
                 del procs[pid]

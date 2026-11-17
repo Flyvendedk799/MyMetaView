@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 # Cap on how many URLs one bulk run will accept, before quota trimming.
-MAX_BULK_URLS = 50
+MAX_BULK_URLS = 2000
 
 
 class PreviewJobRequest(BaseModel):
@@ -309,31 +309,13 @@ def create_bulk_preview_job(
     from datetime import datetime as _dt
     batch_id = str(uuid4())
     created_at = _dt.utcnow().isoformat()
-    # Seed a 'queued' record + index it so the run is visible immediately (survives
-    # tab close / reload) even before a bulk worker picks it up.
-    seed_batch(batch_id, current_org.id, request.domain, len(clean_urls), created_at)
+    from backend.services.bulk_runs import create_run, dispatch
+    create_run(db,batch_id,current_user.id,current_org.id,request.domain,clean_urls,request.force,request.ignore_branding)
+    # The supervisor retries dispatch after a queue outage; the durable run already exists.
     try:
-        redis_conn = get_rq_redis_connection()
-        # Dedicated queue so a long bulk run can't block interactive previews.
-        queue = Queue("bulk_generation", connection=redis_conn)
-        queue.enqueue(
-            generate_bulk_preview_job,
-            batch_id,
-            current_user.id,
-            current_org.id,
-            request.domain,
-            clean_urls,
-            request.force,
-            created_at,
-            request.ignore_branding,
-            job_timeout='2h',  # bulk runs many URLs sequentially
-        )
-    except Exception as e:
-        fail_seeded_batch(batch_id, f"Could not queue the run: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create bulk job: {str(e)}",
-        )
+        dispatch(batch_id)
+    except Exception:
+        logger.warning("Bulk run %s saved; dispatch will retry",batch_id,exc_info=True)
 
     log_activity(
         db,
@@ -356,20 +338,32 @@ def create_bulk_preview_job(
 
 @router.get("/bulk/recent")
 def list_recent_bulk_jobs(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_org),
 ):
     """Recent bulk runs for the org (newest first) — powers a jobs view that works
     without keeping a tab open (resume in-progress runs, see recent ones)."""
-    return {"batches": list_org_batches(current_org.id)}
+    from backend.models.bulk_run import BulkRun
+    from backend.services.bulk_runs import summary
+    durable=[summary(db,r) for r in db.query(BulkRun).filter_by(organization_id=current_org.id).order_by(BulkRun.created_at.desc()).limit(20).all()]
+    ids={r['batch_id'] for r in durable}
+    old=[r for r in list_org_batches(current_org.id) if r['batch_id'] not in ids]
+    return {"batches": sorted(durable+old,key=lambda r:r.get('created_at') or '',reverse=True)[:20]}
 
 
 @router.get("/bulk/{batch_id}/status")
 def get_bulk_job_status(
     batch_id: str,
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_org),
     current_user: User = Depends(get_current_user),
 ):
     """Poll a bulk generation batch. Returns total/completed/failed + per-URL results."""
+    from backend.models.bulk_run import BulkRun
+    from backend.services.bulk_runs import summary
+    run=db.query(BulkRun).filter_by(id=batch_id,organization_id=current_org.id).first()
+    if run: return summary(db,run,True)
     data = get_bulk_batch_data(batch_id)
     if data is None:
         raise HTTPException(
@@ -563,3 +557,22 @@ async def trigger_weekly_digest(
     )
 
 
+
+
+class BulkControl(BaseModel):
+    action: str
+
+@router.post('/bulk/{batch_id}/control')
+def control_bulk(batch_id: str, body: BulkControl, db: Session=Depends(get_db),
+                 current_org: Organization=Depends(get_current_org),
+                 role=Depends(role_required([OrganizationRole.OWNER,OrganizationRole.ADMIN,OrganizationRole.EDITOR]))):
+    from backend.models.bulk_run import BulkRun
+    from backend.services.bulk_runs import control,dispatch
+    run=db.query(BulkRun).filter_by(id=batch_id,organization_id=current_org.id).first()
+    if not run:raise HTTPException(404,'Run not found')
+    try:result=control(db,run,body.action)
+    except ValueError as exc:raise HTTPException(409,str(exc)) from exc
+    if run.status=='running':
+        try:dispatch(run.id)
+        except Exception:logger.warning('Dispatch will retry for %s',run.id,exc_info=True)
+    return result

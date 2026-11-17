@@ -1674,3 +1674,46 @@ export async function deleteAiKey(provider: string, scope: 'org' | 'user', orgId
   if (orgId) params.set('org_id', String(orgId))
   return fetchApi(`/api/v1/ai-auth/keys/${provider}?${params}`, { method: 'DELETE' })
 }
+
+export interface ShareDelivery {
+  ready: boolean
+  message: string
+  checks: { platform: string; ready: boolean; issues: string[] }[]
+}
+export async function verifyShareDelivery(domain_id: number, url?: string): Promise<ShareDelivery> {
+  return fetchApi('/api/v1/install/share-check', { method: 'POST', body: JSON.stringify({ domain_id, url }) })
+}
+
+export interface CardStudioState {
+  revision: number; title: string; description: string; visual_url: string | null; logo_url: string | null
+  layout: string; panel: string; accent: string; focal_x: number; focal_y: number; locks: string[]
+  images: Record<string, string>; can_rerender: boolean
+  auto_publish: boolean; has_draft: boolean; published: { title: string; image_url: string } | null
+}
+export const getCardStudio = (id: number): Promise<CardStudioState> => fetchApi(`/api/v1/previews/${id}/studio`)
+export const saveCardStudio = (id: number, state: CardStudioState): Promise<CardStudioState> =>
+  fetchApi(`/api/v1/previews/${id}/studio`, { method: 'PUT', body: JSON.stringify(state), timeout: 120000 })
+
+export interface CardHistoryEntry { revision: number; title: string; image_url: string; created_at: string }
+export const getCardHistory = (id: number): Promise<CardHistoryEntry[]> => fetchApi(`/api/v1/previews/${id}/history`)
+export const publishCard = (id: number, revision: number, auto_publish: boolean): Promise<CardStudioState> =>
+  fetchApi(`/api/v1/previews/${id}/publish`, { method: 'POST', body: JSON.stringify({ revision, auto_publish }) })
+export const restoreCard = (id: number, oldRevision: number, revision: number): Promise<CardStudioState> =>
+  fetchApi(`/api/v1/previews/${id}/restore/${oldRevision}`, { method: 'POST', body: JSON.stringify({ revision }) })
+
+export interface CoverageState {
+  enabled: boolean; interval_hours: number; last_scan_at: string | null; error: string | null
+  pages: { id: number; url: string; canonical_url: string | null; state: string; error: string | null; checked_at: string | null; generated_at: string | null }[]
+}
+export const getCoverage = (id: number): Promise<CoverageState> => fetchApi(`/api/v1/coverage/${id}`)
+export const saveCoverage = (id: number, enabled: boolean, interval_hours: number) => fetchApi(`/api/v1/coverage/${id}`, { method: 'PUT', body: JSON.stringify({ enabled, interval_hours }) })
+export const scanCoverage = (id: number) => fetchApi(`/api/v1/coverage/${id}/scan`, { method: 'POST' })
+
+export const controlBulkRun = (id: string, action: 'pause' | 'resume' | 'cancel' | 'retry_failed'): Promise<BulkJobStatus> =>
+  fetchApi(`/api/v1/jobs/bulk/${id}/control`, { method: 'POST', body: JSON.stringify({ action }) })
+
+export interface TrafficAttribution {
+  crawler_fetches: number; referred_visits: number; unclassified_events: number; note: string
+  campaigns: { campaign: string | null; variant: string | null; visits: number }[]
+}
+export const getTrafficAttribution = (days: number): Promise<TrafficAttribution> => fetchApi(`/api/v1/analytics/attribution?days=${days}`)
